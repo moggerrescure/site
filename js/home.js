@@ -1,47 +1,50 @@
 /* ═══════════════════════════════════════════════
-   HOME PAGE — Stats from API, Candle via API,
-   Last added from API, scroll reveals
+   HOME PAGE — Stats, Candle, Featured person,
+   Last added. Uses PERSON_SVG + calcAge from data.js
    ═══════════════════════════════════════════════ */
 
 (function () {
 
-  /* ── STATS — из API или из данных data.js ── */
+  /* ── STATS ── */
   function initCounters() {
-    const nums = document.querySelectorAll('.stat__num');
-    const io = new IntersectionObserver((entries) => {
+    const io = new IntersectionObserver(entries => {
       entries.forEach(en => {
         if (!en.isIntersecting) return;
-        const el     = en.target;
+        const el = en.target;
         const target = parseInt(el.dataset.count, 10) || 0;
-        const dur    = 1400;
-        const start  = performance.now();
-        function tick(now) {
+        const dur = 1400, start = performance.now();
+        const tick = now => {
           const p = Math.min((now - start) / dur, 1);
           el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
           if (p < 1) requestAnimationFrame(tick);
-        }
+        };
         requestAnimationFrame(tick);
         io.unobserve(el);
       });
     }, { threshold: 0.4 });
-    nums.forEach(n => io.observe(n));
+    document.querySelectorAll('.stat__num').forEach(n => io.observe(n));
   }
 
   if (typeof API !== 'undefined') {
     API.get('/api/stats').then(res => {
-      if (!res || !res.data) throw new Error();
+      if (!res?.data) return;
       const map = {
         '[data-count="18"]': res.data.people,
         '[data-count="36"]': res.data.reviews,
         '[data-count="9"]' : res.data.cities,
       };
       for (const [sel, val] of Object.entries(map)) {
-        if (!val) continue;
-        document.querySelectorAll(`.stat__num${sel}`).forEach(el => el.dataset.count = val);
+        if (val) document.querySelectorAll(`.stat__num${sel}`).forEach(el => el.dataset.count = val);
       }
-    }).catch(() => {}).finally(initCounters);
+    }).catch(() => {
+      /* fallback from data.js */
+      if (typeof PEOPLE !== 'undefined') {
+        const cities = new Set(PEOPLE.map(p => p.city).filter(Boolean)).size;
+        document.querySelectorAll('.stat__num[data-count="18"]').forEach(el => el.dataset.count = PEOPLE.length);
+        document.querySelectorAll('.stat__num[data-count="9"]').forEach(el => el.dataset.count = cities);
+      }
+    }).finally(initCounters);
   } else {
-    /* No API — use data.js counts if available */
     if (typeof PEOPLE !== 'undefined') {
       const cities = new Set(PEOPLE.map(p => p.city).filter(Boolean)).size;
       document.querySelectorAll('.stat__num[data-count="18"]').forEach(el => el.dataset.count = PEOPLE.length);
@@ -50,59 +53,39 @@
     initCounters();
   }
 
-  /* ── CANDLE — API с fallback на localStorage ── */
+  /* ── CANDLE ── */
   const candle  = document.getElementById('candle');
   const countEl = document.getElementById('candle-count');
-  const scene   = candle ? candle.closest('.candle-scene') : null;
+  const scene   = candle?.closest('.candle-scene');
+  const STORE   = 'candle_count';
 
-  const STORAGE_KEY = 'candle_count';
-
-  /* Load count */
   if (countEl) {
-    if (typeof API !== 'undefined') {
-      API.get('/api/candles').then(r => {
-        if (r && r.count != null) countEl.textContent = r.count;
-      }).catch(() => {
-        countEl.textContent = localStorage.getItem(STORAGE_KEY) || '237';
-      });
-    } else {
-      countEl.textContent = localStorage.getItem(STORAGE_KEY) || '237';
-    }
+    (typeof API !== 'undefined'
+      ? API.get('/api/candles').then(r => { if (r?.count != null) countEl.textContent = r.count; })
+      : Promise.reject()
+    ).catch(() => { countEl.textContent = localStorage.getItem(STORE) || '237'; });
   }
 
   if (candle && countEl) {
     candle.classList.add('is-lit');
-    if (scene) scene.classList.add('is-lit');
+    scene?.classList.add('is-lit');
 
     let busy = false;
     async function toggleCandle() {
-      if (busy) return;
-      busy = true;
+      if (busy) return; busy = true;
       if (candle.classList.contains('is-lit')) {
         candle.classList.add('is-blowing');
-        if (scene) scene.classList.remove('is-lit');
-        setTimeout(() => {
-          candle.classList.remove('is-lit', 'is-blowing');
-          busy = false;
-        }, 700);
+        scene?.classList.remove('is-lit');
+        setTimeout(() => { candle.classList.remove('is-lit', 'is-blowing'); busy = false; }, 700);
       } else {
         candle.classList.add('is-lit');
-        if (scene) scene.classList.add('is-lit');
-        /* Increment on server or localStorage */
+        scene?.classList.add('is-lit');
         try {
-          if (typeof API !== 'undefined') {
-            const r = await API.post('/api/candles/light');
-            if (r && r.count != null) {
-              countEl.textContent = r.count;
-              localStorage.setItem(STORAGE_KEY, r.count);
-            }
-          } else {
-            throw new Error('no api');
-          }
+          const r = await API.post('/api/candles/light');
+          if (r?.count != null) { countEl.textContent = r.count; localStorage.setItem(STORE, r.count); }
         } catch {
           const c = parseInt(countEl.textContent || '237') + 1;
-          countEl.textContent = c;
-          localStorage.setItem(STORAGE_KEY, c);
+          countEl.textContent = c; localStorage.setItem(STORE, c);
         }
         countEl.classList.remove('is-bumped');
         void countEl.offsetWidth;
@@ -117,75 +100,62 @@
     });
   }
 
-  /* ── FEATURED PERSON — живая карточка на главной ── */
+  /* ── FEATURED PERSON — race-condition-free ──
+     rendered is a flag. Once set true by either path, other path won't run. */
   const featuredSection = document.getElementById('featured-person');
   if (featuredSection) {
-    const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="7" r="4"/>
-      <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
-    </svg>`;
+    let rendered = false;
 
     function renderFeatured(people) {
-      /* Pick a random person who has at least one review */
-      const withReviews = people.filter(p => Array.isArray(p.reviews) && p.reviews.length > 0);
+      if (rendered) return;
+      rendered = true;
+      const withReviews = people.filter(p => Array.isArray(p.reviews) && p.reviews.length);
       const pool = withReviews.length ? withReviews : people;
       const p = pool[Math.floor(Math.random() * pool.length)];
       if (!p) return;
-      const review = Array.isArray(p.reviews) && p.reviews[0];
+      const review = p.reviews?.[0];
+      const age = typeof calcAge === 'function' ? calcAge(p.born, p.died) : null;
       featuredSection.innerHTML = `
         <div class="featured-person__inner">
           <p class="hero__eyebrow">Одна из историй</p>
           <div class="featured-person__card">
             <div class="featured-person__photo">
-              ${p.photo
-                ? `<img src="${p.photo}" alt="${p.name}"/>`
-                : `<div class="featured-person__avatar">${personSVG}</div>`}
+              ${p.photo ? `<img src="${p.photo}" alt="${p.name}"/>`
+                        : `<div class="featured-person__avatar">${PERSON_SVG}</div>`}
             </div>
             <div class="featured-person__content">
               <h2 class="featured-person__name">${p.name}</h2>
-              <p class="featured-person__meta">${p.born} — ${p.died || '...'} · ${p.city}</p>
+              <p class="featured-person__meta">${p.born} — ${p.died || '...'}${age ? ` · ${age} лет` : ''} · ${p.city}</p>
               ${p.bio ? `<p class="featured-person__bio">${p.bio.slice(0, 160)}…</p>` : ''}
-              ${review ? `
-                <blockquote class="featured-person__quote">
-                  <p>"${review.text}"</p>
-                  <cite>${review.author}</cite>
-                </blockquote>` : ''}
-              <a href="person.html?id=${encodeURIComponent(p.id)}" class="featured-person__link">
-                Читать историю →
-              </a>
+              ${review ? `<blockquote class="featured-person__quote"><p>"${review.text}"</p><cite>${review.author}</cite></blockquote>` : ''}
+              <a href="person.html?id=${encodeURIComponent(p.id)}" class="featured-person__link">Читать историю →</a>
             </div>
           </div>
         </div>`;
     }
 
-    let featuredOk = false;
+    /* Try API first */
     if (typeof API !== 'undefined') {
-      API.get('/api/people?page=1&limit=100').then(res => {
-        if (res?.data?.length) { renderFeatured(res.data); featuredOk = true; }
-      }).catch(() => {});
+      API.get('/api/people?page=1&limit=100')
+        .then(res => { if (res?.data?.length) renderFeatured(res.data); })
+        .catch(() => {});
     }
+    /* Fallback after 700ms if API didn't render */
     setTimeout(() => {
-      if (!featuredOk && typeof PEOPLE !== 'undefined' && PEOPLE.length)
-        renderFeatured(PEOPLE);
-    }, 600);
+      if (!rendered && typeof PEOPLE !== 'undefined' && PEOPLE.length) renderFeatured(PEOPLE);
+    }, 700);
   }
 
-  /* ── LAST ADDED — API с fallback на data.js ── */
+  /* ── LAST ADDED ── */
   const lastGrid = document.getElementById('last-added-grid');
   if (lastGrid) {
-    const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="7" r="4"/>
-      <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
-    </svg>`;
-
     function renderLastAdded(people) {
-      const recent = people.slice(-3).reverse();
-      lastGrid.innerHTML = recent.map(p => `
+      lastGrid.innerHTML = people.slice(-3).reverse().map(p => `
         <a class="person-card" href="person.html?id=${encodeURIComponent(p.id)}">
           <div class="person-card__photo">
             ${p.photo
               ? `<img src="${p.photo}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`
-              : `<div class="person-card__photo-inner">${personSVG}</div>`}
+              : `<div class="person-card__photo-inner">${PERSON_SVG}</div>`}
           </div>
           <div class="person-card__body">
             <h3 class="person-card__name">${p.name}</h3>
@@ -195,58 +165,34 @@
         </a>`).join('');
     }
 
-    /* Try API */
     let apiOk = false;
     if (typeof API !== 'undefined') {
-      API.get('/api/people?page=1&limit=100').then(res => {
-        if (res && Array.isArray(res.data) && res.data.length) {
-          renderLastAdded(res.data);
-          apiOk = true;
-        }
-      }).catch(() => {});
+      API.get('/api/people?page=1&limit=100')
+        .then(res => { if (res?.data?.length) { renderLastAdded(res.data); apiOk = true; } })
+        .catch(() => {});
     }
-
-    /* Fallback: data.js (runs immediately if API not available) */
     setTimeout(() => {
-      if (!apiOk && typeof PEOPLE !== 'undefined' && PEOPLE.length) {
-        renderLastAdded(PEOPLE);
-      }
+      if (!apiOk && typeof PEOPLE !== 'undefined' && PEOPLE.length) renderLastAdded(PEOPLE);
     }, 800);
   }
 
-})();
-
-
-/* ═══════════════════════════════════════════════
-   SITE-WIDE: Scroll reveals + nav scroll state
-   ═══════════════════════════════════════════════ */
-(function () {
+  /* ── SCROLL REVEALS (home page only) ── */
   const revealSelectors = [
-    '.section-title', '.features__grid', '.candle-scene',
-    '.candle-section__sub', '.candle-section__counter',
-    '.last-added__grid', '.pullquote', '.stats__inner',
+    '.featured-person__card', '.stats__inner', '.candle-scene',
+    '.candle-section__sub', '.last-added__grid', '.pullquote',
   ];
   revealSelectors.forEach(sel => {
     document.querySelectorAll(sel).forEach(el => {
-      if (sel.includes('grid') || sel.includes('stats__inner')) el.classList.add('fx-stagger');
-      else el.classList.add('fx-reveal');
+      el.classList.add(sel.includes('grid') || sel.includes('stats') ? 'fx-stagger' : 'fx-reveal');
     });
   });
 
-  const io = new IntersectionObserver(entries => {
+  const revIO = new IntersectionObserver(entries => {
     entries.forEach(en => {
-      if (en.isIntersecting) { en.target.classList.add('is-visible'); io.unobserve(en.target); }
+      if (en.isIntersecting) { en.target.classList.add('is-visible'); revIO.unobserve(en.target); }
     });
-  }, { threshold: 0.15 });
-  document.querySelectorAll('.fx-reveal, .fx-stagger').forEach(el => io.observe(el));
-
-  /* Nav scroll */
-  const nav = document.querySelector('.nav');
-  if (nav) {
-    const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 20);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-  }
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.fx-reveal, .fx-stagger').forEach(el => revIO.observe(el));
 
   /* Button ripple */
   document.querySelectorAll('.btn').forEach(btn => {
@@ -256,4 +202,5 @@
       btn.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
     });
   });
+
 })();

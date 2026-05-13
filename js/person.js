@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════
    PERSON PAGE — API с fallback на data.js
+   Uses PERSON_SVG + calcAge from data.js
    ═══════════════════════════════════════════════ */
 
 (function () {
@@ -10,10 +11,24 @@
   const id = params.get('id');
   if (!id) { showNotFound(); return; }
 
-  const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="7" r="4"/>
-    <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
-  </svg>`;
+  /* Use global PERSON_SVG from data.js, fallback inline */
+  const personSVG = (typeof PERSON_SVG !== 'undefined') ? PERSON_SVG :
+    `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="7" r="4"/>
+      <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
+    </svg>`;
+
+  /* ── BREADCRUMBS — inject before main ── */
+  const breadcrumb = document.createElement('nav');
+  breadcrumb.className = 'breadcrumb';
+  breadcrumb.setAttribute('aria-label', 'Навигация');
+  breadcrumb.innerHTML = `
+    <ol class="breadcrumb__list">
+      <li class="breadcrumb__item"><a href="index.html" class="breadcrumb__link">Главная</a></li>
+      <li class="breadcrumb__item"><a href="memory.html" class="breadcrumb__link">Страницы памяти</a></li>
+      <li class="breadcrumb__item"><span class="breadcrumb__current" id="breadcrumb-name">…</span></li>
+    </ol>`;
+  main.parentElement.insertBefore(breadcrumb, main);
 
   /* skeleton */
   main.innerHTML = `
@@ -76,6 +91,14 @@
 
   function render(person, source) {
     document.title = `${person.name} — Память`;
+
+    /* Update breadcrumb */
+    const bcName = document.getElementById('breadcrumb-name');
+    if (bcName) bcName.textContent = person.name.split(' ').slice(0,2).join(' ');
+
+    /* Calculate age */
+    const age = typeof calcAge === 'function' ? calcAge(person.born, person.died) : null;
+
     let reviews = Array.isArray(person.reviews) ? person.reviews : [];
 
     /* If API gave us person without reviews, load local ones too */
@@ -102,7 +125,7 @@
           <div class="person-header__info">
             <p class="person-header__eyebrow">Страница памяти</p>
             <h1 class="person-header__name">${person.name}</h1>
-            <p class="person-header__dates">${person.born}<span>—</span>${person.died || '...'}</p>
+            <p class="person-header__dates">${person.born}<span>—</span>${person.died || '...'}${age ? `<span class="person-header__age">${age} лет</span>` : ''}</p>
             <p class="person-header__city">${person.city}</p>
           </div>
         </div>

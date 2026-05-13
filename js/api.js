@@ -1,48 +1,50 @@
 /* ═══════════════════════════════════════════════
-   API CLIENT — thin wrapper around fetch()
-   Auto-detects base URL: if served from Node
-   server, uses same origin; otherwise localhost:3000
+   API CLIENT — AbortController timeout (3s),
+   auto-detects base URL
    ═══════════════════════════════════════════════ */
 
 const API = (() => {
-  /* Base URL: same origin when served by Node, else dev fallback */
-  const BASE = window.location.port === '3000'
-    ? ''                          // same-origin (Node serves everything)
-    : 'http://localhost:3000';    // separate dev server
-
-  /* Storage for JWT */
+  const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
   const TOKEN_KEY = 'memory_jwt';
+  const TIMEOUT_MS = 3000;
 
-  function getToken()         { return localStorage.getItem(TOKEN_KEY); }
-  function setToken(t)        { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
+  function getToken() { return localStorage.getItem(TOKEN_KEY); }
+  function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
 
-  /* Core fetch wrapper */
   async function req(method, path, body, isForm) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     const headers = {};
     const tok = getToken();
     if (tok) headers['Authorization'] = 'Bearer ' + tok;
     if (body && !isForm) headers['Content-Type'] = 'application/json';
 
-    const opts = {
-      method,
-      headers,
-      body: isForm ? body : (body ? JSON.stringify(body) : undefined),
-    };
-
-    const res  = await fetch(BASE + path, opts);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok && !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
-    return json;
+    try {
+      const res  = await fetch(BASE + path, {
+        method,
+        headers,
+        body: isForm ? body : (body ? JSON.stringify(body) : undefined),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok && !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      return json;
+    } catch (err) {
+      clearTimeout(timer);
+      if (err.name === 'AbortError') throw new Error('Сервер недоступен');
+      throw err;
+    }
   }
 
   return {
-    get:    (path)         => req('GET',    path),
-    post:   (path, body)   => req('POST',   path, body),
-    put:    (path, body)   => req('PUT',    path, body),
-    del:    (path)         => req('DELETE', path),
-    upload: (path, form)   => req('POST',   path, form, true),
+    get:    (path)       => req('GET',    path),
+    post:   (path, body) => req('POST',   path, body),
+    put:    (path, body) => req('PUT',    path, body),
+    del:    (path)       => req('DELETE', path),
+    upload: (path, form) => req('POST',   path, form, true),
 
-    /* Auth helpers */
     getToken, setToken,
     isLoggedIn: () => !!getToken(),
 

@@ -465,3 +465,21 @@
   font-style: italic;
   margin-bottom: 30px;
 }
+
+
+/* ── Age badge ── */
+.person-header__age {
+  display: inline-block;
+  margin-left: 14px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 300;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  color: var(--gold-dim);
+  background: rgba(200,168,75,0.08);
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 20px;
+  padding: 2px 10px;
+  vertical-align: middle;
+}

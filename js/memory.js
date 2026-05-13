@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════
    MEMORY PAGE — поиск + API с fallback на data.js
+   Uses PERSON_SVG + calcAge from data.js
    ═══════════════════════════════════════════════ */
 
 (function () {
@@ -14,11 +15,6 @@
   const pag  = document.getElementById('pagination');
   if (!grid || !pag) return;
 
-  const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="7" r="4"/>
-    <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
-  </svg>`;
-
   /* ── INJECT SEARCH BAR ── */
   const section = document.querySelector('.memory-section__inner');
   if (section) {
@@ -27,18 +23,13 @@
     searchWrap.innerHTML = `
       <div class="memory-search__inner">
         <span class="memory-search__icon">⌕</span>
-        <input
-          type="search"
-          id="memory-search-input"
-          class="memory-search__input"
-          placeholder="Поиск по имени или городу…"
-          autocomplete="off"
-        />
+        <input type="search" id="memory-search-input" class="memory-search__input"
+               placeholder="Поиск по имени или городу…" autocomplete="off"/>
         <button class="memory-search__clear" id="memory-search-clear" aria-label="Очистить" style="display:none">×</button>
       </div>`;
     section.insertBefore(searchWrap, section.firstChild);
 
-    const input = document.getElementById('memory-search-input');
+    const input    = document.getElementById('memory-search-input');
     const clearBtn = document.getElementById('memory-search-clear');
 
     input.addEventListener('input', () => {
@@ -46,13 +37,10 @@
       clearBtn.style.display = searchQuery ? 'flex' : 'none';
       applyFilter();
     });
-
     clearBtn.addEventListener('click', () => {
-      input.value = '';
-      searchQuery = '';
+      input.value = ''; searchQuery = '';
       clearBtn.style.display = 'none';
-      input.focus();
-      applyFilter();
+      input.focus(); applyFilter();
     });
   }
 
@@ -62,23 +50,23 @@
           p.name.toLowerCase().includes(searchQuery) ||
           (p.city || '').toLowerCase().includes(searchQuery))
       : [...allPeople];
-    renderSlice(1);
+    renderSlice(1);  /* always reset to page 1 on filter change */
   }
 
-  function photoEl(person) {
-    if (person.photo)
-      return `<img src="${person.photo}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`;
-    return `<div class="person-card__photo-inner">${personSVG}</div>`;
+  function photoEl(p) {
+    if (p.photo) return `<img src="${p.photo}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`;
+    return `<div class="person-card__photo-inner">${PERSON_SVG}</div>`;
   }
 
-  function buildCard(person) {
+  function buildCard(p) {
+    const age = typeof calcAge === 'function' ? calcAge(p.born, p.died) : null;
     return `
-      <a class="person-card" href="person.html?id=${encodeURIComponent(person.id)}">
-        <div class="person-card__photo">${photoEl(person)}</div>
+      <a class="person-card" href="person.html?id=${encodeURIComponent(p.id)}">
+        <div class="person-card__photo">${photoEl(p)}</div>
         <div class="person-card__body">
-          <h3 class="person-card__name">${person.name}</h3>
-          <p class="person-card__dates">${person.born} — ${person.died || '...'}</p>
-          <p class="person-card__city">${person.city}</p>
+          <h3 class="person-card__name">${p.name}</h3>
+          <p class="person-card__dates">${p.born} — ${p.died || '...'}${age ? `<span class="person-card__age">${age} л.</span>` : ''}</p>
+          <p class="person-card__city">${p.city}</p>
         </div>
       </a>`;
   }
@@ -106,70 +94,50 @@
   function renderSlice(page) {
     currentPage = page;
     totalPages  = Math.ceil(filtered.length / PER_PAGE);
-    const start = (page - 1) * PER_PAGE;
-    const slice = filtered.slice(start, start + PER_PAGE);
+    const slice = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-    grid.style.opacity   = '0';
-    grid.style.transform = 'translateY(12px)';
+    grid.style.opacity = '0'; grid.style.transform = 'translateY(12px)';
     setTimeout(() => {
-      if (!slice.length) {
-        showEmpty(searchQuery
-          ? `Никого не нашли по запросу «${searchQuery}»`
-          : 'Страниц памяти пока нет. Добавьте первого человека.');
-      } else {
-        grid.innerHTML = slice.map(buildCard).join('');
-      }
+      grid.innerHTML = slice.length ? slice.map(buildCard).join('') : '';
+      if (!slice.length) showEmpty(searchQuery ? `Никого не нашли по запросу «${searchQuery}»` : 'Страниц памяти пока нет.');
       grid.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
       grid.style.opacity    = '1';
       grid.style.transform  = 'translateY(0)';
     }, 150);
 
     renderPagination();
+    /* Only scroll when user explicitly changes page, not on filter */
     if (page > 1) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function renderPagination() {
     if (totalPages <= 1) { pag.innerHTML = ''; return; }
-
-    let html = `<button class="pagination__btn" id="pag-prev" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+    let html = `<button class="pagination__btn" id="pag-prev" ${currentPage===1?'disabled':''}>‹</button>`;
     for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1))
-        html += `<button class="pagination__btn ${i === currentPage ? 'pagination__btn--active' : ''}" data-page="${i}">${i}</button>`;
-      else if (i === currentPage - 2 || i === currentPage + 2)
+      if (i===1 || i===totalPages || (i>=currentPage-1 && i<=currentPage+1))
+        html += `<button class="pagination__btn ${i===currentPage?'pagination__btn--active':''}" data-page="${i}">${i}</button>`;
+      else if (i===currentPage-2 || i===currentPage+2)
         html += `<span class="pagination__dots">···</span>`;
     }
-    html += `<button class="pagination__btn" id="pag-next" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
-
+    html += `<button class="pagination__btn" id="pag-next" ${currentPage===totalPages?'disabled':''}>›</button>`;
     pag.innerHTML = html;
-    pag.querySelectorAll('[data-page]').forEach(btn =>
-      btn.addEventListener('click', () => renderSlice(+btn.dataset.page)));
-    pag.querySelector('#pag-prev')?.addEventListener('click', () => {
-      if (currentPage > 1) renderSlice(currentPage - 1);
-    });
-    pag.querySelector('#pag-next')?.addEventListener('click', () => {
-      if (currentPage < totalPages) renderSlice(currentPage + 1);
-    });
+    pag.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderSlice(+btn.dataset.page)));
+    pag.querySelector('#pag-prev')?.addEventListener('click', () => { if (currentPage>1) renderSlice(currentPage-1); });
+    pag.querySelector('#pag-next')?.addEventListener('click', () => { if (currentPage<totalPages) renderSlice(currentPage+1); });
   }
 
   async function init() {
     showSkeleton();
-
     try {
       if (typeof API !== 'undefined') {
         const data = await API.get('/api/people?page=1&limit=100');
-        if (data && Array.isArray(data.data) && data.data.length > 0) {
-          allPeople = data.data;
-          filtered  = [...allPeople];
-          renderSlice(1);
-          return;
+        if (data?.data?.length) {
+          allPeople = data.data; filtered = [...allPeople]; renderSlice(1); return;
         }
       }
     } catch (_) {}
-
     if (typeof PEOPLE !== 'undefined' && PEOPLE.length) {
-      allPeople = PEOPLE;
-      filtered  = [...allPeople];
-      renderSlice(1);
+      allPeople = PEOPLE; filtered = [...allPeople]; renderSlice(1);
     } else {
       showEmpty('Страниц памяти пока нет.');
     }

@@ -2,6 +2,20 @@
    SHARED PEOPLE DATA — used by memory, person, timeline
    ═══════════════════════════════════════════════ */
 
+/* Shared person silhouette SVG — used everywhere */
+const PERSON_SVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="7" r="4"/>
+  <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
+</svg>`;
+
+/* Helper: calculate age from date strings like "12.03.1918" */
+function calcAge(born, died) {
+  const parseY = s => { const m = (s||'').match(/(\d{4})/); return m ? +m[1] : null; };
+  const b = parseY(born);
+  const d = parseY(died) || new Date().getFullYear();
+  return (b && d && d > b) ? d - b : null;
+}
+
 const PEOPLE = [
   {
     id: 'ivanova-maria',
