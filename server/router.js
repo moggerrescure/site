@@ -289,6 +289,58 @@ function getStats(req, res) {
   send(res, 200, { ok: true, data: { people, reviews, candles, cities } });
 }
 
+/* ── POST /api/people/:id/verify-code — проверяет 8-значный пароль доступа ── */
+async function verifyCode(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+
+  const body = await parseBody(req);
+  const code = (body.code || '').toString().trim();
+
+  if (!code || code.length !== 8) {
+    return send(res, 400, { ok: false, error: 'Введите 8-значный код доступа' });
+  }
+
+  const row = db.prepare('SELECT code FROM person_codes WHERE person_id = ?').get(params.id);
+
+  /* Если кода ещё нет — по умолчанию принимаем специальный код MEMORYOK (демо-режим) */
+  if (!row) {
+    const ok = code === 'MEMORYOK';
+    return send(res, ok ? 200 : 403, {
+      ok,
+      error: ok ? undefined : 'Неверный код. Обратитесь к администратору за кодом доступа.',
+    });
+  }
+
+  const ok = row.code === code;
+  send(res, ok ? 200 : 403, {
+    ok,
+    error: ok ? undefined : 'Неверный код. Обратитесь к администратору за кодом доступа.',
+  });
+}
+
+/* ── POST /api/people/:id/set-code — устанавливает/меняет пароль (только admin) ── */
+async function setCode(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+
+  const body = await parseBody(req);
+  const code = (body.code || '').toString().trim();
+
+  if (!code || code.length < 4 || code.length > 16) {
+    return send(res, 400, { ok: false, error: 'Код должен быть от 4 до 16 символов' });
+  }
+
+  const exists = db.prepare('SELECT person_id FROM person_codes WHERE person_id = ?').get(params.id);
+  if (exists) {
+    db.prepare('UPDATE person_codes SET code = ? WHERE person_id = ?').run(code, params.id);
+  } else {
+    db.prepare('INSERT INTO person_codes (person_id, code) VALUES (?, ?)').run(params.id, code);
+  }
+
+  send(res, 200, { ok: true });
+}
+
 /* ── POST /api/people/:id/photo ── */
 async function uploadPhoto(req, res, params) {
   const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
@@ -351,6 +403,16 @@ async function dispatch(req, res) {
     /* ── /api/people/:id/photo ── */
     if ((p = matchRoute('/api/people/:id/photo', pathname))) {
       if (method === 'POST') { if (!checkAuth()) return; return await uploadPhoto(req, res, p); }
+    }
+
+    /* ── /api/people/:id/verify-code — публичный, без авторизации ── */
+    if ((p = matchRoute('/api/people/:id/verify-code', pathname))) {
+      if (method === 'POST') return await verifyCode(req, res, p);
+    }
+
+    /* ── /api/people/:id/set-code — только admin ── */
+    if ((p = matchRoute('/api/people/:id/set-code', pathname))) {
+      if (method === 'POST') { if (!checkAuth()) return; return await setCode(req, res, p); }
     }
 
     /* ── /api/reviews ── */

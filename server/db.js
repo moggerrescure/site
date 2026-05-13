@@ -56,6 +56,12 @@ db.exec(`
   );
 
   INSERT OR IGNORE INTO candles (id, count) VALUES (1, 237);
+
+  CREATE TABLE IF NOT EXISTS person_codes (
+    person_id  TEXT PRIMARY KEY REFERENCES people(id) ON DELETE CASCADE,
+    code       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 module.exports = db;

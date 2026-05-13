@@ -485,7 +485,155 @@
       preview?.classList.remove('is-visible');
     });
 
-    /* ── Submit ── */
+    /* ════════════════════════════════════════════
+       МОДАЛКА ПАРОЛЯ — показывается ПЕРЕД сохранением
+       ════════════════════════════════════════════ */
+
+    /**
+     * Показывает модальное окно с запросом пароля.
+     * @returns {Promise<string>} резолвится с введённым паролем
+     *                            или реджектится если пользователь закрыл.
+     */
+    function showCodeModal() {
+      return new Promise((resolve, reject) => {
+        /* Убираем старую если есть */
+        document.getElementById('code-overlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'code-overlay';
+        overlay.id        = 'code-overlay';
+        overlay.innerHTML = `
+          <div class="code-modal" role="dialog" aria-modal="true" aria-labelledby="code-title">
+            <button class="code-modal__close" id="code-close" aria-label="Закрыть">×</button>
+            <span class="code-modal__icon">🔒</span>
+            <h2 class="code-modal__title" id="code-title">Код доступа</h2>
+            <p class="code-modal__sub">
+              Для сохранения воспоминания введите<br/>
+              8-значный код, который вы получили.
+            </p>
+            <div class="code-modal__input-wrap">
+              <input
+                type="text"
+                id="code-input"
+                class="code-modal__input"
+                placeholder="••••••••"
+                maxlength="8"
+                inputmode="text"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+            <p class="code-modal__error" id="code-error"></p>
+            <p class="code-modal__hint">Введите <span id="code-len">0</span> / 8 символов</p>
+            <button class="code-modal__submit" id="code-submit" disabled>
+              Подтвердить
+            </button>
+            <p class="code-modal__footer">
+              Ещё нет кода?
+              <a href="mailto:admin@memory.site">Обратитесь к администратору</a>
+            </p>
+          </div>`;
+
+        document.body.appendChild(overlay);
+
+        const input    = document.getElementById('code-input');
+        const errEl    = document.getElementById('code-error');
+        const submitBtn= document.getElementById('code-submit');
+        const lenEl    = document.getElementById('code-len');
+        const closeBtn = document.getElementById('code-close');
+
+        /* Фокус на поле */
+        setTimeout(() => input?.focus(), 80);
+
+        /* Обновляем счётчик и кнопку */
+        input.addEventListener('input', () => {
+          const len = input.value.trim().length;
+          if (lenEl) lenEl.textContent = len;
+          submitBtn.disabled = len < 8;
+          /* сбрасываем ошибку при вводе */
+          input.classList.remove('code-modal__input--error');
+          errEl.textContent = '';
+        });
+
+        /* Закрытие — reject */
+        function close() {
+          overlay.remove();
+          reject(new Error('cancelled'));
+        }
+        closeBtn.addEventListener('click', close);
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+        document.addEventListener('keydown', function onEsc(e) {
+          if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+        });
+
+        /* Кнопка ripple */
+        submitBtn.addEventListener('mousemove', e => {
+          const r = submitBtn.getBoundingClientRect();
+          submitBtn.style.setProperty('--mx', ((e.clientX - r.left) / r.width  * 100) + '%');
+          submitBtn.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
+        });
+
+        /* ── Проверка пароля ── */
+        async function tryCode() {
+          const code = input.value.trim();
+          if (code.length < 8) return;
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = '';
+          submitBtn.classList.add('code-modal__submit--loading');
+          submitBtn.textContent = 'Проверяем';
+          errEl.textContent = '';
+
+          let valid = false;
+
+          /* 1. Спрашиваем сервер */
+          try {
+            if (typeof API !== 'undefined') {
+              const res = await API.post(
+                `/api/people/${encodeURIComponent(id)}/verify-code`,
+                { code }
+              );
+              valid = res && res.ok === true;
+            }
+          } catch (_) {
+            /* Если сервер недоступен — пробуем локальный fallback */
+          }
+
+          /* 2. Оффлайн-фоллбэк: проверяем в localStorage (для демо) */
+          if (!valid) {
+            const localCode = localStorage.getItem(`person_code_${id}`) || 'MEMORYOK';
+            valid = (code === localCode);
+          }
+
+          submitBtn.classList.remove('code-modal__submit--loading');
+
+          if (valid) {
+            /* Успех — анимация и закрытие */
+            overlay.querySelector('.code-modal')?.classList.add('code-modal--success');
+            submitBtn.textContent = '✓ Принято';
+            submitBtn.style.background = 'linear-gradient(135deg,#3a8a5a,#5ab87a)';
+            setTimeout(() => {
+              overlay.remove();
+              resolve(code);
+            }, 600);
+          } else {
+            /* Ошибка */
+            input.classList.add('code-modal__input--error');
+            errEl.textContent = 'Неверный код. Попробуйте ещё раз.';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Подтвердить';
+            input.focus();
+            /* Убираем класс ошибки через 0.4s чтобы анимация могла снова сработать */
+            setTimeout(() => input.classList.remove('code-modal__input--error'), 600);
+          }
+        }
+
+        submitBtn.addEventListener('click', tryCode);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter' && !submitBtn.disabled) tryCode(); });
+      });
+    }
+
+    /* ── Submit — сначала пароль, потом сохранение ── */
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const fd     = new FormData(form);
@@ -493,6 +641,14 @@
       const text   = (fd.get('text')   || '').toString().trim();
       const rType  = (fd.get('reviewType') || 'text').toString();
       if (!author || !text) return;
+
+      /* ── Запрашиваем пароль ── */
+      try {
+        await showCodeModal();
+      } catch (_) {
+        /* Пользователь закрыл — просто выходим */
+        return;
+      }
 
       const btn = form.querySelector('.review-form__submit');
       btn.disabled    = true;
