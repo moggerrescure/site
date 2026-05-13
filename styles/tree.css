@@ -1,0 +1,257 @@
+/* ═══════════════════════════════════════════════
+   FAMILY TREE STYLES
+   ═══════════════════════════════════════════════ */
+
+.tree-page body,
+body.tree-page {
+  overflow-x: hidden;
+}
+
+/* ── HERO ── */
+.tree-hero {
+  padding: calc(var(--nav-h) + 60px) 32px 40px;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.tree-hero__inner { max-width: 680px; margin: 0 auto; }
+
+.tree-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 400;
+  color: var(--cream);
+  line-height: 1.15;
+  margin-bottom: 18px;
+  letter-spacing: -0.01em;
+}
+.tree-hero__title em {
+  font-style: italic;
+  color: var(--gold-light);
+}
+
+.tree-hero__sub {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--cream-dim);
+  line-height: 1.8;
+}
+
+/* ── TREE SECTION ── */
+.tree-section {
+  position: relative;
+  z-index: 2;
+  padding: 20px 0 80px;
+  overflow-x: auto;
+}
+
+.tree-wrapper {
+  position: relative;
+  min-width: 900px;
+  margin: 0 auto;
+  padding: 0 40px 40px;
+}
+
+/* SVG threads layer */
+.tree-threads {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+/* ── GENERATIONS ── */
+.tree-generations {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 70px;
+}
+
+/* Each generation row — top is young, bottom is old */
+.gen-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.gen-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(200,168,75,0.35);
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+/* ── TREE PERSON NODE ── */
+.tree-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.tree-node__frame {
+  position: relative;
+  width: 110px;
+  height: 140px;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1),
+              box-shadow 0.4s;
+  cursor: pointer;
+}
+
+/* older generation = wooden frame */
+.tree-node--old .tree-node__frame {
+  border: 3px solid #7a5c30;
+  box-shadow:
+    0 0 0 1px rgba(122,92,48,0.5),
+    inset 0 0 8px rgba(0,0,0,0.4),
+    0 6px 24px rgba(0,0,0,0.5);
+  background: #3a2510;
+}
+
+/* younger generation = paper frame */
+.tree-node--young .tree-node__frame {
+  border: 2px solid rgba(245,240,232,0.65);
+  box-shadow:
+    0 0 0 1px rgba(245,240,232,0.2),
+    0 4px 18px rgba(0,0,0,0.35),
+    inset 0 0 5px rgba(255,255,255,0.05);
+  background: #f0ead8;
+}
+
+.tree-node:hover .tree-node__frame {
+  transform: translateY(-5px) scale(1.04);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.6), 0 0 0 2px rgba(200,168,75,0.35);
+}
+
+/* Photo placeholder inside node */
+.tree-node__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* old = sepia toned placeholder */
+.tree-node--old .tree-node__photo {
+  background: #d4b483;
+}
+/* young = white/light placeholder */
+.tree-node--young .tree-node__photo {
+  background: #f5f0e8;
+}
+
+.tree-node__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tree-node--old .tree-node__avatar {
+  background: rgba(80,50,20,0.4);
+  border: 1px solid rgba(122,92,48,0.5);
+}
+.tree-node--young .tree-node__avatar {
+  background: rgba(200,168,75,0.15);
+  border: 1px solid rgba(200,168,75,0.3);
+}
+
+.tree-node__avatar svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+.tree-node--old .tree-node__avatar svg { color: rgba(200,168,75,0.5); }
+.tree-node--young .tree-node__avatar svg { color: rgba(200,168,75,0.6); }
+
+/* Info below photo */
+.tree-node__info {
+  text-align: center;
+  max-width: 130px;
+}
+
+.tree-node__name {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cream);
+  line-height: 1.35;
+  margin-bottom: 3px;
+}
+
+.tree-node__years {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: var(--gold-dim);
+}
+
+/* ── LEGEND ── */
+.tree-legend {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 0 32px 60px;
+  position: relative;
+  z-index: 2;
+}
+
+.tree-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  color: var(--cream-dim);
+}
+
+.tree-legend__line {
+  display: block;
+  width: 50px;
+  height: 3px;
+  border-radius: 2px;
+}
+.tree-legend__line--wood {
+  background: linear-gradient(90deg, #7a5c30, #c8a84b, #7a5c30);
+}
+.tree-legend__line--braid {
+  background: repeating-linear-gradient(
+    90deg,
+    #c8a84b 0px, #c8a84b 4px,
+    #8a7035 4px, #8a7035 8px
+  );
+}
+
+/* ── SVG Thread Animations ── */
+@keyframes drawThread {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.thread-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: drawThread 2s ease forwards;
+}
