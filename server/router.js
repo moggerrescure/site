@@ -1,0 +1,374 @@
+/* ═══════════════════════════════════════════════
+   ROUTER — lightweight express-like router
+   Built on node:http, no external deps
+   ═══════════════════════════════════════════════ */
+'use strict';
+
+const { randomUUID } = require('node:crypto');
+const db   = require('./db');
+const auth = require('./auth');
+const upload = require('./upload');
+
+/* ── tiny response helper ── */
+function send(res, status, data) {
+  const body = JSON.stringify(data);
+  res.writeHead(status, {
+    'Content-Type':  'application/json',
+    'Content-Length': Buffer.byteLength(body),
+  });
+  res.end(body);
+}
+
+/* ── parse JSON body ── */
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let raw = '';
+    req.on('data', c => { raw += c; if (raw.length > 1e6) reject(new Error('Too large')); });
+    req.on('end', () => {
+      try { resolve(raw ? JSON.parse(raw) : {}); }
+      catch { resolve({}); }
+    });
+    req.on('error', reject);
+  });
+}
+
+/* ── CORS ── */
+function cors(res) {
+  res.setHeader('Access-Control-Allow-Origin',  '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+}
+
+/* ── param extractor ── */
+function matchRoute(pattern, pathname) {
+  const patParts = pattern.split('/');
+  const urlParts = pathname.split('/');
+  if (patParts.length !== urlParts.length) return null;
+  const params = {};
+  for (let i = 0; i < patParts.length; i++) {
+    if (patParts[i].startsWith(':')) {
+      params[patParts[i].slice(1)] = decodeURIComponent(urlParts[i]);
+    } else if (patParts[i] !== urlParts[i]) {
+      return null;
+    }
+  }
+  return params;
+}
+
+/* ══════════════════════════════════════
+   SEED data
+   ══════════════════════════════════════ */
+function seedIfEmpty() {
+  const count = db.prepare('SELECT COUNT(*) as c FROM people').get();
+  if (count.c > 0) return;
+
+  const people = [
+    { id: 'ivanova-maria',    name: 'Иванова Мария Петровна',    born: '12.03.1918', died: '05.11.1987', city: 'Москва',          bio: 'Учительница русского языка и литературы. Воспитала троих детей и семерых внуков. Пережила войну, работала в эвакогоспитале.', burial: 'Ваганьковское кладбище, Москва', burial_query: 'Ваганьковское кладбище Москва' },
+    { id: 'ivanov-nikolai',   name: 'Иванов Николай Семёнович',  born: '30.07.1915', died: '22.04.1978', city: 'Москва',          bio: 'Инженер-конструктор, участник Великой Отечественной войны. Прошёл от Москвы до Берлина.', burial: 'Ваганьковское кладбище, Москва', burial_query: 'Ваганьковское кладбище Москва' },
+    { id: 'smirnova-anna',    name: 'Смирнова Анна Васильевна',  born: '08.09.1942', died: '14.02.2003', city: 'Санкт-Петербург', bio: 'Врач-педиатр, сорок лет проработала в детской поликлинике.', burial: 'Смоленское кладбище, Санкт-Петербург', burial_query: 'Смоленское кладбище Санкт-Петербург' },
+    { id: 'smirnov-petr',     name: 'Смирнов Пётр Иванович',     born: '11.01.1940', died: '30.06.1999', city: 'Санкт-Петербург', bio: 'Судостроитель, работал на Балтийском заводе.', burial: 'Смоленское кладбище, Санкт-Петербург', burial_query: 'Смоленское кладбище Санкт-Петербург' },
+    { id: 'kozlov-viktor',    name: 'Козлов Виктор Андреевич',   born: '25.12.1955', died: '18.08.2015', city: 'Казань',          bio: 'Архитектор, автор нескольких проектов жилых кварталов в Казани.', burial: 'Арское кладбище, Казань', burial_query: 'Арское кладбище Казань' },
+    { id: 'kozlova-lyudmila', name: 'Козлова Людмила Фёдоровна', born: '03.06.1958', died: '01.03.2020', city: 'Казань',          bio: 'Преподаватель фортепиано в музыкальной школе.', burial: 'Арское кладбище, Казань', burial_query: 'Арское кладбище Казань' },
+    { id: 'orlova-nina',      name: 'Орлова Нина Дмитриевна',    born: '17.11.1963', died: '09.09.2019', city: 'Новосибирск',    bio: 'Журналист, редактор областной газеты.', burial: 'Заельцовское кладбище, Новосибирск', burial_query: 'Заельцовское кладбище Новосибирск' },
+    { id: 'orlov-sergey',     name: 'Орлов Сергей Алексеевич',   born: '22.04.1961', died: '14.12.2021', city: 'Новосибирск',    bio: 'Геолог, участник экспедиций по Сибири и Дальнему Востоку.', burial: 'Заельцовское кладбище, Новосибирск', burial_query: 'Заельцовское кладбище Новосибирск' },
+    { id: 'popova-galina',    name: 'Попова Галина Юрьевна',     born: '05.02.1938', died: '27.07.1995', city: 'Екатеринбург',   bio: 'Швея высшей категории, работала на швейной фабрике.', burial: 'Широкореченское кладбище, Екатеринбург', burial_query: 'Широкореченское кладбище Екатеринбург' },
+    { id: 'popov-andrey',     name: 'Попов Андрей Николаевич',   born: '14.08.1936', died: '11.05.1993', city: 'Екатеринбург',   bio: 'Металлург, сорок лет у доменной печи Уралмашзавода.', burial: 'Широкореченское кладбище, Екатеринбург', burial_query: 'Широкореченское кладбище Екатеринбург' },
+    { id: 'fedorova-olga',    name: 'Фёдорова Ольга Сергеевна',  born: '29.10.1972', died: '03.01.2022', city: 'Ростов-на-Дону', bio: 'Художник-иллюстратор, иллюстрировала детские книги.', burial: 'Северное кладбище, Ростов-на-Дону', burial_query: 'Северное кладбище Ростов-на-Дону' },
+    { id: 'fedorov-dmitry',   name: 'Фёдоров Дмитрий Иванович',  born: '07.03.1970', died: '16.11.2023', city: 'Ростов-на-Дону', bio: 'Преподаватель истории в университете, автор монографий о Юге России.', burial: 'Северное кладбище, Ростов-на-Дону', burial_query: 'Северное кладбище Ростов-на-Дону' },
+    { id: 'morozova-tatiana', name: 'Морозова Татьяна Кузьминична', born: '21.06.1925', died: '30.04.1998', city: 'Воронеж',     bio: 'Ветеран труда, работала на хлебозаводе. Пережила оккупацию Воронежа.', burial: 'Юго-Западное кладбище, Воронеж', burial_query: 'Юго-Западное кладбище Воронеж' },
+    { id: 'morozov-vasily',   name: 'Морозов Василий Петрович',  born: '10.09.1923', died: '22.08.1991', city: 'Воронеж',       bio: 'Фронтовик, сапёр. Прошёл всю войну, вернулся с контузией и наградами.', burial: 'Юго-Западное кладбище, Воронеж', burial_query: 'Юго-Западное кладбище Воронеж' },
+    { id: 'zhukova-svetlana', name: 'Жукова Светлана Григорьевна', born: '15.01.1948', died: '08.06.2007', city: 'Самара',      bio: 'Библиотекарь, заведующая районной библиотекой.', burial: 'Городское кладбище, Самара', burial_query: 'Городское кладбище Самара' },
+    { id: 'zhukov-igor',      name: 'Жуков Игорь Константинович', born: '09.07.1945', died: '25.02.2011', city: 'Самара',       bio: 'Инженер-электрик, работал на КуйбышевАзоте.', burial: 'Городское кладбище, Самара', burial_query: 'Городское кладбище Самара' },
+    { id: 'lebedeva-zinaida', name: 'Лебедева Зинаида Михайловна', born: '02.05.1930', died: '17.12.2004', city: 'Уфа',        bio: 'Учительница начальных классов, отличник народного просвещения.', burial: 'Южное кладбище, Уфа', burial_query: 'Южное кладбище Уфа' },
+    { id: 'lebedev-alexander',name: 'Лебедев Александр Фёдорович', born: '28.11.1928', died: '04.09.2001', city: 'Уфа',        bio: 'Нефтяник, работал на башкирских месторождениях с первых лет.', burial: 'Южное кладбище, Уфа', burial_query: 'Южное кладбище Уфа' },
+  ];
+
+  const insertPerson = db.prepare(`
+    INSERT INTO people (id,name,born,died,city,bio,burial,burial_query)
+    VALUES (?,?,?,?,?,?,?,?)
+  `);
+
+  const insertReview = db.prepare(`
+    INSERT INTO reviews (id, person_id, author, text) VALUES (?,?,?,?)
+  `);
+
+  const seedReviews = {
+    'ivanova-maria':    [{ author: 'Екатерина, внучка', text: 'Бабушка умела слушать так, что любая беда казалась меньше.' }, { author: 'Сергей, сын', text: 'Мама научила меня, что главное — не чем ты владеешь, а кого ты любишь.' }],
+    'ivanov-nikolai':   [{ author: 'Пётр, сын', text: 'Отец был человеком немногословным, но каждое его слово весило пуд.' }],
+    'smirnova-anna':    [{ author: 'Ольга, дочь', text: 'Мама приходила домой после ночных дежурств и всё равно находила силы читать мне сказки.' }],
+    'smirnov-petr':     [{ author: 'Дмитрий, сын', text: 'Папа мог починить всё на свете. Наш старый радиоприёмник играет до сих пор.' }],
+    'kozlov-viktor':    [{ author: 'Людмила, жена', text: 'Мы прожили вместе тридцать пять лет. Витя всегда умел удивить.' }],
+    'kozlova-lyudmila': [{ author: 'Марина, ученица', text: 'Людмила Фёдоровна научила меня не просто играть — чувствовать музыку.' }],
+    'orlova-nina':      [{ author: 'Сергей, муж', text: 'Нина видела в людях хорошее даже там, где другие не замечали.' }],
+    'orlov-sergey':     [{ author: 'Нина, жена', text: 'Серёжа возвращался из экспедиций пропахший костром и счастьем.' }],
+    'fedorova-olga':    [{ author: 'Дмитрий, муж', text: 'Оля видела мир в красках, которых другие не замечают.' }],
+    'lebedeva-zinaida': [{ author: 'Елена, ученица', text: 'Зинаида Михайловна научила меня читать. И любить чтение.' }],
+  };
+
+  db.exec('BEGIN');
+  try {
+    for (const p of people) {
+      insertPerson.run(p.id, p.name, p.born, p.died, p.city, p.bio, p.burial, p.burial_query);
+    }
+    for (const [pid, revs] of Object.entries(seedReviews)) {
+      for (const r of revs) {
+        insertReview.run(randomUUID(), pid, r.author, r.text);
+      }
+    }
+    db.exec('COMMIT');
+  } catch(e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  console.log('✅ Database seeded with', people.length, 'people');
+}
+
+/* ══════════════════════════════════════
+   ROUTE HANDLERS
+   ══════════════════════════════════════ */
+
+/* ── /api/auth/register ── */
+async function registerHandler(req, res) {
+  const body = await parseBody(req);
+  const { name, email, password } = body;
+  if (!name || !email || !password) return send(res, 400, { ok: false, error: 'name, email and password required' });
+
+  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (exists) return send(res, 409, { ok: false, error: 'Email already registered' });
+
+  const id   = randomUUID();
+  const hash = auth.hashPassword(password);
+  db.prepare('INSERT INTO users (id,name,email,password) VALUES (?,?,?,?)').run(id, name, email, hash);
+
+  const token = auth.signJWT({ id, name, email, role: 'member' });
+  send(res, 201, { ok: true, token, user: { id, name, email, role: 'member' } });
+}
+
+/* ── /api/auth/login ── */
+async function loginHandler(req, res) {
+  const body = await parseBody(req);
+  const { email, password } = body;
+  if (!email || !password) return send(res, 400, { ok: false, error: 'email and password required' });
+
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (!user) return send(res, 401, { ok: false, error: 'Invalid credentials' });
+
+  let valid = false;
+  try { valid = auth.verifyPassword(password, user.password); } catch { valid = false; }
+  if (!valid) return send(res, 401, { ok: false, error: 'Invalid credentials' });
+
+  const token = auth.signJWT({ id: user.id, name: user.name, email: user.email, role: user.role });
+  send(res, 200, { ok: true, token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+}
+
+/* ── /api/auth/me ── */
+function meHandler(req, res) {
+  send(res, 200, { ok: true, user: req.user });
+}
+
+/* ── GET /api/people ── */
+function getPeople(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const page  = Math.max(1, parseInt(url.searchParams.get('page')  || '1', 10));
+  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '9', 10)));
+  const q     = (url.searchParams.get('q') || '').trim();
+  const city  = (url.searchParams.get('city') || '').trim();
+  const offset = (page - 1) * limit;
+
+  let where = 'WHERE 1=1';
+  const args = [];
+  if (q)    { where += ' AND (name LIKE ? OR bio LIKE ?)'; args.push(`%${q}%`, `%${q}%`); }
+  if (city) { where += ' AND city = ?'; args.push(city); }
+
+  const total   = db.prepare(`SELECT COUNT(*) as c FROM people ${where}`).get(...args).c;
+  const rows    = db.prepare(`SELECT id,name,born,died,city,photo FROM people ${where} ORDER BY born ASC LIMIT ? OFFSET ?`).all(...args, limit, offset);
+
+  send(res, 200, { ok: true, data: rows, total, page, limit, pages: Math.ceil(total / limit) });
+}
+
+/* ── GET /api/people/:id ── */
+function getOnePerson(req, res, params) {
+  const person = db.prepare('SELECT * FROM people WHERE id = ?').get(params.id);
+  if (!person) return send(res, 404, { ok: false, error: 'Not found' });
+  const reviews = db.prepare('SELECT id,author,text,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.id);
+  send(res, 200, { ok: true, data: { ...person, reviews } });
+}
+
+/* ── POST /api/people ── */
+async function createPerson(req, res) {
+  const body = await parseBody(req);
+  const { name, born, died = '', city = '', bio = '', burial = '', burial_query = '' } = body;
+  if (!name || !born) return send(res, 400, { ok: false, error: 'name and born required' });
+
+  const id = body.id || name.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').replace(/-+/g, '-').slice(0, 60);
+  const safeId = id + '-' + Date.now().toString(36);
+
+  db.prepare(`INSERT INTO people (id,name,born,died,city,bio,burial,burial_query) VALUES (?,?,?,?,?,?,?,?)`)
+    .run(safeId, name, born, died, city, bio, burial, burial_query);
+
+  const row = db.prepare('SELECT * FROM people WHERE id = ?').get(safeId);
+  send(res, 201, { ok: true, data: row });
+}
+
+/* ── PUT /api/people/:id ── */
+async function updatePerson(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!person) return send(res, 404, { ok: false, error: 'Not found' });
+
+  const body = await parseBody(req);
+  const fields = ['name','born','died','city','bio','burial','burial_query'];
+  const updates = fields.filter(f => body[f] !== undefined);
+  if (!updates.length) return send(res, 400, { ok: false, error: 'Nothing to update' });
+
+  const set = updates.map(f => `${f} = ?`).join(', ');
+  const vals = updates.map(f => body[f]);
+  db.prepare(`UPDATE people SET ${set}, updated_at = datetime('now') WHERE id = ?`).run(...vals, params.id);
+
+  const row = db.prepare('SELECT * FROM people WHERE id = ?').get(params.id);
+  send(res, 200, { ok: true, data: row });
+}
+
+/* ── DELETE /api/people/:id ── */
+function deletePerson(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!person) return send(res, 404, { ok: false, error: 'Not found' });
+  db.prepare('DELETE FROM people WHERE id = ?').run(params.id);
+  send(res, 200, { ok: true });
+}
+
+/* ── GET /api/reviews/:personId ── */
+function getReviews(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.personId);
+  if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+  const rows = db.prepare('SELECT id,author,text,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.personId);
+  send(res, 200, { ok: true, data: rows });
+}
+
+/* ── POST /api/reviews/:personId ── */
+async function createReview(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.personId);
+  if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+
+  const body = await parseBody(req);
+  const { author, text } = body;
+  if (!author || !text) return send(res, 400, { ok: false, error: 'author and text required' });
+
+  const id = randomUUID();
+  db.prepare('INSERT INTO reviews (id,person_id,author,text) VALUES (?,?,?,?)').run(id, params.personId, author.slice(0,120), text.slice(0,2000));
+  const row = db.prepare('SELECT * FROM reviews WHERE id = ?').get(id);
+  send(res, 201, { ok: true, data: row });
+}
+
+/* ── DELETE /api/reviews/:id ── */
+function deleteReview(req, res, params) {
+  const row = db.prepare('SELECT id FROM reviews WHERE id = ?').get(params.id);
+  if (!row) return send(res, 404, { ok: false, error: 'Not found' });
+  db.prepare('DELETE FROM reviews WHERE id = ?').run(params.id);
+  send(res, 200, { ok: true });
+}
+
+/* ── GET /api/candles ── */
+function getCandles(req, res) {
+  const row = db.prepare('SELECT count FROM candles WHERE id = 1').get();
+  send(res, 200, { ok: true, count: row.count });
+}
+
+/* ── POST /api/candles/light ── */
+function lightCandle(req, res) {
+  db.prepare('UPDATE candles SET count = count + 1 WHERE id = 1').run();
+  const row = db.prepare('SELECT count FROM candles WHERE id = 1').get();
+  send(res, 200, { ok: true, count: row.count });
+}
+
+/* ── GET /api/stats ── */
+function getStats(req, res) {
+  const people  = db.prepare('SELECT COUNT(*) as c FROM people').get().c;
+  const reviews = db.prepare('SELECT COUNT(*) as c FROM reviews').get().c;
+  const candles = db.prepare('SELECT count FROM candles WHERE id = 1').get().count;
+  const cities  = db.prepare("SELECT COUNT(DISTINCT city) as c FROM people WHERE city != ''").get().c;
+  send(res, 200, { ok: true, data: { people, reviews, candles, cities } });
+}
+
+/* ── POST /api/people/:id/photo ── */
+async function uploadPhoto(req, res, params) {
+  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+
+  try {
+    const filename = await upload.parseUpload(req, params.id);
+    db.prepare("UPDATE people SET photo = ?, updated_at = datetime('now') WHERE id = ?").run(`/uploads/${filename}`, params.id);
+    send(res, 200, { ok: true, photo: `/uploads/${filename}` });
+  } catch (e) {
+    send(res, 400, { ok: false, error: e.message });
+  }
+}
+
+/* ══════════════════════════════════════
+   MAIN DISPATCH
+   ══════════════════════════════════════ */
+async function dispatch(req, res) {
+  cors(res);
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+
+  const url      = new URL(req.url, 'http://localhost');
+  const pathname = url.pathname.replace(/\/$/, '') || '/';
+  const method   = req.method.toUpperCase();
+
+  /* Auth check helper */
+  function checkAuth() {
+    const header = req.headers['authorization'] || '';
+    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+    const payload = require('./auth').verifyJWT(token);
+    if (!payload) { send(res, 401, { ok: false, error: 'Unauthorized' }); return false; }
+    req.user = payload;
+    return true;
+  }
+
+  try {
+    /* ── /api/auth ── */
+    if (method === 'POST' && pathname === '/api/auth/register') return await registerHandler(req, res);
+    if (method === 'POST' && pathname === '/api/auth/login')    return await loginHandler(req, res);
+    if (method === 'GET'  && pathname === '/api/auth/me')       { if (!checkAuth()) return; return meHandler(req, res); }
+
+    /* ── /api/stats ── */
+    if (method === 'GET' && pathname === '/api/stats') return getStats(req, res);
+
+    /* ── /api/candles ── */
+    if (method === 'GET'  && pathname === '/api/candles')       return getCandles(req, res);
+    if (method === 'POST' && pathname === '/api/candles/light') return lightCandle(req, res);
+
+    /* ── /api/people ── */
+    if (method === 'GET'  && pathname === '/api/people')        return getPeople(req, res);
+    if (method === 'POST' && pathname === '/api/people')        { if (!checkAuth()) return; return await createPerson(req, res); }
+
+    let p;
+    if ((p = matchRoute('/api/people/:id', pathname))) {
+      if (method === 'GET')    return getOnePerson(req, res, p);
+      if (method === 'PUT')    { if (!checkAuth()) return; return await updatePerson(req, res, p); }
+      if (method === 'DELETE') { if (!checkAuth()) return; return deletePerson(req, res, p); }
+    }
+
+    /* ── /api/people/:id/photo ── */
+    if ((p = matchRoute('/api/people/:id/photo', pathname))) {
+      if (method === 'POST') { if (!checkAuth()) return; return await uploadPhoto(req, res, p); }
+    }
+
+    /* ── /api/reviews ── */
+    if ((p = matchRoute('/api/reviews/:personId', pathname))) {
+      if (method === 'GET')  return getReviews(req, res, p);
+      if (method === 'POST') return await createReview(req, res, p);
+    }
+    if ((p = matchRoute('/api/reviews/delete/:id', pathname))) {
+      if (method === 'DELETE') { if (!checkAuth()) return; return deleteReview(req, res, p); }
+    }
+
+    /* ── 404 ── */
+    send(res, 404, { ok: false, error: `Cannot ${method} ${pathname}` });
+
+  } catch (err) {
+    console.error('❌', err);
+    send(res, 500, { ok: false, error: 'Internal server error' });
+  }
+}
+
+module.exports = { dispatch, seedIfEmpty };
