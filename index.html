@@ -23,11 +23,12 @@
         <li><a href="index.html" class="nav__link nav__link--active">Главная</a></li>
         <li><a href="memory.html" class="nav__link">Страницы памяти</a></li>
         <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
+        <li><a href="timeline.html" class="nav__link">Летопись</a></li>
       </ul>
     </div>
   </nav>
 
-  <!-- HERO — styled like memorycode.ru -->
+  <!-- HERO -->
   <section class="hero">
     <div class="hero__inner">
       <p class="hero__eyebrow">Хранители воспоминаний</p>
@@ -45,10 +46,34 @@
       </div>
     </div>
 
-    <!-- decorative candles / light orbs -->
     <div class="hero__orb hero__orb--1"></div>
     <div class="hero__orb hero__orb--2"></div>
     <div class="hero__orb hero__orb--3"></div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="stats__inner">
+      <div class="stat">
+        <span class="stat__num" data-count="18">0</span>
+        <span class="stat__label">страниц памяти</span>
+      </div>
+      <span class="stats__divider"></span>
+      <div class="stat">
+        <span class="stat__num" data-count="4">0</span>
+        <span class="stat__label">поколения</span>
+      </div>
+      <span class="stats__divider"></span>
+      <div class="stat">
+        <span class="stat__num" data-count="9">0</span>
+        <span class="stat__label">городов</span>
+      </div>
+      <span class="stats__divider"></span>
+      <div class="stat">
+        <span class="stat__num" data-count="36">0</span>
+        <span class="stat__label">воспоминаний</span>
+      </div>
+    </div>
   </section>
 
   <!-- FEATURES -->
@@ -70,10 +95,48 @@
         </div>
         <div class="feature-card">
           <div class="feature-card__icon">❧</div>
-          <h3 class="feature-card__title">Хроника рода</h3>
-          <p class="feature-card__text">Временная шкала событий, дат и воспоминаний всей вашей семьи.</p>
-          <a href="#" class="feature-card__link">Скоро</a>
+          <h3 class="feature-card__title">Летопись</h3>
+          <p class="feature-card__text">Хроника дат и событий всей вашей семьи на единой шкале времени.</p>
+          <a href="timeline.html" class="feature-card__link">Открыть</a>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CANDLE -->
+  <section class="candle-section">
+    <div class="candle-section__inner">
+      <h2 class="section-title">Зажгите свечу памяти</h2>
+      <p class="candle-section__sub">Одно прикосновение — и её огонёк будет гореть для тех, кого мы помним.</p>
+
+      <div class="candle" id="candle" role="button" tabindex="0" aria-label="Зажечь свечу">
+        <div class="candle__flame">
+          <span class="candle__flame-inner"></span>
+          <span class="candle__flame-glow"></span>
+        </div>
+        <div class="candle__wick"></div>
+        <div class="candle__body">
+          <span class="candle__drip candle__drip--1"></span>
+          <span class="candle__drip candle__drip--2"></span>
+        </div>
+        <div class="candle__base"></div>
+        <div class="candle__shadow"></div>
+      </div>
+
+      <p class="candle-section__counter">Свечей зажжено: <span id="candle-count">0</span></p>
+      <p class="candle-section__hint">Нажмите на свечу</p>
+    </div>
+  </section>
+
+  <!-- LAST ADDED -->
+  <section class="last-added">
+    <div class="last-added__inner">
+      <h2 class="section-title">Недавно добавленные</h2>
+      <div class="last-added__grid" id="last-added-grid">
+        <!-- injected by script -->
+      </div>
+      <div class="last-added__more">
+        <a href="memory.html" class="feature-card__link">Смотреть все страницы</a>
       </div>
     </div>
   </section>
@@ -98,5 +161,7 @@
   </footer>
 
   <script src="js/particles.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/home.js"></script>
 </body>
 </html>

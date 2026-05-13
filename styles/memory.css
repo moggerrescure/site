@@ -209,3 +209,18 @@
   line-height: 1;
   letter-spacing: 3px;
 }
+
+
+
+/* ── Anchor card reset + subtle rotation on hover ── */
+a.person-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+a.person-card:hover {
+  transform: translateY(-6px) rotate(-0.4deg);
+}
+a.person-card:nth-child(even):hover {
+  transform: translateY(-6px) rotate(0.4deg);
+}

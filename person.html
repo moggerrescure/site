@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Страницы памяти — Память</title>
+  <title>Страница памяти — Память</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
-  <link rel="stylesheet" href="styles/memory.css" />
+  <link rel="stylesheet" href="styles/person.css" />
 </head>
 <body>
 
@@ -28,28 +28,9 @@
     </div>
   </nav>
 
-  <section class="memory-hero">
-    <div class="memory-hero__inner">
-      <p class="hero__eyebrow">Галерея</p>
-      <h1 class="memory-hero__title">Страницы памяти</h1>
-      <p class="memory-hero__sub">Каждый человек — целая вселенная. Здесь хранятся их истории.</p>
-    </div>
-  </section>
-
-  <section class="memory-section">
-    <div class="memory-section__inner">
-
-      <div class="memory-grid" id="memory-grid">
-        <!-- Cards injected by JS -->
-      </div>
-
-      <!-- PAGINATION -->
-      <nav class="pagination" id="pagination" aria-label="Страницы">
-        <!-- injected by JS -->
-      </nav>
-
-    </div>
-  </section>
+  <main id="person-main">
+    <!-- injected by person.js -->
+  </main>
 
   <footer class="footer">
     <div class="footer__inner">
@@ -60,6 +41,6 @@
 
   <script src="js/particles.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/memory.js"></script>
+  <script src="js/person.js"></script>
 </body>
 </html>

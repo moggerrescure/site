@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Страницы памяти — Память</title>
+  <title>Летопись — Память</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
-  <link rel="stylesheet" href="styles/memory.css" />
+  <link rel="stylesheet" href="styles/timeline.css" />
 </head>
 <body>
 
@@ -21,33 +21,25 @@
       </a>
       <ul class="nav__links">
         <li><a href="index.html" class="nav__link">Главная</a></li>
-        <li><a href="memory.html" class="nav__link nav__link--active">Страницы памяти</a></li>
+        <li><a href="memory.html" class="nav__link">Страницы памяти</a></li>
         <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
-        <li><a href="timeline.html" class="nav__link">Летопись</a></li>
+        <li><a href="timeline.html" class="nav__link nav__link--active">Летопись</a></li>
       </ul>
     </div>
   </nav>
 
-  <section class="memory-hero">
-    <div class="memory-hero__inner">
-      <p class="hero__eyebrow">Галерея</p>
-      <h1 class="memory-hero__title">Страницы памяти</h1>
-      <p class="memory-hero__sub">Каждый человек — целая вселенная. Здесь хранятся их истории.</p>
+  <section class="timeline-hero">
+    <div class="timeline-hero__inner">
+      <p class="hero__eyebrow">Хроника рода</p>
+      <h1 class="timeline-hero__title">Летопись <em>семьи</em></h1>
+      <p class="timeline-hero__sub">События и даты, сплетающие жизни в одну большую историю.</p>
     </div>
   </section>
 
-  <section class="memory-section">
-    <div class="memory-section__inner">
-
-      <div class="memory-grid" id="memory-grid">
-        <!-- Cards injected by JS -->
-      </div>
-
-      <!-- PAGINATION -->
-      <nav class="pagination" id="pagination" aria-label="Страницы">
-        <!-- injected by JS -->
-      </nav>
-
+  <section class="timeline-section">
+    <div class="timeline" id="timeline">
+      <span class="timeline__axis"></span>
+      <!-- events injected by JS -->
     </div>
   </section>
 
@@ -60,6 +52,6 @@
 
   <script src="js/particles.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/memory.js"></script>
+  <script src="js/timeline.js"></script>
 </body>
 </html>
