@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   MEMORY PAGE — API с fallback на data.js
+   MEMORY PAGE — поиск + API с fallback на data.js
    ═══════════════════════════════════════════════ */
 
 (function () {
@@ -7,6 +7,8 @@
   let currentPage = 1;
   let totalPages  = 1;
   let allPeople   = [];
+  let filtered    = [];
+  let searchQuery = '';
 
   const grid = document.getElementById('memory-grid');
   const pag  = document.getElementById('pagination');
@@ -17,10 +19,55 @@
     <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
   </svg>`;
 
+  /* ── INJECT SEARCH BAR ── */
+  const section = document.querySelector('.memory-section__inner');
+  if (section) {
+    const searchWrap = document.createElement('div');
+    searchWrap.className = 'memory-search';
+    searchWrap.innerHTML = `
+      <div class="memory-search__inner">
+        <span class="memory-search__icon">⌕</span>
+        <input
+          type="search"
+          id="memory-search-input"
+          class="memory-search__input"
+          placeholder="Поиск по имени или городу…"
+          autocomplete="off"
+        />
+        <button class="memory-search__clear" id="memory-search-clear" aria-label="Очистить" style="display:none">×</button>
+      </div>`;
+    section.insertBefore(searchWrap, section.firstChild);
+
+    const input = document.getElementById('memory-search-input');
+    const clearBtn = document.getElementById('memory-search-clear');
+
+    input.addEventListener('input', () => {
+      searchQuery = input.value.trim().toLowerCase();
+      clearBtn.style.display = searchQuery ? 'flex' : 'none';
+      applyFilter();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      searchQuery = '';
+      clearBtn.style.display = 'none';
+      input.focus();
+      applyFilter();
+    });
+  }
+
+  function applyFilter() {
+    filtered = searchQuery
+      ? allPeople.filter(p =>
+          p.name.toLowerCase().includes(searchQuery) ||
+          (p.city || '').toLowerCase().includes(searchQuery))
+      : [...allPeople];
+    renderSlice(1);
+  }
+
   function photoEl(person) {
-    if (person.photo) {
+    if (person.photo)
       return `<img src="${person.photo}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`;
-    }
     return `<div class="person-card__photo-inner">${personSVG}</div>`;
   }
 
@@ -48,34 +95,48 @@
       </div>`).join('');
   }
 
-  /* Render a slice of allPeople for given page */
+  function showEmpty(msg) {
+    grid.innerHTML = `
+      <div class="memory-empty">
+        <span class="memory-empty__icon">✦</span>
+        <p class="memory-empty__text">${msg}</p>
+      </div>`;
+  }
+
   function renderSlice(page) {
     currentPage = page;
-    totalPages  = Math.ceil(allPeople.length / PER_PAGE);
+    totalPages  = Math.ceil(filtered.length / PER_PAGE);
     const start = (page - 1) * PER_PAGE;
-    const slice = allPeople.slice(start, start + PER_PAGE);
+    const slice = filtered.slice(start, start + PER_PAGE);
 
     grid.style.opacity   = '0';
     grid.style.transform = 'translateY(12px)';
     setTimeout(() => {
-      grid.innerHTML = slice.map(buildCard).join('');
+      if (!slice.length) {
+        showEmpty(searchQuery
+          ? `Никого не нашли по запросу «${searchQuery}»`
+          : 'Страниц памяти пока нет. Добавьте первого человека.');
+      } else {
+        grid.innerHTML = slice.map(buildCard).join('');
+      }
       grid.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
       grid.style.opacity    = '1';
       grid.style.transform  = 'translateY(0)';
     }, 150);
 
     renderPagination();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (page > 1) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function renderPagination() {
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
     let html = `<button class="pagination__btn" id="pag-prev" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
     for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1))
         html += `<button class="pagination__btn ${i === currentPage ? 'pagination__btn--active' : ''}" data-page="${i}">${i}</button>`;
-      } else if (i === currentPage - 2 || i === currentPage + 2) {
+      else if (i === currentPage - 2 || i === currentPage + 2)
         html += `<span class="pagination__dots">···</span>`;
-      }
     }
     html += `<button class="pagination__btn" id="pag-next" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
 
@@ -90,29 +151,27 @@
     });
   }
 
-  /* ── INIT: try API first, fallback to PEOPLE from data.js ── */
   async function init() {
     showSkeleton();
 
-    /* Try API (works when Node server is running on port 3000) */
     try {
       if (typeof API !== 'undefined') {
         const data = await API.get('/api/people?page=1&limit=100');
         if (data && Array.isArray(data.data) && data.data.length > 0) {
           allPeople = data.data;
+          filtered  = [...allPeople];
           renderSlice(1);
           return;
         }
       }
-    } catch (_) { /* API not available — use local data */ }
+    } catch (_) {}
 
-    /* Fallback: use PEOPLE from data.js */
     if (typeof PEOPLE !== 'undefined' && PEOPLE.length) {
       allPeople = PEOPLE;
+      filtered  = [...allPeople];
       renderSlice(1);
     } else {
-      grid.innerHTML = `<p style="color:var(--cream-dim);text-align:center;grid-column:1/-1;font-style:italic;padding:60px 0;">
-        Нет данных для отображения.</p>`;
+      showEmpty('Страниц памяти пока нет.');
     }
   }
 

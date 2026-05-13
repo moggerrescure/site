@@ -117,6 +117,59 @@
     });
   }
 
+  /* ── FEATURED PERSON — живая карточка на главной ── */
+  const featuredSection = document.getElementById('featured-person');
+  if (featuredSection) {
+    const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="7" r="4"/>
+      <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
+    </svg>`;
+
+    function renderFeatured(people) {
+      /* Pick a random person who has at least one review */
+      const withReviews = people.filter(p => Array.isArray(p.reviews) && p.reviews.length > 0);
+      const pool = withReviews.length ? withReviews : people;
+      const p = pool[Math.floor(Math.random() * pool.length)];
+      if (!p) return;
+      const review = Array.isArray(p.reviews) && p.reviews[0];
+      featuredSection.innerHTML = `
+        <div class="featured-person__inner">
+          <p class="hero__eyebrow">Одна из историй</p>
+          <div class="featured-person__card">
+            <div class="featured-person__photo">
+              ${p.photo
+                ? `<img src="${p.photo}" alt="${p.name}"/>`
+                : `<div class="featured-person__avatar">${personSVG}</div>`}
+            </div>
+            <div class="featured-person__content">
+              <h2 class="featured-person__name">${p.name}</h2>
+              <p class="featured-person__meta">${p.born} — ${p.died || '...'} · ${p.city}</p>
+              ${p.bio ? `<p class="featured-person__bio">${p.bio.slice(0, 160)}…</p>` : ''}
+              ${review ? `
+                <blockquote class="featured-person__quote">
+                  <p>"${review.text}"</p>
+                  <cite>${review.author}</cite>
+                </blockquote>` : ''}
+              <a href="person.html?id=${encodeURIComponent(p.id)}" class="featured-person__link">
+                Читать историю →
+              </a>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    let featuredOk = false;
+    if (typeof API !== 'undefined') {
+      API.get('/api/people?page=1&limit=100').then(res => {
+        if (res?.data?.length) { renderFeatured(res.data); featuredOk = true; }
+      }).catch(() => {});
+    }
+    setTimeout(() => {
+      if (!featuredOk && typeof PEOPLE !== 'undefined' && PEOPLE.length)
+        renderFeatured(PEOPLE);
+    }, 600);
+  }
+
   /* ── LAST ADDED — API с fallback на data.js ── */
   const lastGrid = document.getElementById('last-added-grid');
   if (lastGrid) {

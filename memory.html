@@ -4,9 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Страницы памяти — Память</title>
+  <meta name="description" content="Страницы памяти — биографии, фотографии и воспоминания близких."/>
+  <meta property="og:title"       content="Страницы памяти — Память"/>
+  <meta property="og:description" content="Биографии, фотографии и воспоминания близких."/>
+  <meta property="og:type"        content="website"/>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/memory.css" />
 </head>
@@ -20,10 +24,10 @@
         <span class="nav__logo-script">Память</span>
       </a>
       <ul class="nav__links">
-        <li><a href="index.html" class="nav__link">Главная</a></li>
-        <li><a href="memory.html" class="nav__link nav__link--active">Страницы памяти</a></li>
+        <li><a href="index.html"       class="nav__link">Главная</a></li>
+        <li><a href="memory.html"      class="nav__link nav__link--active">Страницы памяти</a></li>
         <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
-        <li><a href="timeline.html" class="nav__link">Летопись</a></li>
+        <li><a href="timeline.html"    class="nav__link">Летопись</a></li>
       </ul>
     </div>
   </nav>
@@ -38,16 +42,9 @@
 
   <section class="memory-section">
     <div class="memory-section__inner">
-
-      <div class="memory-grid" id="memory-grid">
-        <!-- Cards injected by JS -->
-      </div>
-
-      <!-- PAGINATION -->
-      <nav class="pagination" id="pagination" aria-label="Страницы">
-        <!-- injected by JS -->
-      </nav>
-
+      <!-- search injected by memory.js -->
+      <div class="memory-grid" id="memory-grid"></div>
+      <nav class="pagination" id="pagination" aria-label="Страницы"></nav>
     </div>
   </section>
 
@@ -59,10 +56,12 @@
   </footer>
 
   <script src="js/particles.js"></script>
+  <script src="js/favicon.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth-ui.js"></script>
   <script src="js/data.js"></script>
   <script src="js/memory.js"></script>
   <script src="js/reveal.js"></script>
+  <script src="js/nav.js"></script>
 </body>
 </html>
