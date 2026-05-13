@@ -483,3 +483,434 @@
   padding: 2px 10px;
   vertical-align: middle;
 }
+
+
+
+/* ═══════════════════════════════════════════════
+   MEDIA GALLERY — фото и видео карусель
+   ═══════════════════════════════════════════════ */
+
+.media-section {
+  margin-bottom: 80px;
+}
+
+/* ── Карусель ── */
+.media-carousel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.media-track-wrap {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.media-track {
+  display: flex;
+  gap: 16px;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+  padding: 4px 0 8px;
+}
+
+/* Каждый слайд */
+.media-slide {
+  flex: 0 0 calc(33.333% - 11px);
+  min-width: 200px;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.35s, box-shadow 0.35s;
+  background: #111;
+}
+
+.media-slide:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,168,75,0.25);
+}
+
+/* Заглушка фото */
+.media-slide__photo-placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background:
+    linear-gradient(135deg,
+      rgba(200,168,75,0.04) 0%,
+      rgba(200,168,75,0.08) 50%,
+      rgba(200,168,75,0.03) 100%),
+    #0e0e0e;
+  border: 1px solid rgba(200,168,75,0.12);
+  border-radius: 8px;
+  color: var(--gold-dim);
+  transition: border-color 0.3s, background 0.3s;
+}
+.media-slide:hover .media-slide__photo-placeholder {
+  border-color: rgba(200,168,75,0.3);
+}
+
+.media-slide__icon {
+  font-size: 32px;
+  opacity: 0.55;
+  line-height: 1;
+}
+
+.media-slide__label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  opacity: 0.7;
+}
+
+/* Заглушка видео */
+.media-slide__video-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background:
+    linear-gradient(135deg, rgba(80,60,20,0.15) 0%, rgba(20,14,6,0.8) 100%),
+    #0e0e0e;
+  border: 1px solid rgba(200,168,75,0.14);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+.media-slide:hover .media-slide__video-placeholder {
+  border-color: rgba(200,168,75,0.35);
+}
+
+/* Анимированные «полосы сканлайна» на видео-заглушке */
+.media-slide__video-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(200,168,75,0.025) 0px,
+    rgba(200,168,75,0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+}
+
+.media-slide__play {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(200,168,75,0.18);
+  border: 2px solid rgba(200,168,75,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--gold-light);
+  transition: background 0.3s, transform 0.3s;
+  position: relative;
+  z-index: 1;
+}
+.media-slide:hover .media-slide__play {
+  background: rgba(200,168,75,0.3);
+  transform: scale(1.12);
+}
+
+.media-slide__duration {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gold-dim);
+  position: relative;
+  z-index: 1;
+}
+
+/* Тип-бейдж в углу слайда */
+.media-slide__type-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(200,168,75,0.8);
+  background: rgba(8,8,8,0.75);
+  border: 1px solid rgba(200,168,75,0.22);
+  border-radius: 3px;
+  padding: 2px 7px;
+  backdrop-filter: blur(4px);
+}
+
+/* Описание под слайдом */
+.media-slide__caption {
+  padding: 10px 12px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--cream-dim);
+  line-height: 1.45;
+  background: rgba(8,8,8,0.6);
+}
+
+/* Стрелки карусели */
+.media-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%); /* учитываем caption */
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,168,75,0.28);
+  background: rgba(8,8,8,0.75);
+  backdrop-filter: blur(8px);
+  color: var(--gold-light);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: all 0.3s;
+  user-select: none;
+}
+.media-arrow:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.12);
+}
+.media-arrow--prev { left: -52px; }
+.media-arrow--next { right: -52px; }
+
+@media (max-width: 800px) {
+  .media-arrow--prev { left: -18px; }
+  .media-arrow--next { right: -18px; }
+  .media-slide { flex: 0 0 calc(50% - 8px); }
+}
+@media (max-width: 540px) {
+  .media-slide { flex: 0 0 85%; }
+}
+
+/* Dots */
+.media-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+.media-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(200,168,75,0.22);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  padding: 0;
+}
+.media-dot--active {
+  background: var(--gold);
+  transform: scale(1.5);
+}
+
+/* Счётчик */
+.media-counter {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: var(--gold-dim);
+  background: rgba(8,8,8,0.65);
+  border-radius: 20px;
+  padding: 3px 10px;
+  backdrop-filter: blur(4px);
+  z-index: 3;
+  border: 1px solid rgba(200,168,75,0.12);
+}
+
+/* ── «Добавить медиа» кнопка-плашка ── */
+.media-add-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 calc(33.333% - 11px);
+  min-width: 160px;
+  aspect-ratio: 4/3;
+  border: 2px dashed rgba(200,168,75,0.22);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gold-dim);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  transition: all 0.35s;
+  text-decoration: none;
+}
+.media-add-btn:hover {
+  border-color: rgba(200,168,75,0.5);
+  color: var(--gold-light);
+  background: rgba(200,168,75,0.04);
+}
+.media-add-btn__icon {
+  font-size: 26px;
+  opacity: 0.5;
+}
+
+
+/* ═══════════════════════════════════════════════
+   РАСШИРЕННАЯ ФОРМА ВОСПОМИНАНИЙ
+   ═══════════════════════════════════════════════ */
+
+/* Вкладки-типы */
+.review-type-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.review-type-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--cream-dim);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(200,168,75,0.18);
+  border-radius: 20px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+.review-type-tab:hover {
+  border-color: rgba(200,168,75,0.4);
+  color: var(--cream);
+}
+.review-type-tab--active {
+  background: linear-gradient(135deg, rgba(200,168,75,0.15), rgba(200,168,75,0.08));
+  border-color: var(--gold);
+  color: var(--gold-light);
+  font-style: normal;
+}
+.review-type-tab__icon { font-size: 16px; }
+
+/* Поле загрузки фото к воспоминанию */
+.review-media-field {
+  margin-bottom: 16px;
+  display: none; /* показывается при типе фото */
+}
+.review-media-field.is-visible { display: block; }
+
+.review-media-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(0,0,0,0.25);
+  border: 1px dashed rgba(200,168,75,0.2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+.review-media-upload:hover { border-color: rgba(200,168,75,0.4); }
+.review-media-upload__icon {
+  font-size: 22px;
+  color: var(--gold-dim);
+  flex-shrink: 0;
+}
+.review-media-upload__text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--cream-dim);
+  font-weight: 300;
+}
+.review-media-upload__hint {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--gold-dim);
+  opacity: 0.6;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+.review-media-upload input { display: none; }
+
+/* Превью перед отправкой */
+.review-media-preview {
+  display: none;
+  margin-top: 10px;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(200,168,75,0.25);
+}
+.review-media-preview.is-visible { display: block; }
+.review-media-preview img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.review-media-preview__remove {
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(200,168,75,0.3);
+  color: var(--gold-dim);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.2s;
+}
+.review-media-preview__remove:hover { background: rgba(180,60,60,0.5); color: #fff; }
+
+/* Карточка воспоминания с типом */
+.review__type-badge {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 3px;
+  padding: 2px 7px;
+  margin-bottom: 14px;
+}
+
+/* Воспоминание с фото внутри карточки */
+.review__media-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(200,168,75,0.12);
+}
