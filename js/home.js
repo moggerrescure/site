@@ -28,6 +28,7 @@
   /* ── CANDLE ── */
   const candle = document.getElementById('candle');
   const countEl = document.getElementById('candle-count');
+  const scene = candle ? candle.closest('.candle-scene') : null;
 
   if (candle && countEl) {
     const STORAGE_KEY = 'candle_count';
@@ -36,30 +37,32 @@
 
     /* Start lit */
     candle.classList.add('is-lit');
+    if (scene) scene.classList.add('is-lit');
 
     let busy = false;
     function toggleCandle() {
       if (busy) return;
       busy = true;
       if (candle.classList.contains('is-lit')) {
-        /* blow out — brief flicker then out */
+        /* Blow out: brief flicker, smoke, halo fades */
         candle.classList.add('is-blowing');
+        if (scene) scene.classList.remove('is-lit');
         setTimeout(() => {
           candle.classList.remove('is-lit');
           candle.classList.remove('is-blowing');
           busy = false;
-        }, 600);
+        }, 700);
       } else {
+        /* Re-light */
         candle.classList.add('is-lit');
+        if (scene) scene.classList.add('is-lit');
         count += 1;
         localStorage.setItem(STORAGE_KEY, count);
-        /* counter bump */
         countEl.textContent = count;
         countEl.classList.remove('is-bumped');
-        /* force reflow */
         void countEl.offsetWidth;
         countEl.classList.add('is-bumped');
-        setTimeout(() => { busy = false; }, 300);
+        setTimeout(() => { busy = false; }, 500);
       }
     }
 
@@ -91,4 +94,61 @@
       </a>
     `).join('');
   }
+})();
+
+
+
+/* ═══════════════════════════════════════════════
+   SITE-WIDE: Scroll reveals + nav scroll state
+   (runs on home; for other pages, inline later)
+   ═══════════════════════════════════════════════ */
+(function () {
+  /* Apply reveal classes to notable blocks */
+  const revealSelectors = [
+    '.section-title',
+    '.features__grid',
+    '.candle-scene',
+    '.candle-section__sub',
+    '.candle-section__counter',
+    '.last-added__grid',
+    '.pullquote',
+    '.stats__inner',
+  ];
+  revealSelectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      if (sel.includes('grid') || sel.includes('stats__inner')) el.classList.add('fx-stagger');
+      else el.classList.add('fx-reveal');
+    });
+  });
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        en.target.classList.add('is-visible');
+        io.unobserve(en.target);
+      }
+    });
+  }, { threshold: 0.15 });
+
+  document.querySelectorAll('.fx-reveal, .fx-stagger').forEach(el => io.observe(el));
+
+  /* Nav scroll state */
+  const nav = document.querySelector('.nav');
+  if (nav) {
+    const onScroll = () => {
+      if (window.scrollY > 20) nav.classList.add('is-scrolled');
+      else nav.classList.remove('is-scrolled');
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  /* Button ripple — track cursor for radial highlight */
+  document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('mousemove', (e) => {
+      const r = btn.getBoundingClientRect();
+      btn.style.setProperty('--mx', ((e.clientX - r.left) / r.width  * 100) + '%');
+      btn.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
+    });
+  });
 })();
