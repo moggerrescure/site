@@ -5,35 +5,19 @@
 
 (function () {
 
-  /* ── STATS — fetch real numbers from server ── */
-  API.get('/api/stats').then(res => {
-    const map = {
-      '.stat__num[data-count="18"]': res.data.people,
-      '.stat__num[data-count="36"]': res.data.reviews,
-      '.stat__num[data-count="9"]' : res.data.cities,
-      '.stat__num[data-count="4"]' : null, /* generations stays hardcoded */
-    };
-    for (const [sel, val] of Object.entries(map)) {
-      if (val === null) continue;
-      const el = document.querySelector(sel);
-      if (el) el.dataset.count = val;
-    }
-    initCounters();
-  }).catch(() => initCounters()); /* fallback: animate hardcoded values */
-
+  /* ── STATS — из API или из данных data.js ── */
   function initCounters() {
     const nums = document.querySelectorAll('.stat__num');
     const io = new IntersectionObserver((entries) => {
       entries.forEach(en => {
         if (!en.isIntersecting) return;
-        const el = en.target;
+        const el     = en.target;
         const target = parseInt(el.dataset.count, 10) || 0;
-        const duration = 1400;
-        const start = performance.now();
+        const dur    = 1400;
+        const start  = performance.now();
         function tick(now) {
-          const p = Math.min((now - start) / duration, 1);
-          const eased = 1 - Math.pow(1 - p, 3);
-          el.textContent = Math.round(target * eased);
+          const p = Math.min((now - start) / dur, 1);
+          el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
           if (p < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -43,15 +27,48 @@
     nums.forEach(n => io.observe(n));
   }
 
-  /* ── CANDLE — synced with server ── */
+  if (typeof API !== 'undefined') {
+    API.get('/api/stats').then(res => {
+      if (!res || !res.data) throw new Error();
+      const map = {
+        '[data-count="18"]': res.data.people,
+        '[data-count="36"]': res.data.reviews,
+        '[data-count="9"]' : res.data.cities,
+      };
+      for (const [sel, val] of Object.entries(map)) {
+        if (!val) continue;
+        document.querySelectorAll(`.stat__num${sel}`).forEach(el => el.dataset.count = val);
+      }
+    }).catch(() => {}).finally(initCounters);
+  } else {
+    /* No API — use data.js counts if available */
+    if (typeof PEOPLE !== 'undefined') {
+      const cities = new Set(PEOPLE.map(p => p.city).filter(Boolean)).size;
+      document.querySelectorAll('.stat__num[data-count="18"]').forEach(el => el.dataset.count = PEOPLE.length);
+      document.querySelectorAll('.stat__num[data-count="9"]').forEach(el => el.dataset.count = cities);
+    }
+    initCounters();
+  }
+
+  /* ── CANDLE — API с fallback на localStorage ── */
   const candle  = document.getElementById('candle');
   const countEl = document.getElementById('candle-count');
   const scene   = candle ? candle.closest('.candle-scene') : null;
 
-  /* Load real count from server */
-  API.get('/api/candles').then(r => {
-    if (countEl) countEl.textContent = r.count;
-  }).catch(() => {});
+  const STORAGE_KEY = 'candle_count';
+
+  /* Load count */
+  if (countEl) {
+    if (typeof API !== 'undefined') {
+      API.get('/api/candles').then(r => {
+        if (r && r.count != null) countEl.textContent = r.count;
+      }).catch(() => {
+        countEl.textContent = localStorage.getItem(STORAGE_KEY) || '237';
+      });
+    } else {
+      countEl.textContent = localStorage.getItem(STORAGE_KEY) || '237';
+    }
+  }
 
   if (candle && countEl) {
     candle.classList.add('is-lit');
@@ -71,12 +88,21 @@
       } else {
         candle.classList.add('is-lit');
         if (scene) scene.classList.add('is-lit');
-        /* Increment on server */
+        /* Increment on server or localStorage */
         try {
-          const r = await API.post('/api/candles/light');
-          countEl.textContent = r.count;
+          if (typeof API !== 'undefined') {
+            const r = await API.post('/api/candles/light');
+            if (r && r.count != null) {
+              countEl.textContent = r.count;
+              localStorage.setItem(STORAGE_KEY, r.count);
+            }
+          } else {
+            throw new Error('no api');
+          }
         } catch {
-          countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+          const c = parseInt(countEl.textContent || '237') + 1;
+          countEl.textContent = c;
+          localStorage.setItem(STORAGE_KEY, c);
         }
         countEl.classList.remove('is-bumped');
         void countEl.offsetWidth;
@@ -91,7 +117,7 @@
     });
   }
 
-  /* ── LAST ADDED — from API ── */
+  /* ── LAST ADDED — API с fallback на data.js ── */
   const lastGrid = document.getElementById('last-added-grid');
   if (lastGrid) {
     const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -99,9 +125,8 @@
       <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
     </svg>`;
 
-    /* Get last 3: fetch page that shows the last entries */
-    API.get('/api/people?page=1&limit=100').then(res => {
-      const recent = res.data.slice(-3).reverse();
+    function renderLastAdded(people) {
+      const recent = people.slice(-3).reverse();
       lastGrid.innerHTML = recent.map(p => `
         <a class="person-card" href="person.html?id=${encodeURIComponent(p.id)}">
           <div class="person-card__photo">
@@ -115,10 +140,25 @@
             <p class="person-card__city">${p.city}</p>
           </div>
         </a>`).join('');
-    }).catch(() => {
-      /* Fallback: hide section */
-      lastGrid.closest('section')?.style.setProperty('display', 'none');
-    });
+    }
+
+    /* Try API */
+    let apiOk = false;
+    if (typeof API !== 'undefined') {
+      API.get('/api/people?page=1&limit=100').then(res => {
+        if (res && Array.isArray(res.data) && res.data.length) {
+          renderLastAdded(res.data);
+          apiOk = true;
+        }
+      }).catch(() => {});
+    }
+
+    /* Fallback: data.js (runs immediately if API not available) */
+    setTimeout(() => {
+      if (!apiOk && typeof PEOPLE !== 'undefined' && PEOPLE.length) {
+        renderLastAdded(PEOPLE);
+      }
+    }, 800);
   }
 
 })();

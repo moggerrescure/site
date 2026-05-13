@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════
-   PERSON PAGE — fetches from /api/people/:id
-   Reviews posted to /api/reviews/:personId
+   PERSON PAGE — API с fallback на data.js
    ═══════════════════════════════════════════════ */
 
 (function () {
@@ -9,17 +8,14 @@
 
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
-  if (!id) {
-    showNotFound();
-    return;
-  }
+  if (!id) { showNotFound(); return; }
 
   const personSVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <circle cx="12" cy="7" r="4"/>
     <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
   </svg>`;
 
-  /* ── Skeleton while loading ── */
+  /* skeleton */
   main.innerHTML = `
     <section class="person-page" style="opacity:0.5">
       <div class="person-header">
@@ -32,11 +28,7 @@
       </div>
     </section>`;
 
-  API.get(`/api/people/${encodeURIComponent(id)}`)
-    .then(res => render(res.data))
-    .catch(err => showNotFound(err.message));
-
-  function showNotFound(msg = '') {
+  function showNotFound(msg) {
     document.title = 'Не найдено — Память';
     main.innerHTML = `
       <section class="person-notfound">
@@ -46,13 +38,60 @@
       </section>`;
   }
 
-  function render(person) {
+  /* ── Try API, then fallback to PEOPLE ── */
+  async function loadPerson() {
+    /* 1. API */
+    try {
+      if (typeof API !== 'undefined') {
+        const res = await API.get(`/api/people/${encodeURIComponent(id)}`);
+        if (res && res.data) {
+          render(res.data, 'api');
+          return;
+        }
+      }
+    } catch (_) {}
+
+    /* 2. Local data.js */
+    if (typeof PEOPLE !== 'undefined') {
+      const found = PEOPLE.find(p => p.id === id);
+      if (found) {
+        /* normalise burial field */
+        const person = { ...found };
+        if (found.burial && typeof found.burial === 'object') {
+          person.burial       = found.burial.place || '';
+          person.burial_query = found.burial.query || found.burial.place || '';
+        }
+        /* add reviews from localStorage if any */
+        const stored = (() => {
+          try { return JSON.parse(localStorage.getItem(`reviews_${id}`) || '[]'); } catch { return []; }
+        })();
+        person.reviews = [...(found.reviews || []), ...stored];
+        render(person, 'local');
+        return;
+      }
+    }
+
+    showNotFound();
+  }
+
+  function render(person, source) {
     document.title = `${person.name} — Память`;
     let reviews = Array.isArray(person.reviews) ? person.reviews : [];
+
+    /* If API gave us person without reviews, load local ones too */
+    if (source === 'api') {
+      try {
+        const stored = JSON.parse(localStorage.getItem(`reviews_${id}`) || '[]');
+        if (Array.isArray(stored)) reviews = [...reviews, ...stored];
+      } catch {}
+    }
 
     const photoHtml = person.photo
       ? `<img src="${person.photo}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;"/>`
       : `<div class="person-header__photo-inner">${personSVG}</div>`;
+
+    const burialPlace = person.burial || '';
+    const burialQuery = person.burial_query || burialPlace;
 
     main.innerHTML = `
       <section class="person-page">
@@ -88,58 +127,47 @@
           <form class="review-form" id="review-form">
             <h3 class="review-form__title">Поделиться воспоминанием</h3>
             <div class="review-form__field">
-              <input type="text" class="review-form__input" name="author" placeholder="Ваше имя и кем приходитесь" required maxlength="120"/>
+              <input type="text" class="review-form__input" name="author"
+                     placeholder="Ваше имя и кем приходитесь" required maxlength="120"/>
             </div>
             <div class="review-form__field">
-              <textarea class="review-form__textarea" name="text" placeholder="Ваше воспоминание..." required maxlength="2000"></textarea>
+              <textarea class="review-form__textarea" name="text"
+                        placeholder="Ваше воспоминание..." required maxlength="2000"></textarea>
             </div>
             <button type="submit" class="review-form__submit">Сохранить воспоминание</button>
-            <p class="review-form__status" id="review-status" style="display:none;text-align:center;margin-top:12px;font-family:var(--font-body);font-style:italic;"></p>
+            <p class="review-form__status" id="review-status" style="display:none;text-align:center;
+               margin-top:12px;font-family:var(--font-body);font-style:italic;"></p>
           </form>
         </section>
 
-        <!-- MAP -->
-        ${person.burial ? `
+        ${burialPlace ? `
         <section class="burial-section">
           <h2 class="person-sec-title">Место захоронения</h2>
-          <p class="burial-place">${person.burial}</p>
+          <p class="burial-place">${burialPlace}</p>
           <div class="map-frame">
             <span class="map-frame__corner map-frame__corner--tl"></span>
             <span class="map-frame__corner map-frame__corner--tr"></span>
             <span class="map-frame__corner map-frame__corner--bl"></span>
             <span class="map-frame__corner map-frame__corner--br"></span>
             <iframe
-              src="https://www.google.com/maps?q=${encodeURIComponent(person.burial_query || person.burial)}&output=embed"
+              src="https://www.google.com/maps?q=${encodeURIComponent(burialQuery)}&output=embed"
               loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
           </div>
         </section>` : ''}
-
-        ${API.isLoggedIn() ? `
-        <section class="upload-section">
-          <h2 class="person-sec-title">Загрузить фотографию</h2>
-          <form class="upload-form" id="upload-form">
-            <label class="upload-label">
-              <input type="file" name="photo" accept="image/*" id="upload-input" style="display:none"/>
-              <span class="upload-btn">Выбрать фото</span>
-              <span class="upload-filename" id="upload-filename">файл не выбран</span>
-            </label>
-            <button type="submit" class="review-form__submit" style="margin-top:16px;">Загрузить</button>
-            <p class="review-form__status" id="upload-status" style="display:none;text-align:center;margin-top:12px;font-family:var(--font-body);font-style:italic;"></p>
-          </form>
-        </section>` : ''}
-
       </section>`;
 
     /* ── Carousel ── */
-    const track  = document.getElementById('reviews-track');
-    const dots   = document.getElementById('reviews-dots');
-    const prev   = document.getElementById('rev-prev');
-    const next   = document.getElementById('rev-next');
-    let current  = 0;
+    const track = document.getElementById('reviews-track');
+    const dots  = document.getElementById('reviews-dots');
+    const prev  = document.getElementById('rev-prev');
+    const next  = document.getElementById('rev-next');
+    let current = 0;
 
     function renderReviews() {
       if (!reviews.length) {
-        track.innerHTML = `<div class="review"><div class="review__card"><p class="review__text" style="opacity:0.5">Пока нет воспоминаний. Будьте первым.</p></div></div>`;
+        track.innerHTML = `<div class="review"><div class="review__card">
+          <p class="review__text" style="opacity:0.5">Пока нет воспоминаний. Будьте первым.</p>
+        </div></div>`;
         dots.innerHTML = '';
         return;
       }
@@ -153,7 +181,8 @@
       dots.innerHTML = reviews.map((_, i) =>
         `<button class="reviews-dot ${i === current ? 'reviews-dot--active' : ''}" data-i="${i}"></button>`
       ).join('');
-      dots.querySelectorAll('[data-i]').forEach(d => d.addEventListener('click', () => { current = +d.dataset.i; update(); }));
+      dots.querySelectorAll('[data-i]').forEach(d =>
+        d.addEventListener('click', () => { current = +d.dataset.i; update(); }));
       update();
     }
 
@@ -178,70 +207,50 @@
 
     form?.addEventListener('submit', async e => {
       e.preventDefault();
-      const fd = new FormData(form);
+      const fd     = new FormData(form);
       const author = (fd.get('author') || '').toString().trim();
       const text   = (fd.get('text')   || '').toString().trim();
       if (!author || !text) return;
 
       const btn = form.querySelector('.review-form__submit');
-      btn.disabled = true;
+      btn.disabled   = true;
       btn.textContent = 'Сохраняем...';
 
+      const newReview = { author, text };
+
+      /* Try API first */
+      let saved = false;
       try {
-        const res = await API.post(`/api/reviews/${encodeURIComponent(id)}`, { author, text });
-        reviews.unshift(res.data);
-        current = 0;
-        form.reset();
-        renderReviews();
-        status.style.display = 'block';
-        status.style.color   = 'var(--gold-light)';
-        status.textContent   = 'Воспоминание сохранено ✦';
-        setTimeout(() => { status.style.display = 'none'; }, 3000);
-        document.getElementById('reviews-carousel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } catch (err) {
-        status.style.display = 'block';
-        status.style.color   = '#e08060';
-        status.textContent   = 'Ошибка: ' + err.message;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Сохранить воспоминание';
+        if (typeof API !== 'undefined') {
+          const res = await API.post(`/api/reviews/${encodeURIComponent(id)}`, { author, text });
+          if (res && res.data) { reviews.unshift(res.data); saved = true; }
+        }
+      } catch (_) {}
+
+      /* Fallback: localStorage */
+      if (!saved) {
+        reviews.unshift(newReview);
+        try {
+          const stored = JSON.parse(localStorage.getItem(`reviews_${id}`) || '[]');
+          stored.unshift(newReview);
+          localStorage.setItem(`reviews_${id}`, JSON.stringify(stored));
+        } catch {}
       }
-    });
 
-    /* ── Upload photo (auth required) ── */
-    const uploadInput    = document.getElementById('upload-input');
-    const uploadFilename = document.getElementById('upload-filename');
-    const uploadForm     = document.getElementById('upload-form');
-    const uploadStatus   = document.getElementById('upload-status');
+      current = 0;
+      form.reset();
+      renderReviews();
 
-    uploadInput?.addEventListener('change', () => {
-      uploadFilename.textContent = uploadInput.files[0]?.name || 'файл не выбран';
-    });
+      status.style.display = 'block';
+      status.style.color   = 'var(--gold-light)';
+      status.textContent   = 'Воспоминание сохранено ✦';
+      setTimeout(() => { status.style.display = 'none'; }, 3000);
 
-    uploadForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      const file = uploadInput?.files[0];
-      if (!file) return;
-      const btn = uploadForm.querySelector('.review-form__submit');
-      btn.disabled = true;
-      btn.textContent = 'Загружаем...';
-
-      try {
-        const formData = new FormData();
-        formData.append('photo', file);
-        const res = await API.upload(`/api/people/${encodeURIComponent(id)}/photo`, formData);
-        uploadStatus.style.display = 'block';
-        uploadStatus.style.color   = 'var(--gold-light)';
-        uploadStatus.textContent   = 'Фото загружено ✦';
-        /* Reload page to show new photo */
-        setTimeout(() => window.location.reload(), 1200);
-      } catch (err) {
-        uploadStatus.style.display = 'block';
-        uploadStatus.style.color   = '#e08060';
-        uploadStatus.textContent   = 'Ошибка: ' + err.message;
-        btn.disabled = false;
-        btn.textContent = 'Загрузить';
-      }
+      document.getElementById('reviews-carousel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      btn.disabled    = false;
+      btn.textContent = 'Сохранить воспоминание';
     });
   }
+
+  loadPerson();
 })();
