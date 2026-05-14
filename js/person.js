@@ -130,31 +130,23 @@
           <p class="person-bio__text">${person.bio}</p>
         </div>` : ''}
 
-        <!-- MEDIA GALLERY -->
-        <section class="media-section">
-          <h2 class="person-sec-title">Фотографии и видео</h2>
-          <div class="media-carousel" id="media-carousel">
-            <span class="media-counter" id="media-counter">1 / ${media.length || 1}</span>
-            <button class="media-arrow media-arrow--prev" id="media-prev" aria-label="Предыдущий">‹</button>
-            <div class="media-track-wrap">
-              <div class="media-track" id="media-track"></div>
+        <!-- ЛИАНА ПАМЯТИ -->
+        <section class="vine-section" id="vine-section">
+          <h2 class="person-sec-title">Лиана памяти</h2>
+          <p class="vine-subtitle">Воспоминания близких, переплетённые временем</p>
+          <div class="vine-layout" id="vine-layout">
+            <div class="vine-rope-wrap" id="vine-rope-wrap">
+              <svg class="vine-rope-svg" id="vine-rope-svg" viewBox="0 0 60 1000" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <!-- канат будет построен через JS -->
+              </svg>
             </div>
-            <button class="media-arrow media-arrow--next" id="media-next" aria-label="Следующий">›</button>
-            <div class="media-dots" id="media-dots"></div>
+            <div class="vine-cards" id="vine-cards"></div>
           </div>
         </section>
 
-        <!-- REVIEWS + FORM -->
-        <section class="reviews-section">
-          <h2 class="person-sec-title">Воспоминания близких</h2>
-          <div class="reviews-carousel" id="reviews-carousel">
-            <button class="reviews-arrow reviews-arrow--prev" id="rev-prev" aria-label="Предыдущий">‹</button>
-            <div class="reviews-viewport">
-              <div class="reviews-track" id="reviews-track"></div>
-            </div>
-            <button class="reviews-arrow reviews-arrow--next" id="rev-next" aria-label="Следующий">›</button>
-            <div class="reviews-dots" id="reviews-dots"></div>
-          </div>
+        <!-- ФОРМА ДОБАВЛЕНИЯ -->
+        <section class="reviews-section" id="reviews-section">
+          <h2 class="person-sec-title">Поделиться воспоминанием</h2>
 
           <!-- РАСШИРЕННАЯ ФОРМА -->
           <form class="review-form" id="review-form" enctype="multipart/form-data">
@@ -225,199 +217,233 @@
       </section>`;
 
     /* ── INIT ALL WIDGETS ── */
-    initMediaCarousel(media);
-    initReviews(reviews, source);
+    initVine(reviews, media, source);
     initReviewForm(reviews, source);
   }
 
   /* ════════════════════════════════════════════
-     МЕДИА-КАРУСЕЛЬ
+     ЛИАНА ПАМЯТИ
      ════════════════════════════════════════════ */
-  function initMediaCarousel(media) {
-    const track   = document.getElementById('media-track');
-    const dots    = document.getElementById('media-dots');
-    const prev    = document.getElementById('media-prev');
-    const next    = document.getElementById('media-next');
-    const counter = document.getElementById('media-counter');
-    if (!track) return;
-
-    /* Если нет медиа — показываем заглушки-примеры */
-    const items = media.length ? media : getDefaultMedia();
-
-    /* Добавляем кнопку «Добавить» в конец */
-    const allSlides = [
-      ...items,
-      { type: 'add' }
-    ];
-
-    /* Сколько слайдов видно одновременно (responsive) */
-    function visibleCount() {
-      if (window.innerWidth < 540) return 1;
-      if (window.innerWidth < 800) return 2;
-      return 3;
-    }
-
-    let offset = 0;
-    const SLIDE_W_PERCENT = () => 100 / visibleCount();
-
-    function buildSlides() {
-      track.innerHTML = allSlides.map((item, i) => {
-        if (item.type === 'add') {
-          return `
-            <button class="media-add-btn" id="media-add-btn" title="Добавить медиа">
-              <span class="media-add-btn__icon">+</span>
-              <span>Добавить фото или видео</span>
-            </button>`;
-        }
-        if (item.type === 'video') {
-          return `
-            <div class="media-slide" data-index="${i}">
-              <span class="media-slide__type-badge">видео</span>
-              <div class="media-slide__video-placeholder">
-                <div class="media-slide__play">▶</div>
-                <span class="media-slide__duration">${item.duration || '0:30'}</span>
-              </div>
-              <div class="media-slide__caption">${item.caption || 'Видео-воспоминание'}</div>
-            </div>`;
-        }
-        /* photo (default) */
-        const isReal = item.src && !item.src.startsWith('__placeholder');
-        return `
-          <div class="media-slide" data-index="${i}">
-            <span class="media-slide__type-badge">фото</span>
-            ${isReal
-              ? `<img src="${item.src}" alt="${item.caption || ''}"
-                      style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px 8px 0 0;"/>`
-              : `<div class="media-slide__photo-placeholder">
-                  <span class="media-slide__icon">🖼</span>
-                  <span class="media-slide__label">${item.label || 'Фотография'}</span>
-                </div>`}
-            <div class="media-slide__caption">${item.caption || 'Фото-воспоминание'}</div>
-          </div>`;
-      }).join('');
-
-      /* Ширина слайдов */
-      track.querySelectorAll('.media-slide, .media-add-btn').forEach(el => {
-        el.style.flex = `0 0 calc(${SLIDE_W_PERCENT()}% - ${(visibleCount() - 1) * 16 / visibleCount()}px)`;
-      });
-    }
-
-    function updateCarousel() {
-      const maxOffset = Math.max(0, allSlides.length - visibleCount());
-      offset = Math.min(Math.max(offset, 0), maxOffset);
-      const slideW = track.parentElement.offsetWidth / visibleCount();
-      track.style.transform = `translateX(-${offset * (slideW + 16)}px)`;
-      if (counter) counter.textContent = `${offset + 1} / ${allSlides.length}`;
-      /* dots */
-      if (dots) {
-        const numDots = Math.max(1, allSlides.length - visibleCount() + 1);
-        dots.innerHTML = Array.from({ length: numDots }, (_, i) =>
-          `<button class="media-dot ${i === offset ? 'media-dot--active' : ''}" data-i="${i}"></button>`
-        ).join('');
-        dots.querySelectorAll('[data-i]').forEach(d =>
-          d.addEventListener('click', () => { offset = +d.dataset.i; updateCarousel(); })
-        );
-      }
-    }
-
-    buildSlides();
-    updateCarousel();
-
-    prev?.addEventListener('click', () => { offset--; updateCarousel(); });
-    next?.addEventListener('click', () => { offset++; updateCarousel(); });
-    window.addEventListener('resize', () => { buildSlides(); updateCarousel(); });
-
-    /* Кнопка «Добавить медиа» — открывает скрытый input */
-    document.getElementById('media-add-btn')?.addEventListener('click', () => {
-      const inp = document.getElementById('review-photo-input');
-      if (inp) {
-        /* переключить форму на тип «фото» и скроллить к ней */
-        const photoTab = document.querySelector('[data-type="photo"]');
-        if (photoTab) photoTab.click();
-        document.querySelector('.review-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-  }
-
-  /* Дефолтные заглушки если у человека нет медиа */
-  function getDefaultMedia() {
-    return [
-      { type: 'photo', label: 'Портрет',        caption: 'Здесь будет семейное фото' },
-      { type: 'photo', label: 'Из семейного архива', caption: 'Фото из личного альбома' },
-      { type: 'video', caption: 'Видео-воспоминание',  duration: '1:24' },
-      { type: 'photo', label: 'Особый момент',   caption: 'Памятный день' },
-    ];
-  }
-
-  /* ════════════════════════════════════════════
-     КАРУСЕЛЬ ВОСПОМИНАНИЙ
-     ════════════════════════════════════════════ */
-  function initReviews(reviews) {
-    const track = document.getElementById('reviews-track');
-    const dots  = document.getElementById('reviews-dots');
-    const prev  = document.getElementById('rev-prev');
-    const next  = document.getElementById('rev-next');
-    let current = 0;
+  function initVine(reviews, media, source) {
+    const layout   = document.getElementById('vine-layout');
+    const cardsEl  = document.getElementById('vine-cards');
+    const ropeSvg  = document.getElementById('vine-rope-svg');
+    if (!layout || !cardsEl || !ropeSvg) return;
 
     const REVIEW_TYPE_LABELS = {
       text:   '✦ Текст',
-      photo:  '📷 С фотографией',
+      photo:  '📷 Фотография',
       quote:  '❧ Цитата',
       memory: '✿ Яркий момент',
     };
 
-    function renderReviews() {
-      if (!reviews.length) {
-        track.innerHTML = `<div class="review"><div class="review__card">
-          <p class="review__text" style="opacity:0.5">Пока нет воспоминаний. Будьте первым.</p>
-        </div></div>`;
-        dots.innerHTML = '';
-        return;
+    /* Объединяем медиа и отзывы в единый список карточек */
+    const defaultMedia = [
+      { kind: 'media', type: 'photo', label: 'Из семейного архива', caption: 'Фото из личного альбома' },
+      { kind: 'media', type: 'photo', label: 'Особый момент',       caption: 'Памятный день' },
+      { kind: 'media', type: 'video', caption: 'Видео-воспоминание', duration: '1:24' },
+    ];
+    const mediaCards = (media.length ? media : defaultMedia).map(m => ({ kind: 'media', ...m }));
+    const reviewCards = reviews.map(r => ({ kind: 'review', ...r }));
+    const allCards = [...mediaCards, ...reviewCards];
+
+    /* ── Рисуем карточки ── */
+    function buildCard(item, idx) {
+      const side = idx % 2 === 0 ? 'left' : 'right';
+
+      let inner = '';
+      if (item.kind === 'media') {
+        if (item.type === 'video') {
+          inner = `
+            <div class="vine-card__media vine-card__media--video">
+              <div class="vine-card__play">▶</div>
+              <span class="vine-card__duration">${item.duration || '0:30'}</span>
+            </div>
+            <p class="vine-card__caption">${item.caption || 'Видео-воспоминание'}</p>`;
+        } else {
+          const isReal = item.src && !item.src.startsWith('__placeholder');
+          inner = `
+            <div class="vine-card__media vine-card__media--photo">
+              ${isReal
+                ? `<img src="${item.src}" alt="${item.caption || ''}" class="vine-card__img"/>`
+                : `<span class="vine-card__photo-icon">🖼</span>
+                   <span class="vine-card__photo-label">${item.label || 'Фотография'}</span>`}
+            </div>
+            <p class="vine-card__caption">${item.caption || 'Фото-воспоминание'}</p>`;
+        }
+      } else {
+        /* review */
+        const badge = item.reviewType && item.reviewType !== 'text'
+          ? `<span class="vine-card__type-badge">${REVIEW_TYPE_LABELS[item.reviewType] || ''}</span>`
+          : '';
+        const photo = item.photoDataUrl
+          ? `<img src="${item.photoDataUrl}" alt="фото" class="vine-card__review-photo"/>`
+          : '';
+        inner = `
+          ${badge}
+          ${photo}
+          <p class="vine-card__text">"${item.text}"</p>
+          <p class="vine-card__author">${item.author}</p>`;
       }
 
-      track.innerHTML = reviews.map(r => {
-        const typeBadge = r.reviewType && r.reviewType !== 'text'
-          ? `<span class="review__type-badge">${REVIEW_TYPE_LABELS[r.reviewType] || r.reviewType}</span>`
-          : '';
-        const photoBlock = r.photoDataUrl
-          ? `<img class="review__media-img" src="${r.photoDataUrl}" alt="фото к воспоминанию"/>`
-          : '';
-        return `
-          <div class="review">
-            <div class="review__card">
-              ${typeBadge}
-              ${photoBlock}
-              <p class="review__text">${r.text}</p>
-              <p class="review__author">${r.author}</p>
-            </div>
-          </div>`;
+      return `
+        <div class="vine-card vine-card--${side}" data-vine-idx="${idx}">
+          <div class="vine-card__inner">
+            ${inner}
+          </div>
+          <div class="vine-card__connector vine-card__connector--${side}"></div>
+          <div class="vine-card__knot vine-card__knot--${side}"></div>
+        </div>`;
+    }
+
+    if (!allCards.length) {
+      cardsEl.innerHTML = `<p class="vine-empty">Воспоминания пока не добавлены. Будьте первым.</p>`;
+    } else {
+      cardsEl.innerHTML = allCards.map((c, i) => buildCard(c, i)).join('');
+    }
+
+    /* ── Строим SVG-канат ── */
+    function buildRope() {
+      const totalCards = allCards.length || 1;
+      const cardH      = 220; /* примерная высота одной карточки + gap */
+      const totalH     = Math.max(600, totalCards * cardH + 200);
+
+      ropeSvg.setAttribute('viewBox', `0 0 60 ${totalH}`);
+      ropeSvg.style.height = totalH + 'px';
+      layout.style.minHeight = totalH + 'px';
+
+      /* Плетёный канат — две синусоиды + середина */
+      const cx = 30;
+      const amp = 7; /* амплитуда плетения */
+      const freq = 30; /* период одной петли */
+
+      let pathA = '', pathB = '', pathCenter = '';
+      const pts = totalH / 4;
+
+      for (let i = 0; i <= pts; i++) {
+        const y = i * 4;
+        const xA = cx + Math.sin(y / freq * Math.PI * 2) * amp;
+        const xB = cx - Math.sin(y / freq * Math.PI * 2) * amp;
+        const xC = cx + Math.sin((y / freq * Math.PI * 2) + Math.PI / 2) * (amp * 0.4);
+
+        pathA      += i === 0 ? `M ${xA} ${y}` : ` L ${xA} ${y}`;
+        pathB      += i === 0 ? `M ${xB} ${y}` : ` L ${xB} ${y}`;
+        pathCenter += i === 0 ? `M ${xC} ${y}` : ` L ${xC} ${y}`;
+      }
+
+      /* Крепёжные узелки — по одному на каждую карточку */
+      const knotsHTML = allCards.map((_, i) => {
+        const y = 100 + i * cardH;
+        return `<circle class="vine-knot" cx="${cx}" cy="${y}" r="5" data-knot-idx="${i}"/>`;
       }).join('');
 
-      dots.innerHTML = reviews.map((_, i) =>
-        `<button class="reviews-dot ${i === current ? 'reviews-dot--active' : ''}" data-i="${i}"></button>`
-      ).join('');
-      dots.querySelectorAll('[data-i]').forEach(d =>
-        d.addEventListener('click', () => { current = +d.dataset.i; update(); }));
-      update();
+      /* Начальный якорь (шляпка каната) */
+      const capHTML = `
+        <ellipse cx="${cx}" cy="18" rx="10" ry="5"
+          fill="none" stroke="url(#ropeGrad)" stroke-width="2" opacity="0.8"/>
+        <line x1="${cx}" y1="18" x2="${cx}" y2="28"
+          stroke="url(#ropeGrad)" stroke-width="3"/>`;
+
+      ropeSvg.innerHTML = `
+        <defs>
+          <linearGradient id="ropeGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#e2c97e" stop-opacity="0.9"/>
+            <stop offset="40%"  stop-color="#c8a84b" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#8a7035" stop-opacity="0.5"/>
+          </linearGradient>
+          <linearGradient id="ropeGradB" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#8a7035" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#c8a84b" stop-opacity="0.3"/>
+          </linearGradient>
+          <filter id="ropeShadow">
+            <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#c8a84b" flood-opacity="0.25"/>
+          </filter>
+        </defs>
+        ${capHTML}
+        <path d="${pathB}" fill="none" stroke="url(#ropeGradB)"
+          stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+        <path d="${pathA}" fill="none" stroke="url(#ropeGrad)"
+          stroke-width="3" stroke-linecap="round" filter="url(#ropeShadow)"/>
+        <path d="${pathCenter}" fill="none" stroke="rgba(226,201,126,0.35)"
+          stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 6"/>
+        ${knotsHTML}
+        <!-- Конец каната -->
+        <circle cx="${cx}" cy="${totalH - 20}" r="6"
+          fill="none" stroke="url(#ropeGrad)" stroke-width="2" opacity="0.6"/>
+        <line x1="${cx - 6}" y1="${totalH - 8}" x2="${cx + 6}" y2="${totalH - 8}"
+          stroke="url(#ropeGrad)" stroke-width="2" opacity="0.5"/>`;
+
+      /* Позиционируем карточки под каждым узелком */
+      const cardEls = cardsEl.querySelectorAll('.vine-card');
+      cardEls.forEach((el, i) => {
+        const y = 100 + i * cardH - 60; /* смещаем чтобы карточка была рядом с узелком */
+        el.style.top = y + 'px';
+      });
     }
 
-    function update() {
-      track.style.transform = `translateX(-${current * 100}%)`;
-      dots.querySelectorAll('.reviews-dot').forEach((d, i) =>
-        d.classList.toggle('reviews-dot--active', i === current));
-    }
+    buildRope();
 
-    prev?.addEventListener('click', () => { current = (current - 1 + reviews.length) % reviews.length; update(); });
-    next?.addEventListener('click', () => { current = (current + 1) % reviews.length; update(); });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft')  prev?.click();
-      if (e.key === 'ArrowRight') next?.click();
+    /* Пересчёт при ресайзе */
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(buildRope, 120);
     });
 
-    renderReviews();
+    /* ── Scroll-reveal анимация ── */
+    function initScrollReveal() {
+      const cards = cardsEl.querySelectorAll('.vine-card');
+      if (!cards.length) return;
 
-    /* Вернуть функцию для перерендера (после добавления) */
-    return { renderReviews, reviews, setCurrent: v => { current = v; } };
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('vine-card--visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+      cards.forEach(c => io.observe(c));
+    }
+    initScrollReveal();
+
+    /* ── Анимация сжатия каната при клике ── */
+    const ropeWrap = document.getElementById('vine-rope-wrap');
+    ropeWrap?.addEventListener('click', (e) => {
+      /* Находим ближайший узелок */
+      const knot = e.target.closest('.vine-knot');
+      if (knot) {
+        knot.classList.remove('vine-knot--squeeze');
+        void knot.offsetWidth; /* reflow */
+        knot.classList.add('vine-knot--squeeze');
+        knot.addEventListener('animationend', () =>
+          knot.classList.remove('vine-knot--squeeze'), { once: true });
+        return;
+      }
+      /* Клик по самому SVG — сжимаем весь канат */
+      ropeSvg.classList.remove('vine-rope--squeeze');
+      void ropeSvg.offsetWidth;
+      ropeSvg.classList.add('vine-rope--squeeze');
+      ropeSvg.addEventListener('animationend', () =>
+        ropeSvg.classList.remove('vine-rope--squeeze'), { once: true });
+    });
+
+    /* ── Публичный метод для добавления карточки ── */
+    window._vineAddCard = function(review) {
+      reviews.push(review);
+      allCards.push({ kind: 'review', ...review });
+      const idx  = allCards.length - 1;
+      const html = buildCard({ kind: 'review', ...review }, idx);
+      cardsEl.insertAdjacentHTML('beforeend', html);
+      buildRope();
+      /* reveal нового элемента */
+      const newEl = cardsEl.querySelector(`[data-vine-idx="${idx}"]`);
+      if (newEl) {
+        setTimeout(() => newEl.classList.add('vine-card--visible'), 50);
+        newEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
   }
 
   /* ════════════════════════════════════════════
@@ -683,10 +709,7 @@
         } catch {}
       }
 
-      /* Если добавили фото — также показываем в медиа-карусели */
-      if (selectedPhotoDataUrl) {
-        addToMediaCarousel(selectedPhotoDataUrl, author);
-      }
+      /* Если добавили фото — оно войдёт в лиану через newReview */
 
       /* Сброс формы */
       form.reset();
@@ -698,35 +721,20 @@
         t.classList.toggle('review-type-tab--active', i === 0));
       if (textarea) textarea.placeholder = TYPE_PLACEHOLDERS.text;
 
-      /* Перерендер карусели воспоминаний */
-      initReviews(reviews);
+      /* Перерендер лианы */
+      if (typeof window._vineAddCard === 'function') {
+        window._vineAddCard(newReview);
+      }
 
       status.style.display = 'block';
       status.style.color   = 'var(--gold-light)';
       status.textContent   = 'Воспоминание сохранено ✦';
       setTimeout(() => { status.style.display = 'none'; }, 3500);
 
-      document.getElementById('reviews-carousel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('vine-section')?.scrollIntoView({ behavior: 'smooth', block: 'end' });
       btn.disabled    = false;
       btn.textContent = 'Сохранить воспоминание';
     });
-  }
-
-  /* Добавляет новое фото в медиа-карусель на лету */
-  function addToMediaCarousel(dataUrl, caption) {
-    const track = document.getElementById('media-track');
-    if (!track) return;
-    const addBtn = document.getElementById('media-add-btn');
-    const slide = document.createElement('div');
-    slide.className = 'media-slide';
-    slide.innerHTML = `
-      <span class="media-slide__type-badge">фото</span>
-      <img src="${dataUrl}" alt="${caption}"
-           style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px 8px 0 0;"/>
-      <div class="media-slide__caption">${caption}</div>`;
-    /* вставляем перед кнопкой «Добавить» */
-    if (addBtn) track.insertBefore(slide, addBtn);
-    else track.appendChild(slide);
   }
 
   loadPerson();
