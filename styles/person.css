@@ -190,128 +190,13 @@
   opacity: 0.6;
 }
 
-/* ── REVIEWS CAROUSEL ── */
-.reviews-section { margin-bottom: 90px; }
-
-.reviews-carousel {
-  position: relative;
-  max-width: 820px;
-  margin: 0 auto;
-}
-
-.reviews-viewport {
-  overflow: hidden;
-  padding: 20px 0 30px;
-}
-
-.reviews-track {
-  display: flex;
-  transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
-  will-change: transform;
-}
-
-.review {
-  flex: 0 0 100%;
-  padding: 0 20px;
-  box-sizing: border-box;
-}
-
-.review__card {
-  background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(200,168,75,0.03) 100%);
-  border: 1px solid rgba(200,168,75,0.15);
-  border-radius: 8px;
-  padding: 48px 44px;
-  position: relative;
-  text-align: center;
-}
-.review__card::before {
-  content: '"';
-  position: absolute;
-  top: -10px;
-  left: 30px;
-  font-family: var(--font-display);
-  font-size: 120px;
-  line-height: 1;
-  color: rgba(200,168,75,0.18);
-}
-
-.review__text {
-  font-family: var(--font-body);
-  font-size: 19px;
-  font-style: italic;
-  color: var(--cream);
-  line-height: 1.75;
-  margin-bottom: 24px;
-  font-weight: 300;
-}
-
-.review__author {
-  font-family: var(--font-script);
-  font-size: 22px;
-  color: var(--gold-light);
-  letter-spacing: 0.02em;
-}
-.review__author::before {
-  content: '— ';
-  color: var(--gold-dim);
-}
-
-/* Carousel arrows */
-.reviews-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1px solid rgba(200,168,75,0.3);
-  background: rgba(8,8,8,0.6);
-  backdrop-filter: blur(6px);
-  color: var(--gold-light);
-  font-family: var(--font-body);
-  font-size: 22px;
-  cursor: pointer;
-  transition: all var(--transition);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-}
-.reviews-arrow:hover {
-  background: rgba(200,168,75,0.1);
-  border-color: var(--gold);
-  transform: translateY(-50%) scale(1.08);
-}
-.reviews-arrow--prev { left: -22px; }
-.reviews-arrow--next { right: -22px; }
-
-@media (max-width: 720px) {
-  .reviews-arrow--prev { left: -6px; }
-  .reviews-arrow--next { right: -6px; }
-}
-
-/* Dots */
-.reviews-dots {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-.reviews-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: rgba(200,168,75,0.25);
-  border: none;
-  cursor: pointer;
-  transition: all var(--transition);
-  padding: 0;
-}
-.reviews-dot--active {
-  background: var(--gold);
-  transform: scale(1.4);
-}
+/* ── REVIEWS section heading убран, форма стоит одна ── */
 
 /* ── LEAVE REVIEW FORM ── */
+.reviews-section {
+  margin-bottom: 80px;
+}
+
 .review-form {
   max-width: 620px;
   margin: 50px auto 0;
@@ -487,113 +372,205 @@
 
 
 /* ═══════════════════════════════════════════════
-   MEDIA GALLERY — фото и видео карусель
+   ЛИАНА ПАМЯТИ
    ═══════════════════════════════════════════════ */
 
-.media-section {
+.vine-section {
   margin-bottom: 80px;
 }
 
-/* ── Карусель ── */
-.media-carousel {
+.vine-subtitle {
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--cream-dim);
+  margin-top: -24px;
+  margin-bottom: 50px;
+  opacity: 0.7;
+}
+
+/* ── Общий контейнер ── */
+.vine-layout {
   position: relative;
-  overflow: hidden;
-  border-radius: 10px;
-}
-
-.media-track-wrap {
-  overflow: hidden;
-  border-radius: 10px;
-}
-
-.media-track {
-  display: flex;
-  gap: 16px;
-  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform;
-  padding: 4px 0 8px;
-}
-
-/* Каждый слайд */
-.media-slide {
-  flex: 0 0 calc(33.333% - 11px);
-  min-width: 200px;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.35s, box-shadow 0.35s;
-  background: #111;
-}
-
-.media-slide:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(200,168,75,0.25);
-}
-
-/* Заглушка фото */
-.media-slide__photo-placeholder {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  min-height: 600px;
+}
+
+/* ── SVG-канат — по центру ── */
+.vine-rope-wrap {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 60px;
+  z-index: 2;
+  pointer-events: none; /* клик только на узелки */
+}
+
+.vine-rope-wrap {
+  pointer-events: auto; /* нужно для клика */
+}
+
+.vine-rope-svg {
+  width: 60px;
+  display: block;
+  transition: transform 0.3s;
+}
+
+/* Анимация сжатия всего каната */
+@keyframes ropeSqueeze {
+  0%   { transform: scaleX(1);    }
+  30%  { transform: scaleX(0.65) scaleY(1.04); }
+  60%  { transform: scaleX(1.08) scaleY(0.98); }
+  100% { transform: scaleX(1);    }
+}
+.vine-rope--squeeze {
+  animation: ropeSqueeze 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+/* Узелки на канате */
+.vine-knot {
+  fill: rgba(200,168,75,0.15);
+  stroke: var(--gold);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: fill 0.3s, r 0.3s;
+  pointer-events: auto;
+}
+.vine-knot:hover {
+  fill: rgba(200,168,75,0.3);
+}
+
+/* Анимация сжатия узелка */
+@keyframes knotSqueeze {
+  0%   { r: 5; opacity: 1; }
+  30%  { r: 8; opacity: 0.6; }
+  70%  { r: 3; opacity: 0.9; }
+  100% { r: 5; opacity: 1; }
+}
+.vine-knot--squeeze {
+  animation: knotSqueeze 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Карточки ── */
+.vine-cards {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0; /* позиционируем абсолютно */
+}
+
+.vine-card {
+  position: absolute;
+  width: calc(50% - 60px);
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vine-card--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Карточки — левая сторона */
+.vine-card--left {
+  right: calc(50% + 30px);
+  text-align: right;
+}
+
+/* Карточки — правая сторона */
+.vine-card--right {
+  left: calc(50% + 30px);
+  text-align: left;
+}
+
+/* Горизонтальный коннектор от карточки к канату */
+.vine-card__connector {
+  position: absolute;
+  top: 50px;
+  height: 1px;
+  width: 30px;
+  background: linear-gradient(90deg, transparent, rgba(200,168,75,0.5));
+}
+.vine-card__connector--left {
+  right: -30px;
+  background: linear-gradient(90deg, transparent, rgba(200,168,75,0.5));
+}
+.vine-card__connector--right {
+  left: -30px;
+  background: linear-gradient(270deg, transparent, rgba(200,168,75,0.5));
+}
+
+/* Узелок крепления карточки */
+.vine-card__knot {
+  position: absolute;
+  top: 44px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-light), var(--gold-dim));
+  box-shadow: 0 0 8px rgba(200,168,75,0.4);
+}
+.vine-card__knot--left  { right: -34px; }
+.vine-card__knot--right { left: -34px; }
+
+/* Внутреннее содержимое карточки */
+.vine-card__inner {
+  background: linear-gradient(145deg,
+    rgba(255,255,255,0.03) 0%,
+    rgba(200,168,75,0.04) 100%);
+  border: 1px solid rgba(200,168,75,0.16);
+  border-radius: 8px;
+  padding: 22px 24px 18px;
+  position: relative;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+  cursor: default;
+}
+.vine-card__inner:hover {
+  border-color: rgba(200,168,75,0.35);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(200,168,75,0.1);
+  transform: translateY(-3px);
+}
+
+/* ── Медиа внутри карточки ── */
+.vine-card__media {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.vine-card__media--photo {
+  aspect-ratio: 4/3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg,
+    rgba(200,168,75,0.05) 0%,
+    rgba(200,168,75,0.09) 100%);
+  border: 1px solid rgba(200,168,75,0.12);
+  color: var(--gold-dim);
+}
+.vine-card__media--video {
+  aspect-ratio: 16/9;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background:
-    linear-gradient(135deg,
-      rgba(200,168,75,0.04) 0%,
-      rgba(200,168,75,0.08) 50%,
-      rgba(200,168,75,0.03) 100%),
-    #0e0e0e;
-  border: 1px solid rgba(200,168,75,0.12);
-  border-radius: 8px;
-  color: var(--gold-dim);
-  transition: border-color 0.3s, background 0.3s;
-}
-.media-slide:hover .media-slide__photo-placeholder {
-  border-color: rgba(200,168,75,0.3);
-}
-
-.media-slide__icon {
-  font-size: 32px;
-  opacity: 0.55;
-  line-height: 1;
-}
-
-.media-slide__label {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gold-dim);
-  opacity: 0.7;
-}
-
-/* Заглушка видео */
-.media-slide__video-placeholder {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background:
-    linear-gradient(135deg, rgba(80,60,20,0.15) 0%, rgba(20,14,6,0.8) 100%),
-    #0e0e0e;
+  background: linear-gradient(135deg, rgba(80,60,20,0.15), rgba(8,8,8,0.8));
   border: 1px solid rgba(200,168,75,0.14);
-  border-radius: 8px;
   position: relative;
   overflow: hidden;
-  transition: border-color 0.3s;
 }
-.media-slide:hover .media-slide__video-placeholder {
-  border-color: rgba(200,168,75,0.35);
-}
-
-/* Анимированные «полосы сканлайна» на видео-заглушке */
-.media-slide__video-placeholder::before {
+.vine-card__media--video::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -602,175 +579,143 @@
     rgba(200,168,75,0.025) 0px,
     rgba(200,168,75,0.025) 1px,
     transparent 1px,
-    transparent 4px
-  );
-  pointer-events: none;
+    transparent 4px);
 }
 
-.media-slide__play {
-  width: 48px;
-  height: 48px;
+.vine-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.vine-card__photo-icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+.vine-card__photo-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.vine-card__play {
+  width: 44px; height: 44px;
   border-radius: 50%;
-  background: rgba(200,168,75,0.18);
+  background: rgba(200,168,75,0.2);
   border: 2px solid rgba(200,168,75,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   color: var(--gold-light);
-  transition: background 0.3s, transform 0.3s;
   position: relative;
   z-index: 1;
+  transition: background 0.3s, transform 0.3s;
 }
-.media-slide:hover .media-slide__play {
-  background: rgba(200,168,75,0.3);
-  transform: scale(1.12);
+.vine-card__inner:hover .vine-card__play {
+  background: rgba(200,168,75,0.35);
+  transform: scale(1.1);
 }
-
-.media-slide__duration {
+.vine-card__duration {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   color: var(--gold-dim);
   position: relative;
   z-index: 1;
 }
 
-/* Тип-бейдж в углу слайда */
-.media-slide__type-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  font-family: var(--font-ui);
-  font-size: 9px;
-  font-weight: 400;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(200,168,75,0.8);
-  background: rgba(8,8,8,0.75);
-  border: 1px solid rgba(200,168,75,0.22);
-  border-radius: 3px;
-  padding: 2px 7px;
-  backdrop-filter: blur(4px);
-}
-
-/* Описание под слайдом */
-.media-slide__caption {
-  padding: 10px 12px 12px;
+.vine-card__caption {
   font-family: var(--font-body);
   font-size: 13px;
   font-style: italic;
   font-weight: 300;
   color: var(--cream-dim);
   line-height: 1.45;
-  background: rgba(8,8,8,0.6);
 }
 
-/* Стрелки карусели */
-.media-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-60%); /* учитываем caption */
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid rgba(200,168,75,0.28);
-  background: rgba(8,8,8,0.75);
-  backdrop-filter: blur(8px);
-  color: var(--gold-light);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
-  transition: all 0.3s;
-  user-select: none;
-}
-.media-arrow:hover {
-  border-color: var(--gold);
-  background: rgba(200,168,75,0.12);
-}
-.media-arrow--prev { left: -52px; }
-.media-arrow--next { right: -52px; }
-
-@media (max-width: 800px) {
-  .media-arrow--prev { left: -18px; }
-  .media-arrow--next { right: -18px; }
-  .media-slide { flex: 0 0 calc(50% - 8px); }
-}
-@media (max-width: 540px) {
-  .media-slide { flex: 0 0 85%; }
-}
-
-/* Dots */
-.media-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 18px;
-}
-.media-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: rgba(200,168,75,0.22);
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s;
-  padding: 0;
-}
-.media-dot--active {
-  background: var(--gold);
-  transform: scale(1.5);
-}
-
-/* Счётчик */
-.media-counter {
-  position: absolute;
-  top: 12px;
-  left: 16px;
+/* ── Текстовые карточки (воспоминания) ── */
+.vine-card__type-badge {
+  display: inline-block;
   font-family: var(--font-ui);
-  font-size: 11px;
-  font-weight: 300;
-  letter-spacing: 0.1em;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--gold-dim);
-  background: rgba(8,8,8,0.65);
-  border-radius: 20px;
-  padding: 3px 10px;
-  backdrop-filter: blur(4px);
-  z-index: 3;
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 3px;
+  padding: 2px 7px;
+  margin-bottom: 12px;
+}
+.vine-card__review-photo {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 12px;
   border: 1px solid rgba(200,168,75,0.12);
 }
-
-/* ── «Добавить медиа» кнопка-плашка ── */
-.media-add-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex: 0 0 calc(33.333% - 11px);
-  min-width: 160px;
-  aspect-ratio: 4/3;
-  border: 2px dashed rgba(200,168,75,0.22);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--gold-dim);
-  cursor: pointer;
+.vine-card__text {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-style: italic;
-  transition: all 0.35s;
-  text-decoration: none;
+  font-weight: 300;
+  color: var(--cream);
+  line-height: 1.7;
+  margin-bottom: 12px;
 }
-.media-add-btn:hover {
-  border-color: rgba(200,168,75,0.5);
+.vine-card__text::before { content: '"'; }
+.vine-card__text::after  { content: '"'; }
+
+.vine-card__author {
+  font-family: var(--font-script);
+  font-size: 18px;
   color: var(--gold-light);
-  background: rgba(200,168,75,0.04);
+  letter-spacing: 0.02em;
 }
-.media-add-btn__icon {
-  font-size: 26px;
-  opacity: 0.5;
+.vine-card__author::before { content: '— '; color: var(--gold-dim); }
+
+/* ── Пустое состояние ── */
+.vine-empty {
+  text-align: center;
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--cream-dim);
+  opacity: 0.45;
+  padding: 60px 20px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 700px) {
+  .vine-rope-wrap {
+    display: none; /* канат скрываем на мобайле */
+  }
+  .vine-cards {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0 16px;
+  }
+  .vine-card {
+    position: static;
+    width: 100%;
+    text-align: left;
+    opacity: 1;
+    transform: none;
+  }
+  .vine-card--visible { opacity: 1; transform: none; }
+  .vine-card__connector,
+  .vine-card__knot { display: none; }
+  .vine-layout { min-height: unset; }
+}
+
+@media (max-width: 900px) and (min-width: 701px) {
+  .vine-card {
+    width: calc(50% - 50px);
+  }
 }
 
 
