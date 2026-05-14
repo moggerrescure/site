@@ -254,36 +254,65 @@
       let inner = '';
       if (item.kind === 'media') {
         if (item.type === 'video') {
+          /* Видео: превью слева + инфо справа */
           inner = `
-            <div class="vine-card__media vine-card__media--video">
-              <div class="vine-card__play">▶</div>
-              <span class="vine-card__duration">${item.duration || '0:30'}</span>
-            </div>
-            <p class="vine-card__caption">${item.caption || 'Видео-воспоминание'}</p>`;
+            <div class="vine-card__split">
+              <div class="vine-card__split-media">
+                <div class="vine-card__media vine-card__media--video">
+                  <div class="vine-card__play">▶</div>
+                  <span class="vine-card__duration">${item.duration || '0:30'}</span>
+                </div>
+              </div>
+              <div class="vine-card__split-info">
+                <span class="vine-card__type-tag">видео</span>
+                <p class="vine-card__caption">${item.caption || 'Видео-воспоминание'}</p>
+              </div>
+            </div>`;
         } else {
           const isReal = item.src && !item.src.startsWith('__placeholder');
+          /* Фото: изображение слева + инфо справа */
           inner = `
-            <div class="vine-card__media vine-card__media--photo">
-              ${isReal
-                ? `<img src="${item.src}" alt="${item.caption || ''}" class="vine-card__img"/>`
-                : `<span class="vine-card__photo-icon">🖼</span>
-                   <span class="vine-card__photo-label">${item.label || 'Фотография'}</span>`}
-            </div>
-            <p class="vine-card__caption">${item.caption || 'Фото-воспоминание'}</p>`;
+            <div class="vine-card__split">
+              <div class="vine-card__split-media">
+                <div class="vine-card__media vine-card__media--photo">
+                  ${isReal
+                    ? `<img src="${item.src}" alt="${item.caption || ''}" class="vine-card__img"/>`
+                    : `<span class="vine-card__photo-icon">🖼</span>
+                       <span class="vine-card__photo-label">${item.label || 'Фотография'}</span>`}
+                </div>
+              </div>
+              <div class="vine-card__split-info">
+                <span class="vine-card__type-tag">фото</span>
+                <p class="vine-card__caption">${item.caption || 'Фото-воспоминание'}</p>
+              </div>
+            </div>`;
         }
       } else {
-        /* review */
+        /* review — если есть фото: слева фото, справа текст+автор */
         const badge = item.reviewType && item.reviewType !== 'text'
           ? `<span class="vine-card__type-badge">${REVIEW_TYPE_LABELS[item.reviewType] || ''}</span>`
           : '';
-        const photo = item.photoDataUrl
-          ? `<img src="${item.photoDataUrl}" alt="фото" class="vine-card__review-photo"/>`
-          : '';
-        inner = `
-          ${badge}
-          ${photo}
-          <p class="vine-card__text">"${item.text}"</p>
-          <p class="vine-card__author">${item.author}</p>`;
+        if (item.photoDataUrl) {
+          inner = `
+            <div class="vine-card__split">
+              <div class="vine-card__split-media">
+                <img src="${item.photoDataUrl}" alt="фото" class="vine-card__split-img"/>
+              </div>
+              <div class="vine-card__split-info">
+                ${badge}
+                <p class="vine-card__text">${item.text}</p>
+                <p class="vine-card__author">${item.author}</p>
+              </div>
+            </div>`;
+        } else {
+          /* Без фото — просто текст на всю ширину */
+          inner = `
+            <div class="vine-card__text-only">
+              ${badge}
+              <p class="vine-card__text">${item.text}</p>
+              <p class="vine-card__author">${item.author}</p>
+            </div>`;
+        }
       }
 
       return `
@@ -302,81 +331,91 @@
       cardsEl.innerHTML = allCards.map((c, i) => buildCard(c, i)).join('');
     }
 
-    /* ── Строим SVG-канат ── */
+    /* ── Строим SVG-нить ── */
     function buildRope() {
       const totalCards = allCards.length || 1;
-      const cardH      = 220; /* примерная высота одной карточки + gap */
+      const cardH      = 280; /* высота карточки + gap */
       const totalH     = Math.max(600, totalCards * cardH + 200);
 
-      ropeSvg.setAttribute('viewBox', `0 0 60 ${totalH}`);
+      ropeSvg.setAttribute('viewBox', `0 0 40 ${totalH}`);
       ropeSvg.style.height = totalH + 'px';
       layout.style.minHeight = totalH + 'px';
 
-      /* Плетёный канат — две синусоиды + середина */
-      const cx = 30;
-      const amp = 7; /* амплитуда плетения */
-      const freq = 30; /* период одной петли */
+      const cx = 20;
 
-      let pathA = '', pathB = '', pathCenter = '';
-      const pts = totalH / 4;
-
-      for (let i = 0; i <= pts; i++) {
-        const y = i * 4;
-        const xA = cx + Math.sin(y / freq * Math.PI * 2) * amp;
-        const xB = cx - Math.sin(y / freq * Math.PI * 2) * amp;
-        const xC = cx + Math.sin((y / freq * Math.PI * 2) + Math.PI / 2) * (amp * 0.4);
-
-        pathA      += i === 0 ? `M ${xA} ${y}` : ` L ${xA} ${y}`;
-        pathB      += i === 0 ? `M ${xB} ${y}` : ` L ${xB} ${y}`;
-        pathCenter += i === 0 ? `M ${xC} ${y}` : ` L ${xC} ${y}`;
+      /* Тонкая нить — плавная кривая Безье с лёгкими изгибами */
+      let threadPath = `M ${cx} 0`;
+      const segments = Math.ceil(totalH / 80);
+      for (let i = 0; i < segments; i++) {
+        const y0 = i * 80;
+        const y1 = (i + 1) * 80;
+        const offset = (i % 2 === 0) ? 3 : -3;
+        threadPath += ` C ${cx + offset} ${y0 + 26}, ${cx - offset} ${y0 + 54}, ${cx} ${y1}`;
       }
 
-      /* Крепёжные узелки — по одному на каждую карточку */
+      /* Узелки — маленькие бриллианты на каждой карточке */
       const knotsHTML = allCards.map((_, i) => {
-        const y = 100 + i * cardH;
-        return `<circle class="vine-knot" cx="${cx}" cy="${y}" r="5" data-knot-idx="${i}"/>`;
+        const y = 80 + i * cardH;
+        return `
+          <g class="vine-knot" data-knot-idx="${i}" cursor="pointer">
+            <circle cx="${cx}" cy="${y}" r="10" fill="transparent"/>
+            <path d="M ${cx} ${y-5} L ${cx+4} ${y} L ${cx} ${y+5} L ${cx-4} ${y} Z"
+              class="vine-knot-diamond" fill="url(#threadGlowGrad)" stroke="url(#threadGrad)"
+              stroke-width="0.5"/>
+            <circle cx="${cx}" cy="${y}" r="1.5" fill="#fff" opacity="0.8"/>
+          </g>`;
       }).join('');
 
-      /* Начальный якорь (шляпка каната) */
+      /* Верхний якорь — маленький крест */
       const capHTML = `
-        <ellipse cx="${cx}" cy="18" rx="10" ry="5"
-          fill="none" stroke="url(#ropeGrad)" stroke-width="2" opacity="0.8"/>
-        <line x1="${cx}" y1="18" x2="${cx}" y2="28"
-          stroke="url(#ropeGrad)" stroke-width="3"/>`;
+        <line x1="${cx-6}" y1="12" x2="${cx+6}" y2="12" stroke="url(#threadGrad)" stroke-width="1" opacity="0.7"/>
+        <line x1="${cx}" y1="6" x2="${cx}" y2="18" stroke="url(#threadGrad)" stroke-width="1" opacity="0.7"/>
+        <circle cx="${cx}" cy="12" r="2.5" fill="none" stroke="url(#threadGrad)" stroke-width="1" opacity="0.9"/>`;
+
+      /* Нижний якорь */
+      const endHTML = `
+        <path d="M ${cx-5} ${totalH-14} L ${cx+5} ${totalH-14} L ${cx} ${totalH-6} Z"
+          fill="none" stroke="url(#threadGrad)" stroke-width="1" opacity="0.6"/>`;
 
       ropeSvg.innerHTML = `
         <defs>
-          <linearGradient id="ropeGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stop-color="#e2c97e" stop-opacity="0.9"/>
-            <stop offset="40%"  stop-color="#c8a84b" stop-opacity="0.7"/>
-            <stop offset="100%" stop-color="#8a7035" stop-opacity="0.5"/>
+          <linearGradient id="threadGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#f5e6a3" stop-opacity="1"/>
+            <stop offset="30%"  stop-color="#e2c97e" stop-opacity="0.9"/>
+            <stop offset="70%"  stop-color="#c8a84b" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#8a7035" stop-opacity="0.4"/>
           </linearGradient>
-          <linearGradient id="ropeGradB" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stop-color="#8a7035" stop-opacity="0.5"/>
+          <linearGradient id="threadGlowGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#fff9e6" stop-opacity="0.9"/>
             <stop offset="100%" stop-color="#c8a84b" stop-opacity="0.3"/>
           </linearGradient>
-          <filter id="ropeShadow">
-            <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#c8a84b" flood-opacity="0.25"/>
+          <filter id="threadGlow" x="-200%" y="-10%" width="500%" height="120%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id="diamondGlow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
         ${capHTML}
-        <path d="${pathB}" fill="none" stroke="url(#ropeGradB)"
-          stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
-        <path d="${pathA}" fill="none" stroke="url(#ropeGrad)"
-          stroke-width="3" stroke-linecap="round" filter="url(#ropeShadow)"/>
-        <path d="${pathCenter}" fill="none" stroke="rgba(226,201,126,0.35)"
-          stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 6"/>
+        <!-- Нить с glow -->
+        <path d="${threadPath}" fill="none" stroke="rgba(200,168,75,0.15)"
+          stroke-width="4" stroke-linecap="round"/>
+        <path d="${threadPath}" fill="none" stroke="url(#threadGrad)"
+          stroke-width="1.2" stroke-linecap="round" filter="url(#threadGlow)"/>
+        <path d="${threadPath}" fill="none" stroke="rgba(255,240,180,0.6)"
+          stroke-width="0.4" stroke-linecap="round" stroke-dasharray="2 8"/>
         ${knotsHTML}
-        <!-- Конец каната -->
-        <circle cx="${cx}" cy="${totalH - 20}" r="6"
-          fill="none" stroke="url(#ropeGrad)" stroke-width="2" opacity="0.6"/>
-        <line x1="${cx - 6}" y1="${totalH - 8}" x2="${cx + 6}" y2="${totalH - 8}"
-          stroke="url(#ropeGrad)" stroke-width="2" opacity="0.5"/>`;
+        ${endHTML}`;
 
-      /* Позиционируем карточки под каждым узелком */
+      /* Позиционируем карточки рядом с узелками */
       const cardEls = cardsEl.querySelectorAll('.vine-card');
       cardEls.forEach((el, i) => {
-        const y = 100 + i * cardH - 60; /* смещаем чтобы карточка была рядом с узелком */
+        const y = 80 + i * cardH - 80;
         el.style.top = y + 'px';
       });
     }
