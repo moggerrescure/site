@@ -1,0 +1,319 @@
+/* ═══════════════════════════════════════════════
+   RESPONSIVE.CSS — адаптивная типографика и фото
+   Шрифты: на ПК крупнее, на мобилке как есть
+   Фото: на мобилке компактнее
+   ═══════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════
+   ДЕСКТОП — увеличенные шрифты (1200px+)
+   ══════════════════════════════════════ */
+@media (min-width: 1200px) {
+  body {
+    font-size: 20px;
+  }
+
+  .hero__title {
+    font-size: clamp(56px, 8vw, 100px);
+  }
+
+  .hero__subtitle {
+    font-size: 21px;
+  }
+
+  .hero__eyebrow {
+    font-size: 13px;
+  }
+
+  .section-title {
+    font-size: clamp(34px, 4.5vw, 52px);
+  }
+
+  .nav__link {
+    font-size: 16px;
+  }
+
+  .nav__logo-script {
+    font-size: 32px;
+  }
+
+  .btn {
+    font-size: 16px;
+    padding: 16px 44px;
+  }
+
+  .stat__num {
+    font-size: clamp(40px, 5vw, 60px);
+  }
+
+  .stat__label {
+    font-size: 12px;
+  }
+
+  /* Блоки биографии */
+  .bio-block__title {
+    font-size: clamp(28px, 3.5vw, 40px);
+  }
+
+  .bio-block__text {
+    font-size: 20px;
+    line-height: 1.85;
+  }
+
+  /* Карточки */
+  .last-added .person-card__name,
+  .person-card__name {
+    font-size: 22px;
+  }
+
+  .last-added .person-card__dates,
+  .person-card__dates {
+    font-size: 13px;
+  }
+
+  .last-added .person-card__city,
+  .person-card__city {
+    font-size: 15px;
+  }
+
+  /* Свеча */
+  .candle-section__sub {
+    font-size: 19px;
+  }
+
+  .candle-section__counter {
+    font-size: 17px;
+  }
+
+  /* Цитата */
+  .pullquote {
+    font-size: clamp(30px, 4.5vw, 48px);
+  }
+
+  /* Featured person */
+  .featured-person__name {
+    font-size: 32px;
+  }
+
+  .featured-person__bio {
+    font-size: 18px;
+  }
+
+  .featured-person__quote p {
+    font-size: 18px;
+  }
+
+  /* Person page — шрифты +30% */
+  .person-header__name {
+    font-size: clamp(40px, 5.5vw, 64px);
+  }
+
+  .person-header__dates {
+    font-size: 28px;
+  }
+
+  .person-header__city {
+    font-size: 20px;
+  }
+
+  .person-header__eyebrow {
+    font-size: 12px;
+  }
+
+  .person-bio__text {
+    font-size: 24px;
+  }
+
+  .person-sec-title {
+    font-size: clamp(32px, 4vw, 46px);
+  }
+
+  .vine-card__text {
+    font-size: 19px;
+  }
+
+  .vine-card__author {
+    font-size: 21px;
+  }
+
+  .vine-card__caption {
+    font-size: 17px;
+  }
+
+  .vine-subtitle {
+    font-size: 20px;
+  }
+
+  .burial-place {
+    font-size: 22px;
+  }
+
+  .review-form__title {
+    font-size: 28px;
+  }
+
+  .review-form__input,
+  .review-form__textarea {
+    font-size: 18px;
+  }
+
+  .person-header__age {
+    font-size: 16px;
+  }
+
+  /* Footer */
+  .footer__logo {
+    font-size: 28px;
+  }
+}
+
+/* ══════════════════════════════════════
+   БОЛЬШИЕ ЭКРАНЫ (1600px+)
+   ══════════════════════════════════════ */
+@media (min-width: 1600px) {
+  body {
+    font-size: 22px;
+  }
+
+  .hero__title {
+    font-size: 110px;
+  }
+
+  .hero__subtitle {
+    font-size: 23px;
+    max-width: 620px;
+  }
+
+  .section-title {
+    font-size: 56px;
+  }
+
+  .bio-block__text {
+    font-size: 22px;
+  }
+
+  .bio-block__title {
+    font-size: 42px;
+  }
+
+  .nav__inner {
+    max-width: 1400px;
+  }
+
+  .stats__inner {
+    max-width: 1200px;
+  }
+
+  .last-added__inner {
+    max-width: 1300px;
+  }
+}
+
+/* ══════════════════════════════════════
+   ПЛАНШЕТ (769px — 1199px)
+   ══════════════════════════════════════ */
+@media (min-width: 769px) and (max-width: 1199px) {
+  body {
+    font-size: 18px;
+  }
+
+  .bio-block__text {
+    font-size: 18px;
+  }
+
+  .bio-block__photo {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* ══════════════════════════════════════
+   МОБИЛКА (до 768px) — фото компактнее
+   ══════════════════════════════════════ */
+@media (max-width: 768px) {
+  body {
+    font-size: 16px;
+  }
+
+  /* Фото в блоках — меньше места */
+  .bio-block__photo {
+    aspect-ratio: 16 / 9;
+    max-height: 200px;
+  }
+
+  .bio-block__photo img {
+    max-height: 200px;
+  }
+
+  /* Карточки людей — фото компактнее */
+  .person-card__photo,
+  .last-added .person-card__photo {
+    aspect-ratio: 3 / 3;
+  }
+
+  /* Hero фото на person page — оставляем большим */
+
+  /* Навигация */
+  .nav__logo-script {
+    font-size: 24px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: calc(var(--nav-h) + 40px) 20px 60px;
+  }
+
+  .hero__subtitle {
+    font-size: 16px;
+  }
+
+  .hero__eyebrow {
+    font-size: 10px;
+  }
+
+  /* Секции */
+  .section-title {
+    margin-bottom: 36px;
+  }
+
+  /* Свеча */
+  .candle-scene {
+    transform: scale(0.85);
+    transform-origin: center bottom;
+  }
+
+  /* Цитата */
+  .pullquote {
+    font-size: clamp(22px, 5vw, 32px);
+  }
+
+  /* Footer */
+  .footer {
+    padding: 30px 20px;
+  }
+}
+
+/* ══════════════════════════════════════
+   МАЛЕНЬКИЕ МОБИЛКИ (до 400px)
+   ══════════════════════════════════════ */
+@media (max-width: 400px) {
+  body {
+    font-size: 15px;
+  }
+
+  .hero__title {
+    font-size: 36px;
+  }
+
+  .bio-block__photo {
+    max-height: 160px;
+  }
+
+  .bio-block__text {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .btn {
+    font-size: 14px;
+    padding: 12px 28px;
+  }
+}

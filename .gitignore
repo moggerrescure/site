@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# Database files
+server/data/
+bot/data/
+
+# Uploads (user content)
+server/uploads/
+
+# IDE
+.vscode/
+.kiro/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.log
+start-*.js
+test-*.js

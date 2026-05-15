@@ -1,0 +1,223 @@
+/* ═══════════════════════════════════════════════
+   BLOCKS.CSS — зебра-вёрстка биографических блоков
+   Все блоки 50/50: текст ↔ фото, чередование через row-reverse
+   ═══════════════════════════════════════════════ */
+
+.bio-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 80px;
+  margin-top: 60px;
+  margin-bottom: 60px;
+}
+
+/* ── Заголовок блока — посередине, золотом ── */
+.bio-block__title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.5vw, 34px);
+  font-weight: 400;
+  color: var(--gold-light);
+  text-align: center;
+  letter-spacing: 0.04em;
+  margin: 0 0 36px;
+}
+
+.bio-block__title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 1px;
+  background: var(--gold);
+  margin: 18px auto 0;
+  opacity: 0.6;
+}
+
+/* ── Зебра-row ── */
+.bio-block__row {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  align-items: center;
+}
+
+.bio-block--reverse .bio-block__row {
+  flex-direction: row-reverse;
+}
+
+/* ── Колонки 50/50 ── */
+.bio-block__text {
+  flex: 1 1 50%;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--cream);
+}
+
+.bio-block__text p {
+  margin: 0 0 16px;
+}
+
+.bio-block__text p:last-child {
+  margin-bottom: 0;
+}
+
+.bio-block__photo {
+  flex: 1 1 50%;
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  background: rgba(245,240,232,0.08);
+  border-radius: 6px;
+  border: 2px solid rgba(245,240,232,0.2);
+  box-shadow:
+    0 0 0 6px rgba(255,255,255,0.03),
+    0 20px 50px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.bio-block__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Плейсхолдер (цветная заглушка) ── */
+.bio-block__photo--placeholder {
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bio-block__photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.bio-block__photo-icon {
+  font-size: 42px;
+  opacity: 0.5;
+}
+
+.bio-block__photo-hint {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.bio-block__photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  font-family: var(--font-body);
+}
+
+.bio-block__photo-icon {
+  font-size: 56px;
+  opacity: 0.5;
+  filter: sepia(0.4) hue-rotate(-15deg);
+}
+
+.bio-block__photo-hint {
+  font-size: 16px;
+  color: var(--cream-dim);
+  font-style: italic;
+}
+
+/* ════════════════════════════════════════════
+   ЦИТАТЫ МЕЖДУ БЛОКАМИ
+   ════════════════════════════════════════════ */
+
+.bio-quote {
+  text-align: center;
+  padding: 40px 20px;
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.bio-quote__mark {
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: var(--gold-dim);
+  line-height: 0;
+  vertical-align: -0.2em;
+  display: inline-block;
+  padding: 0 8px;
+  opacity: 0.6;
+}
+
+.bio-quote__text {
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--cream-dim);
+  line-height: 1.7;
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .bio-quote {
+    padding: 28px 16px;
+  }
+
+  .bio-quote__text {
+    font-size: 16px;
+  }
+
+  .bio-quote__mark {
+    font-size: 36px;
+  }
+}
+
+/* ════════════════════════════════════════════
+   АДАПТИВ — мобилка
+   ════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .bio-blocks {
+    gap: 56px;
+    margin-top: 40px;
+  }
+
+  /* Шахматная раскладка сохраняется — текст/фото рядом, просто меньше */
+  .bio-block__row {
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .bio-block--reverse .bio-block__row {
+    flex-direction: row-reverse;
+  }
+
+  .bio-block__photo {
+    flex: 1 1 40%;
+    min-width: 0;
+    aspect-ratio: 3 / 4;
+  }
+
+  .bio-block__text {
+    flex: 1 1 60%;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .bio-block__title {
+    margin-bottom: 20px;
+    font-size: 20px;
+  }
+}

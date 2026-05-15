@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Память — Хранители воспоминаний</title>
+  <meta name="description" content="Живая летопись вашей семьи — страницы памяти, древо рода и хроника поколений."/>
+  <meta property="og:title"       content="Память — Хранители воспоминаний"/>
+  <meta property="og:description" content="Создайте страницы памяти, древо семьи и летопись рода."/>
+  <meta property="og:type"        content="website"/>
+  <meta property="og:locale"      content="ru_RU"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/responsive.css" />
+</head>
+<body>
+
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav__inner">
+      <a href="index.html" class="nav__logo">
+        <span class="nav__logo-script">Память</span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="index.html"      class="nav__link nav__link--active">Главная</a></li>
+        <li><a href="memory.html"     class="nav__link">Страницы памяти</a></li>
+        <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
+        <li><a href="timeline.html"   class="nav__link">Летопись</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero__inner">
+      <p class="hero__eyebrow">Хранители воспоминаний</p>
+      <h1 class="hero__title">
+        Сохраните память<br />
+        <em>навсегда</em>
+      </h1>
+      <p class="hero__subtitle">
+        Живая летопись вашей семьи — фотографии,<br/>истории и древо рода из поколения в поколение.
+      </p>
+      <div class="hero__actions">
+        <a href="memory.html"      class="btn btn--primary">Страницы памяти</a>
+        <a href="family-tree.html" class="btn btn--ghost">Древо семьи</a>
+      </div>
+    </div>
+    <div class="hero__orb hero__orb--1"></div>
+    <div class="hero__orb hero__orb--2"></div>
+    <div class="hero__orb hero__orb--3"></div>
+  </section>
+
+  <!-- FEATURED PERSON — живая карточка с цитатой -->
+  <section class="featured-person" id="featured-person">
+    <!-- injected by home.js -->
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="stats__inner">
+      <div class="stat">
+        <span class="stat__num" data-count="18">0</span>
+        <span class="stat__label">страниц памяти</span>
+      </div>
+      <span class="stats__divider"></span>
+      <div class="stat">
+        <span class="stat__num" data-count="4">0</span>
+        <span class="stat__label">поколения</span>
+      </div>
+      <span class="stats__divider"></span>
+      <div class="stat">
+        <span class="stat__num" data-count="9">0</span>
+        <span class="stat__label">городов</span>
+      </div>
+      <span class="stats__divider"></span>
+      <div class="stat">
+        <span class="stat__num" data-count="36">0</span>
+        <span class="stat__label">воспоминаний</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CANDLE -->
+  <section class="candle-section">
+    <div class="candle-section__inner">
+      <h2 class="section-title">Зажгите свечу памяти</h2>
+      <p class="candle-section__sub">Одно прикосновение — и её огонёк будет гореть для тех, кого мы помним.</p>
+
+      <div class="candle-scene">
+        <div class="candle__halo"></div>
+        <div class="candle" id="candle" role="button" tabindex="0" aria-label="Зажечь свечу">
+          <div class="candle__smoke" aria-hidden="true">
+            <span class="smoke smoke--1"></span><span class="smoke smoke--2"></span>
+            <span class="smoke smoke--3"></span><span class="smoke smoke--4"></span>
+          </div>
+          <div class="candle__sparks" aria-hidden="true">
+            <span class="spark spark--1"></span><span class="spark spark--2"></span>
+            <span class="spark spark--3"></span>
+          </div>
+          <div class="candle__flame">
+            <span class="flame flame--glow"></span>
+            <span class="flame flame--outer"></span>
+            <span class="flame flame--middle"></span>
+            <span class="flame flame--inner"></span>
+            <span class="flame flame--core"></span>
+          </div>
+          <div class="candle__wick"><span class="candle__wick-ember"></span></div>
+          <div class="candle__body">
+            <div class="candle__body-rim"></div>
+            <div class="candle__wax-pool"></div>
+            <div class="candle__body-texture"></div>
+            <span class="candle__drip candle__drip--1"></span>
+            <span class="candle__drip candle__drip--2"></span>
+            <span class="candle__drip candle__drip--3"></span>
+            <span class="candle__highlight"></span>
+          </div>
+          <div class="candle__base"><div class="candle__base-shine"></div></div>
+          <div class="candle__ground-light"></div>
+          <div class="candle__shadow"></div>
+        </div>
+      </div>
+
+      <p class="candle-section__counter">Свечей зажжено: <span id="candle-count">0</span></p>
+      <p class="candle-section__hint">Нажмите на свечу</p>
+    </div>
+  </section>
+
+  <!-- LAST ADDED -->
+  <section class="last-added">
+    <div class="last-added__inner">
+      <h2 class="section-title">Недавно добавленные</h2>
+      <div class="last-added__grid" id="last-added-grid"></div>
+      <div class="last-added__more">
+        <a href="memory.html" class="feature-card__link">Смотреть все страницы</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUOTE -->
+  <section class="quote-section">
+    <div class="quote-section__inner">
+      <blockquote class="pullquote">
+        <span class="pullquote__mark">"</span>
+        Пока мы помним — они живы.
+        <span class="pullquote__mark">"</span>
+      </blockquote>
+    </div>
+  </section>
+
+    <footer class="footer">
+    <div class="footer__top">
+      <div class="footer__logo-wrap">
+        <span class="footer__logo">Память</span>
+        <span class="footer__tagline">Хранители воспоминаний</span>
+      </div>
+      <nav class="footer__nav" aria-label="Навигация сайта">
+        <a href="index.html" class="footer__nav-link">Главная</a>
+        <a href="memory.html" class="footer__nav-link">Страницы памяти</a>
+        <a href="family-tree.html" class="footer__nav-link">Древо семьи</a>
+        <a href="timeline.html" class="footer__nav-link">Летопись</a>
+      </nav>
+      <p class="footer__quote">Пока мы помним —<br/>они живы.</p>
+    </div>
+    <div class="footer__bottom">
+      <div class="footer__inner">
+        <p class="footer__copy">© 2024 — Хранители воспоминаний</p>
+        <p class="footer__copy">Сайт создан с любовью к памяти</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/particles.js"></script>
+  <script src="js/favicon.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth-ui.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/nav.js"></script>
+</body>
+</html>

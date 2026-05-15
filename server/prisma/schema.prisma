@@ -1,0 +1,66 @@
+// Prisma Schema для мемориальных страниц
+// PostgreSQL + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Владелец профиля (пользователь из Telegram-бота)
+model User {
+  id         Int       @id @default(autoincrement())
+  telegramId String    @unique
+  createdAt  DateTime  @default(now())
+  
+  profiles   Profile[]
+}
+
+// Профиль мемориальной страницы (Hero-блок)
+model Profile {
+  id           String         @id @default(uuid())
+  ownerId      Int
+  fullName     String
+  dates        String
+  mainText     String         @db.Text
+  mainPhotoUrl String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  
+  owner         User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  contentBlocks ContentBlock[]
+  guestMemories GuestMemory[]
+  
+  @@index([ownerId])
+}
+
+// Контентные блоки для Zebra-ленты (чередующиеся истории)
+model ContentBlock {
+  id        Int      @id @default(autoincrement())
+  profileId String
+  text      String   @db.Text
+  imageUrl  String?
+  order     Int      // КРИТИЧНО: порядок для шахматной раскладки
+  createdAt DateTime @default(now())
+  
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@index([profileId, order])
+}
+
+// Воспоминания от посетителей
+model GuestMemory {
+  id         Int      @id @default(autoincrement())
+  profileId  String
+  authorName String
+  memoryText String   @db.Text
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@index([profileId, isApproved])
+}
