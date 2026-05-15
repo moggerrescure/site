@@ -161,73 +161,78 @@ const blockWizard = {
 
   /* ── Переход к следующему блоку или завершение ── */
   _nextBlock(ctx) {
-    const nextIndex = ctx.session.wizard.data.blocks.length;
+    const currentIndex = ctx.session.wizard.data.blocks.length - 1;
 
-    if (nextIndex >= 6) {
-      // Все блоки заполнены → спрашиваем цитаты
-      return this._askQuote(ctx);
+    // После каждого заполненного блока (с текстом) — спрашиваем цитату
+    const lastBlock = ctx.session.wizard.data.blocks[currentIndex];
+    if (lastBlock && lastBlock.text) {
+      return this._askQuoteAfterBlock(ctx, currentIndex);
     }
 
+    // Если блок пропущен — сразу к следующему
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= 6) {
+      return this._showPreview(ctx);
+    }
     return this._askBlockText(ctx, nextIndex);
   },
 
-  /* ── Цитаты ── */
-  _askQuote(ctx) {
-    if (!ctx.session.wizard.data.quotes) {
-      ctx.session.wizard.data.quotes = [];
-    }
-
-    ctx.session.wizard.step = 'quote';
-
-    const count = ctx.session.wizard.data.quotes.length;
+  /* ── Спрашиваем цитату после конкретного блока ── */
+  _askQuoteAfterBlock(ctx, blockIndex) {
+    const block = BLOCK_SCHEMA[blockIndex];
+    ctx.session.wizard.step = 'quoteAfterBlock';
+    ctx.session.wizard.quoteBlockIndex = blockIndex;
 
     return ctx.reply(
-      `💬 *Цитата покойного* (${count} добавлено)\n\n` +
-      'Напишите запоминающуюся фразу или высказывание этого человека.\n' +
-      'Цитата будет отображаться между блоками на странице.\n\n' +
-      '_Или нажмите «Готово» чтобы перейти к публикации._',
+      `💬 *Цитата после блока «${block.title}»*\n\n` +
+      'Хотите добавить запоминающуюся фразу или высказывание?\n' +
+      'Она появится между этим и следующим блоком на странице.\n\n' +
+      '_Напишите цитату или нажмите «Пропустить»._',
       {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([
-          [Markup.button.callback('✅ Готово, без цитат', 'skip_quotes')],
+          [Markup.button.callback('⏭ Пропустить', 'skip_quote_after_block')],
           [Markup.button.callback('❌ Отмена', 'cancel_wizard')]
         ])
       }
     );
   },
 
-  handleQuoteText(ctx) {
+  /* ── Получили текст цитаты после блока ── */
+  handleQuoteAfterBlock(ctx) {
     const text = ctx.message.text.trim();
-    if (text.length < 5) {
-      return ctx.reply('⚠️ Цитата слишком короткая (минимум 5 символов):');
+    const blockIndex = ctx.session.wizard.quoteBlockIndex;
+
+    if (text.length < 3) {
+      return ctx.reply('⚠️ Слишком короткая. Напишите цитату или нажмите «Пропустить».');
     }
     if (text.length > 300) {
-      return ctx.reply('⚠️ Слишком длинная (макс. 300 символов). Сократите:');
+      return ctx.reply('⚠️ Макс. 300 символов. Сократите:');
     }
 
-    // Определяем after какого блока вставить (распределяем равномерно)
-    const BLOCK_KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
-    const idx = ctx.session.wizard.data.quotes.length;
-    const afterBlock = BLOCK_KEYS[Math.min(idx * 2 + 1, BLOCK_KEYS.length - 1)];
+    if (!ctx.session.wizard.data.quotes) ctx.session.wizard.data.quotes = [];
 
-    ctx.session.wizard.data.quotes.push({ text, after: afterBlock });
+    const afterKey = BLOCK_SCHEMA[blockIndex].key;
+    ctx.session.wizard.data.quotes.push({ text, after: afterKey });
 
-    return ctx.reply(
-      `✅ Цитата добавлена (${ctx.session.wizard.data.quotes.length})\n\n` +
-      'Отправьте ещё одну или нажмите «Готово».',
-      {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('✅ Готово', 'skip_quotes')],
-          [Markup.button.callback('❌ Отмена', 'cancel_wizard')]
-        ])
-      }
-    );
+    // Переходим к следующему блоку
+    const nextIndex = blockIndex + 1;
+    if (nextIndex >= 6) {
+      return this._showPreview(ctx);
+    }
+    return this._askBlockText(ctx, nextIndex);
   },
 
-  skipQuotes(ctx) {
-    ctx.answerCbQuery('Готово');
-    return this._showPreview(ctx);
+  /* ── Пропуск цитаты после блока ── */
+  skipQuoteAfterBlock(ctx) {
+    ctx.answerCbQuery('Без цитаты');
+    const blockIndex = ctx.session.wizard.quoteBlockIndex;
+
+    const nextIndex = blockIndex + 1;
+    if (nextIndex >= 6) {
+      return this._showPreview(ctx);
+    }
+    return this._askBlockText(ctx, nextIndex);
   },
 
   /* ── Превью перед публикацией ── */

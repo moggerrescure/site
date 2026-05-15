@@ -113,30 +113,19 @@
       </div>
     `;
 
-    // Слот для фото — если фото нет, показываем цветную заглушку
-    const PLACEHOLDER_COLORS = [
-      'linear-gradient(135deg, #2a1f3d, #4a3560)',
-      'linear-gradient(135deg, #1f2a3d, #354a60)',
-      'linear-gradient(135deg, #1f3d2a, #356045)',
-      'linear-gradient(135deg, #3d2a1f, #604535)',
-      'linear-gradient(135deg, #3d1f2a, #603545)',
-      'linear-gradient(135deg, #2a3d1f, #456035)',
-    ];
-
+    // Слот для фото — показываем ТОЛЬКО если фото есть
     const photoHtml = hasImage
       ? `
         <div class="bio-block__photo">
           <img src="${escapeAttr(block.image)}" alt="${escapeAttr(title)}" loading="lazy"/>
         </div>
       `
-      : `
-        <div class="bio-block__photo bio-block__photo--placeholder" style="background:${PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length]}">
-          <div class="bio-block__photo-placeholder">
-            <span class="bio-block__photo-icon">🖼</span>
-            <span class="bio-block__photo-hint">Фото</span>
-          </div>
-        </div>
-      `;
+      : '';
+
+    // Если нет фото — текст по центру на всю ширину
+    if (!hasImage) {
+      section.classList.add('bio-block--text-only');
+    }
 
     section.innerHTML = `
       ${titleHtml}

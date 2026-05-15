@@ -54,7 +54,7 @@
 
 /* Левый (предыдущий) */
 .gallery-slide--left {
-  transform: translateX(-135%) scale(0.82);
+  transform: translateX(-150%) scale(0.82);
   opacity: 0.5;
   filter: blur(2px);
   z-index: 2;
@@ -63,7 +63,7 @@
 
 /* Правый (следующий) */
 .gallery-slide--right {
-  transform: translateX(35%) scale(0.82);
+  transform: translateX(50%) scale(0.82);
   opacity: 0.5;
   filter: blur(2px);
   z-index: 2;

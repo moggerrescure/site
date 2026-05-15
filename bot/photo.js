@@ -59,9 +59,11 @@ async function downloadAndConvert(ctx, fileId) {
   // 2. Скачиваем
   const buffer = await downloadBuffer(url);
 
-  // 3. Конвертируем в WebP
+  // 3. Конвертируем в WebP с ресайзом (макс. 1200px по длинной стороне)
   const webpBuffer = await sharp(buffer)
-    .webp({ quality: 80 })
+    .rotate() // авто-поворот по EXIF
+    .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 75 })
     .toBuffer();
 
   // 4. Сохраняем

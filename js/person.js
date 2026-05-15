@@ -445,15 +445,17 @@
     }
 
     function updateSlides() {
+      const leftIdx  = total > 2 ? mod(current - 1, total) : -1;
+      const rightIdx = total > 1 ? mod(current + 1, total) : -1;
+
       slides.forEach((slide, i) => {
-        // Убираем все классы позиционирования
         slide.classList.remove('gallery-slide--center', 'gallery-slide--left', 'gallery-slide--right', 'gallery-slide--hidden');
 
         if (i === current) {
           slide.classList.add('gallery-slide--center');
-        } else if (i === mod(current - 1, total)) {
+        } else if (i === leftIdx && leftIdx !== rightIdx) {
           slide.classList.add('gallery-slide--left');
-        } else if (i === mod(current + 1, total)) {
+        } else if (i === rightIdx) {
           slide.classList.add('gallery-slide--right');
         } else {
           slide.classList.add('gallery-slide--hidden');

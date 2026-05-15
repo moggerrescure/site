@@ -122,6 +122,7 @@ bot.on('text', (ctx) => {
     case 'mainText':      return createProfile.handleMainText(ctx);
     case 'blockText':     return blockWizard.handleBlockText(ctx);
     case 'quote':         return blockWizard.handleQuoteText(ctx);
+    case 'quoteAfterBlock': return blockWizard.handleQuoteAfterBlock(ctx);
     default: return;
   }
 });
@@ -145,7 +146,7 @@ bot.on('callback_query', (ctx) => {
   if (data === 'skip_main_photo')  return createProfile.skipMainPhoto(ctx);
   if (data === 'skip_block_photo') return blockWizard.skipBlockPhoto(ctx);
   if (data === 'skip_block')       return blockWizard.skipBlock(ctx);
-  if (data === 'skip_quotes')      return blockWizard.skipQuotes(ctx);
+  if (data === 'skip_quote_after_block') return blockWizard.skipQuoteAfterBlock(ctx);
   if (data === 'visibility_public')  return blockWizard.setVisibility(ctx, true);
   if (data === 'visibility_private') return blockWizard.setVisibility(ctx, false);
   if (data === 'confirm_publish')  return createProfile.confirmPublish(ctx);
