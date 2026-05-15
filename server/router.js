@@ -407,6 +407,93 @@ function getProfileFromBot(req, res, params) {
   }
 }
 
+/* ── POST /api/upload-photo — загрузка фото с сайта ── */
+async function handlePhotoUpload(req, res) {
+  try {
+    const filename = await upload.parseUpload(req, 'site');
+    send(res, 200, { ok: true, url: '/uploads/' + filename });
+  } catch (err) {
+    send(res, 400, { ok: false, error: err.message });
+  }
+}
+
+/* ── PUT /api/profiles/:id — обновление профиля в бот-БД ── */
+async function updateProfileInBot(req, res, params) {
+  const profileId = params.id;
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) {
+    return send(res, 400, { ok: false, error: 'Invalid profile ID' });
+  }
+
+  const botDb = getBotDb();
+  if (!botDb) {
+    return send(res, 404, { ok: false, error: 'Bot database not found' });
+  }
+
+  const body = await parseBody(req);
+
+  try {
+    const profile = botDb.prepare('SELECT * FROM profiles WHERE id = ?').get(profileId);
+    if (!profile) {
+      return send(res, 404, { ok: false, error: 'Profile not found' });
+    }
+
+    // Обновляем основные поля профиля
+    const fullName = (body.name || body.full_name || profile.full_name).toString().slice(0, 200);
+    const dates = (body.dates || profile.dates).toString().slice(0, 100);
+    const mainText = (body.bio || body.main_text || profile.main_text).toString().slice(0, 1000);
+    const mainPhoto = body.photo || body.main_photo_url || profile.main_photo_url;
+
+    botDb.exec('BEGIN');
+
+    // 1. Обновляем профиль
+    botDb.prepare(`
+      UPDATE profiles SET full_name = ?, dates = ?, main_text = ?, main_photo_url = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(fullName, dates, mainText, mainPhoto || null, profileId);
+
+    // 2. Обновляем блоки (удаляем старые, вставляем новые)
+    if (body.sections && typeof body.sections === 'object') {
+      botDb.prepare('DELETE FROM content_blocks WHERE profile_id = ?').run(profileId);
+
+      const BLOCK_KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
+      const insertBlock = botDb.prepare(
+        'INSERT INTO content_blocks (profile_id, text, image_url, block_order) VALUES (?, ?, ?, ?)'
+      );
+
+      BLOCK_KEYS.forEach((key, i) => {
+        const sec = body.sections[key];
+        if (sec && sec.text && sec.text.trim()) {
+          insertBlock.run(profileId, sec.text.trim().slice(0, 1000), sec.image || null, i + 1);
+        }
+      });
+    }
+
+    // 3. Обновляем цитаты (удаляем старые, вставляем новые)
+    if (Array.isArray(body.quotes)) {
+      botDb.prepare('DELETE FROM quotes WHERE profile_id = ?').run(profileId);
+
+      const insertQuote = botDb.prepare(
+        'INSERT INTO quotes (profile_id, text, after_block) VALUES (?, ?, ?)'
+      );
+
+      body.quotes.forEach(q => {
+        if (q && q.text && q.text.trim()) {
+          insertQuote.run(profileId, q.text.trim().slice(0, 300), q.after || 'career');
+        }
+      });
+    }
+
+    botDb.exec('COMMIT');
+
+    send(res, 200, { ok: true, message: 'Profile updated' });
+  } catch (err) {
+    try { botDb.exec('ROLLBACK'); } catch (_) {}
+    console.error('❌ Profile update error:', err);
+    send(res, 500, { ok: false, error: 'Update failed: ' + err.message });
+  }
+}
+
 /* ── GET /api/stats ── */
 function getStats(req, res) {
   const people  = db.prepare('SELECT COUNT(*) as c FROM people').get().c;
@@ -528,6 +615,12 @@ async function dispatch(req, res) {
     /* ── /api/profiles/:id — данные из бот-БД (UUID страницы) ── */
     if ((p = matchRoute('/api/profiles/:id', pathname))) {
       if (method === 'GET') return getProfileFromBot(req, res, p);
+      if (method === 'PUT') return await updateProfileInBot(req, res, p);
+    }
+
+    /* ── POST /api/upload-photo — загрузка фото с сайта, конвертация в WebP ── */
+    if (method === 'POST' && pathname === '/api/upload-photo') {
+      return await handlePhotoUpload(req, res);
     }
 
     if ((p = matchRoute('/api/people/:id', pathname))) {

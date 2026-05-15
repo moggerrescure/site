@@ -359,9 +359,7 @@
     // Зебра-блоки (6 секций) — рисуем после вставки разметки
     const bioContainer = document.getElementById('bio-blocks-container');
     if (bioContainer && person.sections && Object.keys(person.sections).length && window.PersonBlocks) {
-      // Скрываем простой person-bio — он заменяется блоками
-      const oldBio = document.querySelector('.person-bio');
-      if (oldBio) oldBio.style.display = 'none';
+      // person-bio (основной текст) остаётся видимым — это описание/эпитафия
       window.PersonBlocks.render(bioContainer, { sections: person.sections, quotes: person.quotes });
     }
 
