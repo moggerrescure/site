@@ -369,17 +369,43 @@ function getProfileFromBot(req, res, params) {
     const sections = {};
     blocks.forEach((b) => {
       const idx = b.block_order - 1;
-      const key = BLOCK_KEYS[idx] || ('block_' + b.block_order);
-      if (b.text) {
-        sections[key] = {
-          title: BLOCK_TITLES[idx] || '',
-          text: b.text,
-          image: b.image_url || '',
-        };
+
+      // Проверяем кастомный блок (формат "CUSTOM_TITLE:Название::текст")
+      if (b.text && b.text.startsWith('CUSTOM_TITLE:')) {
+        const rest = b.text.slice('CUSTOM_TITLE:'.length);
+        const sepIdx = rest.indexOf('::');
+        const title = sepIdx >= 0 ? rest.slice(0, sepIdx) : 'Без названия';
+        const text = sepIdx >= 0 ? rest.slice(sepIdx + 2) : rest;
+        const key = 'custom_' + b.block_order;
+        sections[key] = { title, text, image: b.image_url || '' };
+      } else {
+        const key = BLOCK_KEYS[idx] || ('block_' + b.block_order);
+        if (b.text) {
+          sections[key] = {
+            title: BLOCK_TITLES[idx] || '',
+            text: b.text,
+            image: b.image_url || '',
+          };
+        }
       }
     });
 
     const datesParts = (profile.dates || '').split(/[—–\-]/).map(s => s.trim());
+
+    // Фото галереи
+    let galleryPhotos = [];
+    try {
+      galleryPhotos = botDb.prepare(
+        'SELECT image_url, caption FROM gallery_photos WHERE profile_id = ? ORDER BY photo_order ASC'
+      ).all(profileId);
+    } catch (_) {}
+
+    // Также собираем image_url из content_blocks как fallback (старые страницы)
+    const blockImages = blocks.filter(b => b.image_url).map(b => b.image_url);
+    const allGallery = [
+      ...galleryPhotos.map(p => ({ src: p.image_url, caption: p.caption || '' })),
+      ...blockImages.filter(url => !galleryPhotos.some(p => p.image_url === url)).map(url => ({ src: url, caption: '' })),
+    ];
 
     send(res, 200, {
       ok: true,
@@ -393,6 +419,7 @@ function getProfileFromBot(req, res, params) {
         photo: profile.main_photo_url || '',
         sections,
         quotes: quotes.map(q => ({ text: q.text, after: q.after_block })),
+        media: allGallery,
         reviews: memories.map(m => ({
           author: m.author_name,
           text: m.memory_text,
@@ -453,7 +480,29 @@ async function updateProfileInBot(req, res, params) {
     `).run(fullName, dates, mainText, mainPhoto || null, profileId);
 
     // 2. Обновляем блоки (удаляем старые, вставляем новые)
-    if (body.sections && typeof body.sections === 'object') {
+    // Поддерживаем два формата: sections (фиксированная схема) и orderedBlocks (произвольный порядок)
+    if (Array.isArray(body.orderedBlocks) && body.orderedBlocks.length) {
+      botDb.prepare('DELETE FROM content_blocks WHERE profile_id = ?').run(profileId);
+
+      const insertBlock = botDb.prepare(
+        'INSERT INTO content_blocks (profile_id, text, image_url, block_order) VALUES (?, ?, ?, ?)'
+      );
+
+      body.orderedBlocks.forEach((block, i) => {
+        if (block && block.text && block.text.trim()) {
+          // Для кастомных блоков сохраняем title в начале текста через разделитель
+          let text = block.text.trim().slice(0, 1000);
+          let imageUrl = block.image || null;
+
+          // Если есть кастомный title — сохраняем как "TITLE::text"
+          if (block.key === 'custom' && block.title) {
+            text = `CUSTOM_TITLE:${block.title.slice(0, 100)}::${text}`;
+          }
+
+          insertBlock.run(profileId, text, imageUrl, i + 1);
+        }
+      });
+    } else if (body.sections && typeof body.sections === 'object') {
       botDb.prepare('DELETE FROM content_blocks WHERE profile_id = ?').run(profileId);
 
       const BLOCK_KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
@@ -482,6 +531,27 @@ async function updateProfileInBot(req, res, params) {
           insertQuote.run(profileId, q.text.trim().slice(0, 300), q.after || 'career');
         }
       });
+    }
+
+    // 4. Добавляем новые фото в галерею (не удаляем старые, только добавляем)
+    if (Array.isArray(body.newGalleryPhotos) && body.newGalleryPhotos.length) {
+      // Проверяем лимит 10
+      let currentCount = 0;
+      try {
+        currentCount = botDb.prepare('SELECT COUNT(*) as c FROM gallery_photos WHERE profile_id = ?').get(profileId).c;
+      } catch (_) { currentCount = 0; }
+
+      const remaining = 10 - currentCount;
+      const toAdd = body.newGalleryPhotos.slice(0, remaining);
+
+      if (toAdd.length) {
+        const insertPhoto = botDb.prepare(
+          'INSERT INTO gallery_photos (profile_id, image_url, photo_order) VALUES (?, ?, ?)'
+        );
+        toAdd.forEach((url, i) => {
+          insertPhoto.run(profileId, url, currentCount + i + 1);
+        });
+      }
     }
 
     botDb.exec('COMMIT');

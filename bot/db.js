@@ -67,10 +67,20 @@ db.exec(`
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS gallery_photos (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id  TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    image_url   TEXT NOT NULL,
+    caption     TEXT NOT NULL DEFAULT '',
+    photo_order INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_profiles_owner ON profiles(owner_id);
   CREATE INDEX IF NOT EXISTS idx_blocks_profile_order ON content_blocks(profile_id, block_order);
   CREATE INDEX IF NOT EXISTS idx_memories_profile ON guest_memories(profile_id, is_approved);
   CREATE INDEX IF NOT EXISTS idx_quotes_profile ON quotes(profile_id);
+  CREATE INDEX IF NOT EXISTS idx_gallery_profile ON gallery_photos(profile_id, photo_order);
 `);
 
 /* ── HELPERS ── */

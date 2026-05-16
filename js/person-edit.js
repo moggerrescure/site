@@ -161,6 +161,16 @@
       if (photoDiv) {
         addPhotoUploadBtn(photoDiv, 'block-photo', key);
       }
+
+      // Кнопка удаления блока
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'edit-block-delete';
+      delBtn.innerHTML = '🗑 Удалить блок';
+      delBtn.addEventListener('click', () => {
+        if (confirm('Удалить этот блок?')) block.remove();
+      });
+      block.appendChild(delBtn);
     });
 
     // Цитаты → textarea
@@ -168,6 +178,176 @@
       const val = q.textContent.trim();
       q.outerHTML = `<textarea class="edit-textarea edit-textarea--quote" data-field="quote" data-index="${i}">${escHtml(val)}</textarea>`;
     });
+
+    // Добавляем кнопки «+ Блок» / «+ Цитата» между блоками
+    addInsertButtons();
+
+    // Добавляем кнопку «+ Фото в галерею»
+    addGalleryUploadBtn();
+  }
+
+  /* ── Кнопки вставки между блоками ── */
+  function addInsertButtons() {
+    const container = document.getElementById('bio-blocks-container');
+    if (!container) return;
+    const bioBlocks = container.querySelector('.bio-blocks');
+    if (!bioBlocks) return;
+
+    const children = Array.from(bioBlocks.children);
+
+    // Вставляем панель кнопок ПЕРЕД первым блоком и ПОСЛЕ каждого элемента
+    const positions = []; // перед первым
+    children.forEach((child, i) => positions.push({ after: child, index: i }));
+
+    // Вставляем перед первым
+    const firstPanel = createInsertPanel(0);
+    bioBlocks.insertBefore(firstPanel, bioBlocks.firstChild);
+
+    // Вставляем после каждого элемента
+    children.forEach((child, i) => {
+      const panel = createInsertPanel(i + 1);
+      child.after(panel);
+    });
+  }
+
+  function createInsertPanel(position) {
+    const panel = document.createElement('div');
+    panel.className = 'edit-insert-panel';
+    panel.dataset.position = position;
+    panel.innerHTML = `
+      <button type="button" class="edit-insert-btn" data-action="add-block" data-pos="${position}">+ Блок</button>
+      <button type="button" class="edit-insert-btn edit-insert-btn--quote" data-action="add-quote" data-pos="${position}">+ Цитата</button>
+    `;
+
+    panel.querySelector('[data-action="add-block"]').addEventListener('click', () => insertNewBlock(panel, position));
+    panel.querySelector('[data-action="add-quote"]').addEventListener('click', () => insertNewQuote(panel, position));
+
+    return panel;
+  }
+
+  function insertNewBlock(panel, position) {
+    const form = document.createElement('section');
+    form.className = 'bio-block bio-block--custom-new';
+    form.dataset.block = 'custom_' + Date.now();
+    form.dataset.isNew = 'true';
+    form.innerHTML = `
+      <input class="edit-input edit-input--block-title" data-field="custom-title" placeholder="Название блока" value=""/>
+      <div class="bio-block__row">
+        <div class="bio-block__text">
+          <textarea class="edit-textarea" data-block="${form.dataset.block}" data-field="text" placeholder="Текст блока..."></textarea>
+        </div>
+        <div class="bio-block__photo bio-block__photo--empty-edit" style="position:relative;"></div>
+      </div>
+    `;
+
+    // Кнопка загрузки фото
+    const photoDiv = form.querySelector('.bio-block__photo');
+    addPhotoUploadBtn(photoDiv, 'block-photo', form.dataset.block);
+
+    // Кнопка удаления
+    const delBtn = document.createElement('button');
+    delBtn.className = 'edit-insert-btn edit-insert-btn--delete';
+    delBtn.textContent = '🗑 Удалить блок';
+    delBtn.addEventListener('click', () => form.remove());
+    form.appendChild(delBtn);
+
+    panel.after(form);
+  }
+
+  function insertNewQuote(panel, position) {
+    const quote = document.createElement('blockquote');
+    quote.className = 'bio-quote bio-quote--new';
+    quote.dataset.isNew = 'true';
+    quote.dataset.position = position;
+    quote.innerHTML = `
+      <textarea class="edit-textarea edit-textarea--quote" data-field="quote" placeholder="Введите цитату..."></textarea>
+      <button type="button" class="edit-insert-btn edit-insert-btn--delete">🗑 Удалить</button>
+    `;
+
+    quote.querySelector('.edit-insert-btn--delete').addEventListener('click', () => quote.remove());
+    panel.after(quote);
+  }
+
+  /* ── Кнопка добавления фото в галерею ── */
+  function addGalleryUploadBtn() {
+    const section = document.getElementById('gallery-section');
+    if (!section) return;
+
+    // Считаем текущие фото
+    const slides = section.querySelectorAll('.gallery-slide');
+    const currentCount = slides.length;
+
+    if (currentCount >= 10) return; // лимит
+
+    const panel = document.createElement('div');
+    panel.className = 'edit-gallery-add';
+    panel.innerHTML = `
+      <label class="edit-gallery-add__label">
+        <input type="file" accept="image/*" multiple class="edit-gallery-add__input" hidden/>
+        <span class="edit-gallery-add__btn">📷 Добавить фото в галерею (${currentCount}/10)</span>
+      </label>
+      <span class="edit-gallery-add__status"></span>
+    `;
+
+    section.appendChild(panel);
+
+    const fileInput = panel.querySelector('input[type="file"]');
+    fileInput.addEventListener('change', () => handleGalleryUpload(fileInput, panel, section));
+  }
+
+  async function handleGalleryUpload(input, panel, section) {
+    const files = Array.from(input.files);
+    if (!files.length) return;
+
+    const slides = section.querySelectorAll('.gallery-slide');
+    const currentCount = slides.length;
+    const remaining = 10 - currentCount;
+
+    if (remaining <= 0) {
+      alert('Галерея уже содержит 10 фото (максимум)');
+      return;
+    }
+
+    const toUpload = files.slice(0, remaining);
+    const status = panel.querySelector('.edit-gallery-add__status');
+    status.textContent = `⏳ Загружаю ${toUpload.length} фото...`;
+
+    const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+    const uploadedUrls = [];
+
+    for (const file of toUpload) {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      try {
+        const res = await fetch(`${base}/api/upload-photo`, { method: 'POST', body: formData });
+        const json = await res.json();
+        if (json.ok && json.url) {
+          uploadedUrls.push(json.url);
+        }
+      } catch (_) {}
+    }
+
+    if (uploadedUrls.length) {
+      status.textContent = `✅ Загружено ${uploadedUrls.length} фото. Сохраните чтобы применить.`;
+      // Сохраняем URL в data-атрибут для сбора при сохранении
+      const existing = panel.dataset.newPhotos ? JSON.parse(panel.dataset.newPhotos) : [];
+      panel.dataset.newPhotos = JSON.stringify([...existing, ...uploadedUrls]);
+
+      // Обновляем счётчик
+      const btn = panel.querySelector('.edit-gallery-add__btn');
+      const newTotal = currentCount + uploadedUrls.length;
+      btn.textContent = `📷 Добавить фото в галерею (${newTotal}/10)`;
+
+      if (newTotal >= 10) {
+        input.disabled = true;
+        btn.style.opacity = '0.5';
+      }
+    } else {
+      status.textContent = '❌ Не удалось загрузить';
+    }
+
+    input.value = '';
   }
 
   /* ── Кнопка загрузки фото ── */
@@ -253,26 +433,51 @@
     data.bio = bioInput?.value?.trim() || originalData.bio;
     data.photo = photoWrap?.dataset?.uploadedUrl || photoWrap?.querySelector('img')?.src || originalData.photo;
 
-    // Блоки
-    const KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
-    KEYS.forEach(key => {
-      const textArea = document.querySelector(`[data-block="${key}"][data-field="text"]`);
-      const photoDiv = document.querySelector(`.bio-block[data-block="${key}"] .bio-block__photo`);
+    // Блоки — собираем ВСЕ в порядке DOM (включая кастомные)
+    const bioBlocksContainer = document.getElementById('bio-blocks-container');
+    const allBlockElements = bioBlocksContainer ? bioBlocksContainer.querySelectorAll('.bio-block') : [];
+    const orderedBlocks = [];
+
+    allBlockElements.forEach((block) => {
+      const key = block.dataset.block || '';
+      const isNew = block.dataset.isNew === 'true';
+
+      // Кастомный блок — берём title из инпута
+      let title = '';
+      if (isNew) {
+        const titleInput = block.querySelector('[data-field="custom-title"]');
+        title = titleInput?.value?.trim() || 'Без названия';
+      } else {
+        title = originalData.sections[key]?.title || '';
+      }
+
+      const textArea = block.querySelector('[data-field="text"]');
+      const photoDiv = block.querySelector('.bio-block__photo');
 
       const text = textArea?.value?.trim() || '';
       const image = photoDiv?.dataset?.uploadedUrl || photoDiv?.querySelector('img')?.src || '';
 
       if (text) {
-        const title = originalData.sections[key]?.title || '';
-        data.sections[key] = { title, text, image };
+        orderedBlocks.push({ key: isNew ? 'custom' : key, title, text, image });
       }
     });
 
-    // Цитаты
-    document.querySelectorAll('[data-field="quote"]').forEach(el => {
+    data.orderedBlocks = orderedBlocks;
+
+    // Цитаты — собираем все (старые + новые) в порядке DOM
+    const allQuotes = bioBlocksContainer ? bioBlocksContainer.querySelectorAll('.bio-quote textarea, [data-field="quote"]') : [];
+    allQuotes.forEach(el => {
       const text = el.value?.trim();
       if (text) data.quotes.push({ text, after: '' });
     });
+
+    // Новые фото галереи
+    const galleryPanel = document.querySelector('.edit-gallery-add');
+    if (galleryPanel && galleryPanel.dataset.newPhotos) {
+      try {
+        data.newGalleryPhotos = JSON.parse(galleryPanel.dataset.newPhotos);
+      } catch (_) {}
+    }
 
     // PUT запрос
     try {
