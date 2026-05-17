@@ -419,3 +419,311 @@ body.tree-page { overflow-x: hidden; }
   font-style: italic;
   margin-top: 4px;
 }
+
+
+/* ═══════════════════════════════════════════════
+   TREE ACTIONS — connect + create buttons
+   ═══════════════════════════════════════════════ */
+
+.tree-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.tree-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--cream-dim);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(200,168,75,0.22);
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  letter-spacing: 0.03em;
+}
+.tree-action-btn:hover {
+  border-color: rgba(200,168,75,0.5);
+  background: rgba(200,168,75,0.07);
+  color: var(--gold-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+}
+.tree-action-btn__icon { font-size: 16px; }
+
+.tree-action-btn--primary {
+  background: linear-gradient(135deg, rgba(138,112,53,0.3), rgba(200,168,75,0.2));
+  border-color: rgba(200,168,75,0.4);
+  color: var(--gold-light);
+}
+.tree-action-btn--primary:hover {
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+  color: var(--black);
+  border-color: var(--gold);
+}
+
+.connect-btn--active {
+  background: rgba(200,168,75,0.15) !important;
+  border-color: var(--gold) !important;
+  color: var(--gold-light) !important;
+  box-shadow: 0 0 20px rgba(200,168,75,0.3) !important;
+}
+
+/* Connect mode — nodes glow on hover */
+.connect-mode .tree-node:hover .tree-node__frame {
+  box-shadow: 0 0 0 3px var(--gold-light), 0 0 30px rgba(226,201,126,0.5);
+  cursor: crosshair;
+}
+.connect-mode .tree-wrapper::after {
+  content: 'Выберите первую карточку для соединения · Esc — отмена';
+  color: rgba(226,201,126,0.7);
+}
+
+.tree-node.connect-selected .tree-node__frame {
+  box-shadow: 0 0 0 3px var(--gold-light), 0 0 30px rgba(226,201,126,0.5) !important;
+}
+.tree-node.connect-selected .tree-node__frame::before {
+  box-shadow: 0 0 20px var(--gold-light);
+}
+
+/* Diamond midpoint on custom connection */
+.thread-diamond {
+  transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Custom connection thread glow */
+.thread-path--custom {
+  filter: drop-shadow(0 0 3px rgba(200,168,75,0.4));
+}
+
+/* New node pulse on creation */
+@keyframes newNodePulse {
+  0%   { transform: scale(0.7); opacity: 0; }
+  50%  { transform: scale(1.08); }
+  70%  { transform: scale(0.97); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.tree-node--new-pulse {
+  animation: newNodePulse 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+.tree-node--new-pulse .tree-node__frame {
+  box-shadow: 0 0 0 2px var(--gold-light), 0 0 40px rgba(226,201,126,0.5) !important;
+  animation: newFrameGlow 2s ease infinite alternate;
+}
+@keyframes newFrameGlow {
+  from { box-shadow: 0 0 0 2px var(--gold-light), 0 0 20px rgba(226,201,126,0.3); }
+  to   { box-shadow: 0 0 0 2px var(--gold-light), 0 0 50px rgba(226,201,126,0.65); }
+}
+
+/* ── HINT ANIMATION ── */
+@keyframes fadeInUp {
+  from { opacity:0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity:1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity:0; transform: translateX(-50%) translateY(-16px); }
+  to   { opacity:1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════
+   CREATE TREE MODAL
+   ═══════════════════════════════════════════════ */
+#create-tree-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.ctm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4,4,4,0.85);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+#create-tree-modal.ctm-visible .ctm-backdrop { opacity: 1; }
+
+.ctm-panel {
+  position: relative;
+  background: linear-gradient(160deg, #121212 0%, #0c0c0c 100%);
+  border: 1px solid rgba(200,168,75,0.25);
+  border-radius: 14px;
+  padding: 44px 44px 36px;
+  max-width: 680px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(200,168,75,0.08);
+  transform: translateY(28px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.45s cubic-bezier(0.34,1.2,0.64,1), opacity 0.35s ease;
+}
+#create-tree-modal.ctm-visible .ctm-panel {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Scrollbar */
+.ctm-panel::-webkit-scrollbar { width: 4px; }
+.ctm-panel::-webkit-scrollbar-thumb { background: rgba(200,168,75,0.25); border-radius: 4px; }
+
+.ctm-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,168,75,0.2);
+  background: transparent;
+  color: var(--cream-dim);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+}
+.ctm-close:hover {
+  background: rgba(200,80,80,0.15);
+  border-color: rgba(200,80,80,0.4);
+  color: #e08080;
+}
+
+.ctm-title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 400;
+  color: var(--cream);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.ctm-title em { font-style: italic; color: var(--gold-light); }
+
+.ctm-sub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--cream-dim);
+  text-align: center;
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+/* Photo upload area */
+.ctm-photo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.ctm-photo-preview {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  background: rgba(200,168,75,0.08);
+  border: 2px dashed rgba(200,168,75,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(200,168,75,0.4);
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+.ctm-photo-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--gold-dim);
+  cursor: pointer;
+  padding: 6px 16px;
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 20px;
+  transition: all 0.3s;
+  user-select: none;
+}
+.ctm-photo-label:hover {
+  border-color: rgba(200,168,75,0.5);
+  color: var(--gold-light);
+  background: rgba(200,168,75,0.06);
+}
+
+/* Form grid */
+.ctm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+  margin-bottom: 14px;
+}
+@media (max-width: 560px) { .ctm-grid { grid-template-columns: 1fr; } }
+
+.ctm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ctm-field--full { grid-column: 1 / -1; margin-bottom: 14px; }
+
+.ctm-field label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+.ctm-input {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(200,168,75,0.18);
+  border-radius: 6px;
+  padding: 11px 14px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  transition: border-color 0.3s, background 0.3s;
+  width: 100%;
+}
+.ctm-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  background: rgba(0,0,0,0.5);
+  box-shadow: 0 0 0 3px rgba(200,168,75,0.1);
+}
+.ctm-input::placeholder { color: rgba(201,191,168,0.3); font-style: italic; }
+
+.ctm-select { cursor: pointer; appearance: none; }
+.ctm-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+.ctm-submit {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 15px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+  color: var(--black);
+  cursor: pointer;
+  font-weight: 400;
+  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.ctm-submit:hover {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(200,168,75,0.4);
+}
+.ctm-submit:active { transform: translateY(-1px); }
