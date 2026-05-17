@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════
    TIMELINE — Family chronicle
    • Auto-events from PEOPLE data
+   • Events from active family tree (localStorage)
    • Historical events of Russia/USSR
    • User custom events (localStorage)
    • Filters: type + decade
@@ -54,8 +55,33 @@
   function buildEvents() {
     const events = [];
 
-    /* From PEOPLE */
-    (typeof PEOPLE !== 'undefined' ? PEOPLE : []).forEach(p => {
+    /* From active family tree (localStorage) */
+    function getPeopleFromTree() {
+      try {
+        const treeId = localStorage.getItem('active_tree_id');
+        if (!treeId) return [];
+        const nodes = JSON.parse(localStorage.getItem('tree_nodes_' + treeId) || '[]');
+        return nodes.map(n => ({
+          id: n.personPageId || n.id,
+          name: n.name || 'Неизвестно',
+          born: n.years ? n.years.split('–')[0] + '' : null,
+          died: n.years ? n.years.split('–')[1] || null : null,
+          city: n.city || '',
+          _fromTree: true,
+          _clanName: n.clanName || '',
+          _clanColor: n.clanColor || '#c8a84b',
+        }));
+      } catch { return []; }
+    }
+
+    const treePeople = getPeopleFromTree();
+    const allPeople = [
+      ...(typeof PEOPLE !== 'undefined' ? PEOPLE : []),
+      ...treePeople.filter(tp => !(typeof PEOPLE !== 'undefined' ? PEOPLE : []).some(p => p.id === tp.id))
+    ];
+
+    /* From PEOPLE + tree */
+    allPeople.forEach(p => {
       const by = parseYear(p.born), dy = parseYear(p.died);
       const age = lifeYears(p.born, p.died);
       if (by) events.push({
@@ -152,6 +178,14 @@
       ? events[events.length-1].year - events[0].year
       : 0;
 
+    // Подсказка если нет персональных событий из дерева и PEOPLE
+    const peopleBirths = events.filter(e => e.type === 'birth').length;
+    const hint = peopleBirths === 0
+      ? `<div style="text-align:center;color:var(--cream-dim);font-size:13px;padding:12px 0 0;font-style:italic;">
+           Создайте дерево семьи чтобы увидеть события
+         </div>`
+      : '';
+
     return `
       <div class="tl-stats">
         <div class="tl-stat"><span>${births}</span><small>рождений</small></div>
@@ -161,7 +195,7 @@
         <div class="tl-stat"><span>${span}</span><small>лет охвата</small></div>
         <div class="tl-stat"><span>${histEv}</span><small>событий истории</small></div>
         <div class="tl-stat"><span>${custom}</span><small>свои события</small></div>
-      </div>`;
+      </div>${hint}`;
   }
 
   /* ── DECADE LIST ── */
@@ -340,4 +374,12 @@
   /* INIT */
   render();
   buildForm();
+
+  // При изменении localStorage (например, при переключении дерева в другой вкладке) — перерендерить
+  window.addEventListener('storage', (e) => {
+    if (e.key && (e.key.startsWith('tree_nodes_') || e.key === 'active_tree_id')) {
+      activeType = 'all'; activeDecade = 'all';
+      render();
+    }
+  });
 })();
