@@ -9,10 +9,8 @@ function run(cmd) {
 }
 
 try {
-  run('git config user.name "Kiro"');
-  run('git config user.email "kiro@local"');
   run('git add -A');
-  run('git commit -m "feat: create page from site, editor improvements, bug fixes"');
+  run('git commit -m "feat: family tree editing, dynamic clans, profile picker, generation controls"');
   run('git push origin full_test1');
   run('git push moi full_test1');
   console.log('\n✅ Pushed to both remotes');

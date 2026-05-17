@@ -205,9 +205,9 @@
   }
 
   .bio-block__photo {
-    flex: 1 1 40%;
+    flex: 1 1 45%;
     min-width: 0;
-    max-width: 240px;
+    max-width: 288px;
     aspect-ratio: 3 / 4;
   }
 

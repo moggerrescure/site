@@ -419,3 +419,577 @@ body.tree-page { overflow-x: hidden; }
   font-style: italic;
   margin-top: 4px;
 }
+
+
+/* ══════════════════════════════════════
+   TREE EDIT MODE
+   ══════════════════════════════════════ */
+
+.tree-edit-btn {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 10px 22px;
+  background: rgba(200,168,75,0.1);
+  border: 1px solid rgba(200,168,75,0.3);
+  border-radius: 6px;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tree-edit-btn:hover {
+  background: rgba(200,168,75,0.18);
+  border-color: var(--gold);
+}
+.tree-edit-btn--active {
+  background: rgba(220,60,60,0.15);
+  border-color: rgba(220,60,60,0.4);
+  color: #ff8888;
+}
+
+/* Node controls */
+.tree-node-controls {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+.tree-node-ctrl {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,168,75,0.3);
+  background: rgba(20,20,20,0.9);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.tree-node-ctrl:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.15);
+  transform: scale(1.15);
+}
+.tree-node-ctrl--del:hover {
+  border-color: #ff6666;
+  background: rgba(220,60,60,0.15);
+}
+
+/* Add node button */
+.tree-add-node-btn {
+  display: block;
+  margin: 30px auto;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+  border: none;
+  border-radius: 6px;
+  color: var(--black);
+  font-family: var(--font-body);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tree-add-node-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(200,168,75,0.25);
+}
+
+/* ── TREE MODAL ── */
+.tree-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.tree-modal {
+  background: #1a1a1a;
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 14px;
+  padding: 36px 32px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.tree-modal__close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,168,75,0.2);
+  background: transparent;
+  color: var(--cream-dim);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tree-modal__close:hover { border-color: var(--gold); color: var(--gold); }
+
+.tree-modal__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--cream);
+  margin-bottom: 20px;
+}
+
+.tree-modal__field {
+  margin-bottom: 16px;
+}
+.tree-modal__field label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 5px;
+  letter-spacing: 0.03em;
+}
+.tree-modal__field input,
+.tree-modal__field select {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200,168,75,0.18);
+  border-radius: 6px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+.tree-modal__field input:focus,
+.tree-modal__field select:focus {
+  border-color: var(--gold);
+}
+
+.tree-modal__photo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tree-modal__photo-btn {
+  cursor: pointer;
+  padding: 8px 14px;
+  background: rgba(200,168,75,0.1);
+  border: 1px solid rgba(200,168,75,0.25);
+  border-radius: 6px;
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.tree-modal__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+.tree-modal__btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s;
+}
+.tree-modal__btn--cancel {
+  background: transparent;
+  border: 1px solid rgba(200,168,75,0.2);
+  color: var(--cream-dim);
+}
+.tree-modal__btn--save {
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold));
+  color: var(--black);
+}
+.tree-modal__btn--save:hover {
+  box-shadow: 0 6px 20px rgba(200,168,75,0.25);
+}
+
+.tree-modal__error {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(220,60,60,0.1);
+  border: 1px solid rgba(220,60,60,0.3);
+  border-radius: 6px;
+  color: #f08080;
+  font-size: 13px;
+  text-align: center;
+}
+
+
+/* ── Add panel ── */
+.tree-add-panel {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+.tree-add-btn {
+  padding: 14px 24px;
+  background: rgba(200,168,75,0.15);
+  border: 1px solid rgba(200,168,75,0.5);
+  border-radius: 6px;
+  color: var(--gold-light);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tree-add-btn:hover {
+  background: rgba(200,168,75,0.25);
+  border-color: var(--gold-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(200,168,75,0.2);
+}
+.tree-add-btn--linked {
+  background: rgba(126,200,180,0.15);
+  border-color: rgba(126,200,180,0.5);
+  color: #a0e8d4;
+}
+.tree-add-btn--linked:hover {
+  background: rgba(126,200,180,0.25);
+  border-color: #7ec8b4;
+  box-shadow: 0 6px 20px rgba(126,200,180,0.2);
+}
+
+/* ── Modal row ── */
+.tree-modal__row {
+  display: flex;
+  gap: 12px;
+}
+.tree-modal__field--half { flex: 1; }
+
+.tree-modal__section-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--gold);
+  margin: 20px 0 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(200,168,75,0.15);
+}
+
+/* ── Mobile modal ── */
+@media (max-width: 560px) {
+  .tree-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .tree-modal {
+    max-width: 100%;
+    border-radius: 14px 14px 0 0;
+    max-height: 92vh;
+    padding: 24px 20px 32px;
+  }
+  .tree-modal__row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .tree-modal__btn {
+    padding: 16px;
+    font-size: 16px;
+  }
+  .tree-node-ctrl {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .tree-add-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tree-add-btn {
+    text-align: center;
+    padding: 16px;
+    font-size: 15px;
+  }
+}
+
+
+/* ── New tree button ── */
+.tree-edit-btn--new {
+  margin-left: 10px;
+  background: rgba(126,200,180,0.1);
+  border-color: rgba(126,200,180,0.3);
+  color: #7ec8b4;
+}
+.tree-edit-btn--new:hover {
+  background: rgba(126,200,180,0.18);
+  border-color: #7ec8b4;
+}
+
+
+/* ── Tree switcher ── */
+.tree-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.tree-switcher__label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--gold);
+}
+.tree-switcher__select {
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200,168,75,0.25);
+  border-radius: 6px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+}
+.tree-switcher__select:focus { border-color: var(--gold); }
+
+/* ── Dynamic tree ── */
+.tree-dynamic {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px 40px 60px;
+}
+
+/* ── Empty state ── */
+.tree-empty {
+  text-align: center;
+  padding: 80px 20px;
+}
+.tree-empty__icon { font-size: 48px; margin-bottom: 16px; }
+.tree-empty__text {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+.tree-empty__hint {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream-dim);
+}
+
+/* ── Node desc & link ── */
+.tree-node__desc {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--cream-dim);
+  font-style: italic;
+  margin-top: 2px;
+}
+.tree-node__link {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--gold);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.tree-node__link:hover { color: var(--gold-light); }
+
+
+/* ── Inline add button ── */
+.tree-modal__inline-btn {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 11px;
+  cursor: pointer;
+  margin-left: 6px;
+  text-decoration: underline;
+  font-family: var(--font-body);
+}
+.tree-modal__inline-btn:hover { color: var(--gold-light); }
+
+
+/* ── Add clan button in legend ── */
+.clan-legend__item--add {
+  border-style: dashed;
+  border-color: rgba(200,168,75,0.25);
+}
+.clan-legend__item--add:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.08);
+}
+.clan-legend__add-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--gold);
+  background: rgba(200,168,75,0.1);
+  border: 1px dashed rgba(200,168,75,0.4);
+  flex-shrink: 0;
+}
+
+
+/* ── Icon picker ── */
+.tcm-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.tcm-icon-opt {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid rgba(200,168,75,0.15);
+  background: rgba(255,255,255,0.03);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', sans-serif;
+  color: var(--cream);
+  -webkit-text-stroke: 0;
+}
+.tcm-icon-opt:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.1);
+  transform: scale(1.1);
+}
+.tcm-icon-opt--active {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.2);
+  box-shadow: 0 0 8px rgba(200,168,75,0.3);
+  color: var(--gold);
+}
+
+
+/* ── Generation add buttons ── */
+.tree-gen-add-btn {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 16px auto;
+  padding: 14px 20px;
+  background: transparent;
+  border: 2px dashed rgba(200,168,75,0.25);
+  border-radius: 8px;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+.tree-gen-add-btn:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.06);
+}
+
+/* ── Card add button inside generation ── */
+.tree-gen-card-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 110px;
+  height: 140px;
+  border: 2px dashed rgba(200,168,75,0.25);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gold);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+  align-self: flex-start;
+}
+.tree-gen-card-add:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.06);
+  transform: translateY(-3px);
+}
+
+@media (max-width: 560px) {
+  .tree-gen-add-btn {
+    max-width: 100%;
+    padding: 16px;
+    font-size: 15px;
+  }
+  .tree-gen-card-add {
+    width: 90px;
+    height: 120px;
+    font-size: 12px;
+  }
+}
+
+
+/* ── Profile picker list ── */
+.tree-profile-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tree-profile-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(200,168,75,0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+.tree-profile-item:hover {
+  border-color: var(--gold);
+  background: rgba(200,168,75,0.08);
+  transform: translateX(4px);
+}
+.tree-profile-item__photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(200,168,75,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+.tree-profile-item__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tree-profile-item__name {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--cream);
+  margin-bottom: 2px;
+}
+.tree-profile-item__dates {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--gold-dim);
+  letter-spacing: 0.05em;
+}

@@ -221,13 +221,14 @@
   function render(person, source) {
     document.title = `${person.name} — Память`;
 
-    // Если sections пусто — генерим автоматически (только если есть bio)
+    // Если sections пусто — генерим пустые блоки-заготовки (заполняются в edit mode)
     if (!person.sections || typeof person.sections !== 'object' || !Object.keys(person.sections).length) {
-      if (person.bio && person.bio.trim()) {
-        person.sections = autoSplitBioToSections(person);
-      } else {
-        person.sections = {};
-      }
+      const KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
+      const TITLES = ['Детство и юность', 'Образование', 'Профессиональный путь', 'Семья', 'Хобби и увлечения', 'Наследие'];
+      person.sections = {};
+      KEYS.forEach((key, i) => {
+        person.sections[key] = { title: TITLES[i], text: '', image: '' };
+      });
     }
 
     const bcName = document.getElementById('breadcrumb-name');
@@ -363,8 +364,7 @@
     /* ── INIT ALL WIDGETS ── */
     // Зебра-блоки (6 секций) — рисуем после вставки разметки
     const bioContainer = document.getElementById('bio-blocks-container');
-    if (bioContainer && person.sections && Object.keys(person.sections).length && window.PersonBlocks) {
-      // person-bio (основной текст) остаётся видимым — это описание/эпитафия
+    if (bioContainer && person.sections && window.PersonBlocks) {
       window.PersonBlocks.render(bioContainer, { sections: person.sections, quotes: person.quotes });
     }
 

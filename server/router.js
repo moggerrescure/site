@@ -691,6 +691,164 @@ async function uploadPhoto(req, res, params) {
 }
 
 /* ══════════════════════════════════════
+   FAMILY TREE
+   ══════════════════════════════════════ */
+
+/* ── GET /api/family-nodes — все узлы дерева ── */
+function getFamilyTrees(req, res) {
+  const rows = db.prepare("SELECT DISTINCT tree_id FROM family_nodes ORDER BY tree_id").all();
+  const trees = rows.map(r => r.tree_id);
+  if (!trees.includes('default')) trees.unshift('default');
+  send(res, 200, { ok: true, data: trees });
+}
+
+/* ── GET /api/family-clans ── */
+function getFamilyClans(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const treeId = (url.searchParams.get('treeId') || 'default').toString().slice(0, 50);
+  const rows = db.prepare('SELECT * FROM family_clans WHERE tree_id = ? ORDER BY created_at ASC').all(treeId);
+  send(res, 200, { ok: true, data: rows });
+}
+
+/* ── POST /api/family-clans ── */
+async function createFamilyClan(req, res) {
+  const body = await parseBody(req);
+  const id = (body.id || '').toString().trim().toLowerCase().replace(/[^a-zа-яё0-9]/gi, '-').slice(0, 30) || randomUUID().slice(0, 8);
+  const treeId = (body.treeId || 'default').toString().slice(0, 50);
+  const name = (body.name || '').toString().trim().slice(0, 100);
+  const color = (body.color || '#c8a84b').toString().slice(0, 20);
+  const icon = (body.icon || '✦').toString().slice(0, 4);
+  const description = (body.description || '').toString().trim().slice(0, 200);
+
+  if (!name) return send(res, 400, { ok: false, error: 'Название рода обязательно' });
+
+  try {
+    db.prepare('INSERT INTO family_clans (id, tree_id, name, color, icon, description) VALUES (?,?,?,?,?,?)').run(id, treeId, name, color, icon, description);
+    send(res, 201, { ok: true, data: { id, treeId, name, color, icon, description } });
+  } catch (e) {
+    send(res, 400, { ok: false, error: 'Род с таким ID уже существует' });
+  }
+}
+
+/* ── DELETE /api/family-clans/:id ── */
+function deleteFamilyClan(req, res, params) {
+  const clan = db.prepare('SELECT * FROM family_clans WHERE id = ?').get(params.id);
+  if (!clan) return send(res, 404, { ok: false, error: 'Clan not found' });
+  db.prepare('DELETE FROM family_clans WHERE id = ?').run(params.id);
+  send(res, 200, { ok: true });
+}
+
+function getFamilyNodes(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const treeId = (url.searchParams.get('treeId') || 'default').toString().slice(0, 50);
+
+  const rows = db.prepare(
+    'SELECT * FROM family_nodes WHERE tree_id = ? ORDER BY generation ASC, gen_order ASC'
+  ).all(treeId);
+
+  const nodes = rows.map(r => ({
+    id: r.id,
+    treeId: r.tree_id,
+    fullName: r.full_name,
+    years: r.years,
+    clanId: r.clan_id,
+    ageClass: r.age_class,
+    generation: r.generation,
+    genOrder: r.gen_order,
+    spouseId: r.spouse_id || null,
+    parentIds: (() => { try { return JSON.parse(r.parent_ids || '[]'); } catch { return []; } })(),
+    linkedProfileId: r.linked_profile_id || null,
+    photoUrl: r.photo_url || '',
+    description: r.description || '',
+  }));
+
+  send(res, 200, { ok: true, data: nodes });
+}
+
+/* ── POST /api/family-nodes — создать узел ── */
+async function createFamilyNode(req, res) {
+  const body = await parseBody(req);
+  const id = randomUUID();
+  const treeId = (body.treeId || 'default').toString().slice(0, 50);
+  const fullName = (body.fullName || '').toString().trim().slice(0, 200);
+  const years = (body.years || '').toString().trim().slice(0, 50);
+  const clanId = (body.clanId || 'ivanov').toString().slice(0, 30);
+  const ageClass = (body.ageClass === 'old' ? 'old' : 'young');
+  const generation = parseInt(body.generation, 10) || 0;
+  const genOrder = parseInt(body.genOrder, 10) || 0;
+  const spouseId = body.spouseId || null;
+  const parentIds = Array.isArray(body.parentIds) ? JSON.stringify(body.parentIds.slice(0, 4)) : '[]';
+  const linkedProfileId = body.linkedProfileId || null;
+  const photoUrl = (body.photoUrl || '').toString().slice(0, 500);
+  const description = (body.description || '').toString().trim().slice(0, 300);
+
+  db.prepare(`
+    INSERT INTO family_nodes (id, tree_id, full_name, years, clan_id, age_class, generation, gen_order, spouse_id, parent_ids, linked_profile_id, photo_url, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, treeId, fullName, years, clanId, ageClass, generation, genOrder, spouseId, parentIds, linkedProfileId, photoUrl, description);
+
+  // Если указан spouseId — обновляем встречную ссылку
+  if (spouseId) {
+    db.prepare("UPDATE family_nodes SET spouse_id = ? WHERE id = ?").run(id, spouseId);
+  }
+
+  const row = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(id);
+  send(res, 201, { ok: true, data: row });
+}
+
+/* ── PUT /api/family-nodes/:id — обновить узел ── */
+async function updateFamilyNode(req, res, params) {
+  const node = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
+  if (!node) return send(res, 404, { ok: false, error: 'Node not found' });
+
+  const body = await parseBody(req);
+  const fields = [];
+  const vals = [];
+
+  if (body.fullName !== undefined)        { fields.push('full_name = ?');         vals.push(body.fullName.toString().slice(0, 200)); }
+  if (body.years !== undefined)           { fields.push('years = ?');             vals.push(body.years.toString().slice(0, 50)); }
+  if (body.clanId !== undefined)          { fields.push('clan_id = ?');           vals.push(body.clanId.toString().slice(0, 30)); }
+  if (body.ageClass !== undefined)        { fields.push('age_class = ?');         vals.push(body.ageClass === 'old' ? 'old' : 'young'); }
+  if (body.generation !== undefined)      { fields.push('generation = ?');        vals.push(parseInt(body.generation, 10) || 0); }
+  if (body.genOrder !== undefined)        { fields.push('gen_order = ?');         vals.push(parseInt(body.genOrder, 10) || 0); }
+  if (body.spouseId !== undefined)        { fields.push('spouse_id = ?');         vals.push(body.spouseId || null); }
+  if (body.parentIds !== undefined)       { fields.push('parent_ids = ?');        vals.push(Array.isArray(body.parentIds) ? JSON.stringify(body.parentIds.slice(0, 4)) : '[]'); }
+  if (body.linkedProfileId !== undefined) { fields.push('linked_profile_id = ?'); vals.push(body.linkedProfileId || null); }
+  if (body.photoUrl !== undefined)        { fields.push('photo_url = ?');         vals.push(body.photoUrl.toString().slice(0, 500)); }
+  if (body.description !== undefined)     { fields.push('description = ?');       vals.push(body.description.toString().slice(0, 300)); }
+
+  if (!fields.length) return send(res, 400, { ok: false, error: 'Nothing to update' });
+
+  fields.push("updated_at = datetime('now')");
+  db.prepare(`UPDATE family_nodes SET ${fields.join(', ')} WHERE id = ?`).run(...vals, params.id);
+
+  const row = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
+  send(res, 200, { ok: true, data: row });
+}
+
+/* ── DELETE /api/family-nodes/:id ── */
+function deleteFamilyNode(req, res, params) {
+  const node = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
+  if (!node) return send(res, 404, { ok: false, error: 'Node not found' });
+
+  // Если у узла есть супруг — очищаем встречную ссылку
+  if (node.spouse_id) {
+    db.prepare("UPDATE family_nodes SET spouse_id = NULL WHERE id = ?").run(node.spouse_id);
+  }
+  // Очищаем parent_ids у детей
+  const children = db.prepare("SELECT id, parent_ids FROM family_nodes WHERE parent_ids LIKE ?").all(`%${params.id}%`);
+  children.forEach(c => {
+    try {
+      const parents = JSON.parse(c.parent_ids || '[]').filter(p => p !== params.id);
+      db.prepare("UPDATE family_nodes SET parent_ids = ? WHERE id = ?").run(JSON.stringify(parents), c.id);
+    } catch (_) {}
+  });
+
+  db.prepare('DELETE FROM family_nodes WHERE id = ?').run(params.id);
+  send(res, 200, { ok: true });
+}
+
+/* ══════════════════════════════════════
    MAIN DISPATCH
    ══════════════════════════════════════ */
 async function dispatch(req, res) {
@@ -773,6 +931,22 @@ async function dispatch(req, res) {
     }
     if ((p = matchRoute('/api/reviews/delete/:id', pathname))) {
       if (method === 'DELETE') { if (!checkAuth()) return; return deleteReview(req, res, p); }
+    }
+
+    /* ── /api/family-nodes ── */
+    if (method === 'GET'  && pathname === '/api/family-nodes') return getFamilyNodes(req, res);
+    if (method === 'POST' && pathname === '/api/family-nodes') return await createFamilyNode(req, res);
+    if (method === 'GET'  && pathname === '/api/family-trees') return getFamilyTrees(req, res);
+    if (method === 'GET'  && pathname === '/api/family-clans') return getFamilyClans(req, res);
+    if (method === 'POST' && pathname === '/api/family-clans') return await createFamilyClan(req, res);
+
+    if ((p = matchRoute('/api/family-clans/:id', pathname))) {
+      if (method === 'DELETE') return deleteFamilyClan(req, res, p);
+    }
+
+    if ((p = matchRoute('/api/family-nodes/:id', pathname))) {
+      if (method === 'PUT')    return await updateFamilyNode(req, res, p);
+      if (method === 'DELETE') return deleteFamilyNode(req, res, p);
     }
 
     /* ── 404 ── */

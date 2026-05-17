@@ -33,17 +33,20 @@
 
     let blocks;
     if (data?.sections && typeof data.sections === 'object') {
+      const isEditMode = new URLSearchParams(window.location.search).get('edit') === '1';
+
       // Сначала фиксированные блоки в правильном порядке
       blocks = BLOCK_SCHEMA
         .map(meta => {
           const sec = data.sections[meta.key];
           if (!sec) return null;
           const text = (sec.text ?? '').trim();
-          if (!text) return null;
+          // В edit mode показываем даже пустые блоки
+          if (!text && !isEditMode) return null;
           return {
             key:   meta.key,
             title: sec.title || meta.title,
-            text,
+            text:  text || '',
             image: sec.image || '',
           };
         })

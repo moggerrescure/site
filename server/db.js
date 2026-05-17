@@ -62,6 +62,34 @@ db.exec(`
     code       TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS family_nodes (
+    id                TEXT PRIMARY KEY,
+    tree_id           TEXT NOT NULL DEFAULT 'default',
+    full_name         TEXT NOT NULL DEFAULT '',
+    years             TEXT NOT NULL DEFAULT '',
+    clan_id           TEXT NOT NULL DEFAULT '',
+    age_class         TEXT NOT NULL DEFAULT 'young',
+    generation        INTEGER NOT NULL DEFAULT 0,
+    gen_order         INTEGER NOT NULL DEFAULT 0,
+    spouse_id         TEXT,
+    parent_ids        TEXT NOT NULL DEFAULT '[]',
+    linked_profile_id TEXT,
+    photo_url         TEXT,
+    description       TEXT NOT NULL DEFAULT '',
+    created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS family_clans (
+    id         TEXT PRIMARY KEY,
+    tree_id    TEXT NOT NULL DEFAULT 'default',
+    name       TEXT NOT NULL,
+    color      TEXT NOT NULL DEFAULT '#c8a84b',
+    icon       TEXT NOT NULL DEFAULT '✦',
+    description TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 module.exports = db;

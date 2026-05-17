@@ -267,8 +267,14 @@
   function addInsertButtons() {
     const container = document.getElementById('bio-blocks-container');
     if (!container) return;
-    const bioBlocks = container.querySelector('.bio-blocks');
-    if (!bioBlocks) return;
+    let bioBlocks = container.querySelector('.bio-blocks');
+
+    // Если .bio-blocks нет (пустая страница) — создаём
+    if (!bioBlocks) {
+      bioBlocks = document.createElement('div');
+      bioBlocks.className = 'bio-blocks';
+      container.appendChild(bioBlocks);
+    }
 
     const children = Array.from(bioBlocks.children);
 
