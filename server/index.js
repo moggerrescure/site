@@ -25,10 +25,11 @@ const STATIC_DIR = path.join(__dirname, '..'); // serve frontend from site/
 // Папка с данными Telegram-бота (WebP + JSON страниц)
 const BOT_DATA_DIR = path.join(__dirname, '..', '..', 'memorial-bot', 'data');
 
-const { dispatch, seedIfEmpty } = require('./router');
+const { dispatch, seedIfEmpty, seedFamilyDefaultIfEmpty } = require('./router');
 
 /* ── Seed database on first run ── */
 seedIfEmpty();
+seedFamilyDefaultIfEmpty();
 
 /* ── MIME types ── */
 const MIME = {

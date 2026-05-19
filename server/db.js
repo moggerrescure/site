@@ -90,6 +90,34 @@ db.exec(`
     description TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS family_trees (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS timeline_events (
+    id          TEXT PRIMARY KEY,
+    tree_id     TEXT NOT NULL DEFAULT 'default',
+    year        INTEGER NOT NULL,
+    month       INTEGER,
+    day         INTEGER,
+    type        TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    subtitle    TEXT NOT NULL DEFAULT '',
+    city        TEXT NOT NULL DEFAULT '',
+    icon        TEXT NOT NULL DEFAULT '',
+    node_id     TEXT,
+    profile_id  TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_timeline_tree_year ON timeline_events(tree_id, year);
+  CREATE INDEX IF NOT EXISTS idx_timeline_node ON timeline_events(node_id);
+  CREATE INDEX IF NOT EXISTS idx_timeline_profile ON timeline_events(profile_id);
+
+  INSERT OR IGNORE INTO family_trees (id, name) VALUES ('default', 'Основное');
 `);
 
 module.exports = db;

@@ -35,7 +35,11 @@
      ════════════════════════════════════════════ */
   editBtn.addEventListener('click', () => {
     if (!isEditMode) enterEditMode();
-    else exitEditMode();
+  });
+
+  // Кнопка выхода из edit mode
+  document.getElementById('tree-edit-exit')?.addEventListener('click', () => {
+    exitEditMode();
   });
 
   /* ════════════════════════════════════════════
@@ -899,8 +903,9 @@
      ════════════════════════════════════════════ */
   function enterEditMode() {
     isEditMode = true;
-    editBtn.textContent = '✕ Выйти из редактирования';
-    editBtn.classList.add('tree-edit-btn--active');
+    editBtn.style.display = 'none';
+    const toolbar = document.getElementById('tree-toolbar');
+    if (toolbar) toolbar.style.display = 'flex';
 
     if (currentTreeId !== 'default') {
       const dc = document.getElementById('tree-dynamic');
@@ -946,8 +951,9 @@
 
   function exitEditMode() {
     isEditMode = false;
-    editBtn.textContent = '✏️ Редактировать дерево';
-    editBtn.classList.remove('tree-edit-btn--active');
+    editBtn.style.display = '';
+    const toolbar = document.getElementById('tree-toolbar');
+    if (toolbar) toolbar.style.display = 'none';
     cancelConnectionMode();
     document.querySelectorAll('.tree-node-controls').forEach(el => el.remove());
     document.getElementById('tree-add-panel')?.remove();
