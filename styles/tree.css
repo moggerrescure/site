@@ -289,6 +289,8 @@ body.tree-page { overflow-x: hidden; }
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
+  filter: drop-shadow(0 0 2px currentColor);
+  opacity: 0.7;
 }
 
 /* ── LEGEND (bottom) ── */
@@ -1718,4 +1720,105 @@ body.tree-page { overflow-x: hidden; }
     padding: 12px 10px;
     font-size: 12px;
   }
+}
+
+
+/* ── Relative popup ── */
+.rp-section-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--gold);
+  margin-bottom: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(200,168,75,0.15);
+}
+.rp-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.rp-event {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(200,168,75,0.1);
+  border-radius: 6px;
+}
+.rp-event__year {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 400;
+  min-width: 40px;
+}
+.rp-event__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream);
+  flex: 1;
+}
+.rp-event__city {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--cream-dim);
+}
+.rp-event__del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.rp-event__del:hover { opacity: 1; }
+
+.rp-add-event {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.rp-add-event input {
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 6px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+}
+.rp-add-event input:focus { border-color: var(--gold); }
+.rp-ev-save {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+  background: rgba(200,168,75,0.15);
+  color: var(--gold);
+  font-size: 16px;
+  cursor: pointer;
+}
+.rp-ev-save:hover { background: rgba(200,168,75,0.3); }
+
+/* ── Gen label editable ── */
+.gen-label--editable {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.gen-label--editable:hover {
+  color: var(--gold);
+}
+
+
+/* ── Marriage circle ── */
+.marriage-circle {
+  transition: opacity 0.5s, r 0.3s;
+}
+.marriage-circle:hover {
+  r: 9;
 }

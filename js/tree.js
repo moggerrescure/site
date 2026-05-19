@@ -257,81 +257,103 @@
     let delay = 0.1;
 
     GENERATIONS.forEach((gen, gi) => {
-      /* Spouse connections — from BOTTOM of frames */
+      /* Spouse connections — одна горизонтальная линия между центрами + маленький кружок */
       gen.people.forEach(person => {
         if (person.spouseOf && person.id < person.spouseOf) {
           const a = nodeEls[person.id], b = nodeEls[person.spouseOf];
           if (!a || !b) return;
 
           const ca = getFrameCenter(a), cb = getFrameCenter(b);
-          /* Берём низ карточки, небольшая дуга вниз */
-          const x1 = ca.x, y1 = ca.bottom;
-          const x2 = cb.x, y2 = cb.bottom;
-          const drop = 36;
-
           const colors = clanColors(person.clanId);
-          const steps  = 32;
-          for (let s = 0; s < 3; s++) {
-            const phase = (s / 3) * Math.PI * 2;
-            let d = `M ${x1} ${y1}`;
-            for (let i = 1; i <= steps; i++) {
-              const t  = i / steps;
-              const bx = cubicB(x1, x1, x2, x2, t);
-              const by = cubicB(y1, y1 + drop, y2 + drop, y2, t);
-              const tx = cubicBd(x1, x1, x2, x2, t);
-              const ty = cubicBd(y1, y1 + drop, y2 + drop, y2, t);
-              const tl = Math.hypot(tx, ty) || 1;
-              const nx = -ty / tl;
-              const wave = Math.sin(t * Math.PI * 4 + phase) * 3;
-              d += ` L ${(bx + nx * wave).toFixed(1)} ${(by + nx * wave * 0).toFixed(1)}`;
-            }
-            const path = createThread(d, colors[s % colors.length], 1.2, delay);
-            path.dataset.kind = 'spouse';
-            path.dataset.a    = person.id;
-            path.dataset.b    = person.spouseOf;
-            path.dataset.clan = person.clanId;
-            svgEl.appendChild(path);
-            const key = `spouse:${person.id}::${person.spouseOf}`;
-            if (!threadEls[key]) threadEls[key] = [];
-            threadEls[key].push(path);
-          }
-          delay += 0.05;
+          const key = `spouse:${person.id}::${person.spouseOf}`;
+          threadEls[key] = [];
+
+          // Горизонтальная брачная линия — двойная (тонкая + толстая полупрозрачная)
+          const y = (ca.y + cb.y) / 2;
+          // Фоновая толстая полупрозрачная
+          const bgPath = createThread(`M ${ca.right} ${y} L ${cb.left} ${y}`, colors[0] + '33', 6, delay);
+          bgPath.dataset.kind = 'spouse'; bgPath.dataset.a = person.id; bgPath.dataset.b = person.spouseOf; bgPath.dataset.clan = person.clanId;
+          svgEl.appendChild(bgPath);
+          // Основная тонкая
+          const path = createThread(`M ${ca.right} ${y} L ${cb.left} ${y}`, colors[0], 1.5, delay);
+          path.dataset.kind = 'spouse'; path.dataset.a = person.id; path.dataset.b = person.spouseOf; path.dataset.clan = person.clanId;
+          svgEl.appendChild(path);
+          threadEls[key].push(bgPath, path);
+
+          // Маленький кружок посередине
+          const mx = (ca.x + cb.x) / 2;
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', mx);
+          circle.setAttribute('cy', y);
+          circle.setAttribute('r', '5');
+          circle.setAttribute('fill', '#f3e9c8');
+          circle.setAttribute('stroke', colors[0]);
+          circle.setAttribute('stroke-width', '1.5');
+          circle.classList.add('marriage-circle');
+          circle.dataset.a = person.id;
+          circle.dataset.b = person.spouseOf;
+          svgEl.appendChild(circle);
+
+          delay += 0.06;
         }
       });
 
       if (gi + 1 >= GENERATIONS.length) return;
 
-      /* Parent → child — from BOTTOM of parent, to BOTTOM of child (arc down) */
+      /* Parent → child — от кружка брачного союза (или центра одинокого родителя) к детям */
+      const processedPairs = new Set();
       Object.entries(gen.childrenMap || {}).forEach(([parentId, childIds]) => {
         const parentEl = nodeEls[parentId];
         if (!parentEl) return;
-        const cp = getFrameCenter(parentEl);
         const parentClan = personById[parentId]?.clanId || 'ivanov';
+        const spouse = personById[parentId]?.spouseOf;
 
-        childIds.forEach(childId => {
+        // Избегаем дублирования — обрабатываем пару один раз
+        const pairKey = spouse ? [parentId, spouse].sort().join(':') : parentId;
+        if (processedPairs.has(pairKey)) return;
+        processedPairs.add(pairKey);
+
+        // Собираем всех детей пары
+        let allChildIds = [...childIds];
+        if (spouse && gen.childrenMap[spouse]) {
+          gen.childrenMap[spouse].forEach(cid => { if (!allChildIds.includes(cid)) allChildIds.push(cid); });
+        }
+
+        // Якорь — кружок брачного союза (середина между супругами) или центр одинокого родителя
+        const cp = getFrameCenter(parentEl);
+        let anchorX, anchorY;
+        if (spouse && nodeEls[spouse]) {
+          const sp = getFrameCenter(nodeEls[spouse]);
+          anchorX = (cp.x + sp.x) / 2;
+          anchorY = (cp.y + sp.y) / 2;
+        } else {
+          anchorX = cp.x;
+          anchorY = cp.top;
+        }
+
+        const colors = clanColors(parentClan);
+
+        // Рисуем линии от якоря к каждому ребёнку
+        allChildIds.forEach(childId => {
           const childEl = nodeEls[childId];
           if (!childEl) return;
           const cc = getFrameCenter(childEl);
 
-          /* От низа родителя к низу ребёнка — дуга через пространство между рядами */
-          const x1 = cp.x, y1 = cp.bottom;
-          const x2 = cc.x, y2 = cc.bottom;
-          const midY = (y1 + y2) / 2 + 20;
+          // Плавная кривая Безье от якоря вверх к ребёнку (дети сверху, родители снизу)
+          const midY = anchorY + (cc.bottom - anchorY) * 0.5;
+          const r = 12;
+          const d = `M ${anchorX} ${anchorY} C ${anchorX} ${midY}, ${cc.x} ${midY}, ${cc.x} ${cc.bottom}`;
 
-          const colors = clanColors(parentClan);
-          const strands = braidedPath(x1, y1, x2, y2, 3, 3);
           const key = `parent:${parentId}->${childId}`;
           threadEls[key] = [];
-          strands.forEach((d, si) => {
-            const path = createThread(d, colors[si % colors.length], 1.4, delay);
-            path.dataset.kind = 'parent';
-            path.dataset.a    = parentId;
-            path.dataset.b    = childId;
-            path.dataset.clan = parentClan;
-            svgEl.appendChild(path);
-            threadEls[key].push(path);
-          });
-          delay += 0.12;
+          const path = createThread(d, colors[0], 1.4, delay);
+          path.dataset.kind = 'parent';
+          path.dataset.a = parentId;
+          path.dataset.b = childId;
+          path.dataset.clan = parentClan;
+          svgEl.appendChild(path);
+          threadEls[key].push(path);
+          delay += 0.08;
         });
       });
     });
@@ -588,12 +610,14 @@
       }
 
       if (clickTimers[id]) {
-        // double click → navigate
+        // double click → navigate or open popup
         clearTimeout(clickTimers[id]);
         delete clickTimers[id];
         const person = personById[id];
         if (person?.personPageId) {
           window.location.href = `person.html?id=${person.personPageId}`;
+        } else if (window.openRelativePopup) {
+          window.openRelativePopup(id);
         }
       } else {
         clickTimers[id] = setTimeout(() => {

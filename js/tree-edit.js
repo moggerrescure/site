@@ -400,7 +400,7 @@
       try {
         const r = await fetch(`${BASE}/api/family-nodes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nodeData) });
         const j = await r.json();
-        if (j.ok) { saved = true; close(); syncTimelineAndStats(); window.location.reload(); }
+        if (j.ok) { saved = true; close(); syncTimelineAndStats(); reloadTreeInPlace(); }
         else { errEl.textContent = j.error || 'Ошибка'; errEl.style.display = 'block'; }
       } catch (_) {}
 
@@ -410,7 +410,7 @@
         arr.push(node); saveLocalNodes(arr); allNodes = arr;
         syncTimelineAndStats(); close();
         const dc = document.getElementById('tree-dynamic');
-        if (dc) { renderDynamicTree(dc); } else { window.location.reload(); }
+        if (dc) { renderDynamicTree(dc); } else { reloadTreeInPlace(); }
       }
     });
   }
@@ -591,7 +591,6 @@
     loadNodes().then(() => { renderDynamicTree(dc); initLegendConnections(); });
   } else {
     /* Default дерево — статическое, но соединения тоже работают */
-    addClanButton();
 
     /* Вешаем соединение на статические карточки */
     function attachStaticNodeClicks() {
@@ -621,11 +620,16 @@
   function addClanButton() {
     const legend = document.getElementById('tree-clan-legend');
     if (!legend || legend.querySelector('.clan-legend__item--add')) return;
+    if (!isEditMode) return; // только в edit mode
     const btn = document.createElement('div');
     btn.className = 'clan-legend__item clan-legend__item--add';
     btn.innerHTML = `<span class="clan-legend__add-icon">+</span><div class="clan-legend__text"><strong>Добавить род</strong><span>Новая линия</span></div>`;
     btn.addEventListener('click', openAddClanModal);
     legend.appendChild(btn);
+  }
+
+  function removeClanButton() {
+    document.querySelector('.clan-legend__item--add')?.remove();
   }
 
   async function loadAndRenderClans() {
@@ -681,7 +685,7 @@
       try {
         const r = await fetch(`${BASE}/api/family-clans`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, color: document.getElementById('tcm-color').value, icon: document.getElementById('tcm-icon').value || '✦', description: document.getElementById('tcm-desc').value.trim(), treeId: currentTreeId }) });
         const j = await r.json();
-        if (j.ok) { syncTimelineAndStats(); window.location.reload(); } else alert(j.error || 'Ошибка');
+        if (j.ok) { syncTimelineAndStats(); reloadTreeInPlace(); } else alert(j.error || 'Ошибка');
       } catch (_) { alert('Сервер недоступен'); }
     });
     document.getElementById('tcm-icon-picker')?.addEventListener('click', e => {
@@ -708,7 +712,15 @@
     allNodes.forEach(n => { const g = n.generation || 0; if (!gens[g]) gens[g] = []; gens[g].push(n); });
     const GEN_LABELS = ['Прапрародители','Прародители','Родители','Наше поколение','Дети','Внуки'];
     let sorted = Object.keys(gens).map(Number).sort((a,b) => a-b);
-    if (!sorted.length && isEditMode) sorted.push(0);
+
+    // В edit mode: если дерево пустое — показываем 3 пустых поколения
+    if (isEditMode && !sorted.length) sorted = [0, 1, 2, 3];
+    // В edit mode: добавляем пустые поколения между существующими если их нет
+    if (isEditMode && sorted.length) {
+      const min = sorted[0], max = sorted[sorted.length - 1];
+      for (let i = min; i <= max; i++) { if (!sorted.includes(i)) sorted.push(i); }
+      sorted.sort((a, b) => a - b);
+    }
 
     let html = '';
     if (isEditMode) {
@@ -717,9 +729,19 @@
     }
 
     [...sorted].reverse().forEach(g => {
-      html += `<div class="gen-label">${GEN_LABELS[g] || 'Поколение '+g}</div>`;
+      const label = GEN_LABELS[g] || 'Поколение '+g;
+      const people = gens[g] || [];
+
+      // В обычном режиме пропускаем пустые поколения
+      if (!isEditMode && !people.length) return;
+
+      if (isEditMode) {
+        html += `<div class="gen-label gen-label--editable" data-gen="${g}"><span class="gen-label__text">${label}</span><button class="gen-label__edit" data-gen="${g}" title="Переименовать">✏️</button></div>`;
+      } else {
+        html += `<div class="gen-label">${label}</div>`;
+      }
       html += `<div class="gen-row" data-gen="${g}">`;
-      (gens[g] || []).forEach(node => {
+      people.forEach(node => {
         const name   = (node.full_name || node.fullName || '').replace(/\n/g,'<br/>');
         const photo  = node.photo_url || node.photoUrl || '';
         const linked = node.linked_profile_id || node.linkedProfileId || '';
@@ -759,7 +781,7 @@
     /* Обработчики edit-кнопок */
     if (isEditMode) {
       container.querySelectorAll('.tree-gen-add-btn, .tree-gen-card-add').forEach(b =>
-        b.addEventListener('click', () => openNodeModal(null, 'stub', parseInt(b.dataset.gen, 10)))
+        b.addEventListener('click', () => openCardTypeChooser(parseInt(b.dataset.gen, 10)))
       );
       container.querySelectorAll('.tree-node-ctrl').forEach(b =>
         b.addEventListener('click', e => {
@@ -907,6 +929,9 @@
     const toolbar = document.getElementById('tree-toolbar');
     if (toolbar) toolbar.style.display = 'flex';
 
+    // Показываем кнопку "Добавить род" в легенде
+    addClanButton();
+
     if (currentTreeId !== 'default') {
       const dc = document.getElementById('tree-dynamic');
       if (dc) renderDynamicTree(dc);
@@ -954,6 +979,8 @@
     editBtn.style.display = '';
     const toolbar = document.getElementById('tree-toolbar');
     if (toolbar) toolbar.style.display = 'none';
+    // Убираем кнопку "Добавить род"
+    document.querySelector('.clan-legend__item--add')?.remove();
     cancelConnectionMode();
     document.querySelectorAll('.tree-node-controls').forEach(el => el.remove());
     document.getElementById('tree-add-panel')?.remove();
@@ -1035,6 +1062,15 @@
     return allNodes;
   }
 
+  /* Перезагрузка дерева без выхода из edit mode */
+  async function reloadTreeInPlace() {
+    await loadNodes();
+    const dc = document.getElementById('tree-dynamic');
+    if (dc) {
+      renderDynamicTree(dc);
+    }
+    // Для default дерева — просто обновляем (статика не перерисовывается без reload)
+  }
 
 
   /* ════════════════════════════════════════════
@@ -1174,7 +1210,7 @@
         const url = isNew ? `${BASE}/api/family-nodes` : `${BASE}/api/family-nodes/${nodeId}`;
         const r = await fetch(url, { method: isNew ? 'POST' : 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
         const j = await r.json();
-        if (j.ok) { saved = true; syncTimelineAndStats(); window.location.reload(); }
+        if (j.ok) { saved = true; syncTimelineAndStats(); reloadTreeInPlace(); }
         else { err.textContent = j.error || 'Ошибка'; err.style.display = 'block'; }
       } catch (_) {}
 
@@ -1220,7 +1256,7 @@
         try {
           const r = await fetch(`${BASE}/api/family-nodes`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
           const j = await r.json();
-          if (j.ok) { syncTimelineAndStats(); window.location.reload(); } else alert(j.error||'Ошибка');
+          if (j.ok) { syncTimelineAndStats(); reloadTreeInPlace(); } else alert(j.error||'Ошибка');
         } catch (_) {
           const n = {...data, id:'local-'+Date.now()}; const arr = getLocalNodes(); arr.push(n); saveLocalNodes(arr); allNodes.push(n);
           syncTimelineAndStats(); close(); const dc=document.getElementById('tree-dynamic'); if (dc) renderDynamicTree(dc);
@@ -1376,5 +1412,156 @@
   }
 
   setTimeout(syncTimelineAndStats, 900);
+
+  /* ══════════════════════════════════════
+     ВЫБОР ТИПА КАРТОЧКИ
+     ══════════════════════════════════════ */
+  function openCardTypeChooser(presetGen) {
+    document.getElementById('card-type-chooser')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tree-modal-overlay';
+    overlay.id = 'card-type-chooser';
+    overlay.innerHTML = `
+      <div class="tree-modal" style="max-width:420px;text-align:center;">
+        <button class="tree-modal__close" id="ctc-close">×</button>
+        <h2 class="tree-modal__title">Какую карточку добавить?</h2>
+        <div style="display:flex;gap:16px;margin-top:20px;">
+          <button class="ctc-option" id="ctc-memory">
+            <span class="ctc-option__icon">📜</span>
+            <span class="ctc-option__title">Страница памяти</span>
+            <span class="ctc-option__desc">Для ушедших — полная страница с биографией</span>
+          </button>
+          <button class="ctc-option" id="ctc-relative">
+            <span class="ctc-option__icon">👤</span>
+            <span class="ctc-option__title">Родственник</span>
+            <span class="ctc-option__desc">Для живых — карточка с событиями</span>
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    document.getElementById('ctc-close').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+    document.getElementById('ctc-memory').addEventListener('click', () => {
+      close();
+      openNodeModal(null, 'linked', presetGen);
+    });
+    document.getElementById('ctc-relative').addEventListener('click', () => {
+      close();
+      openNodeModal(null, 'stub', presetGen);
+    });
+  }
+
+  /* ══════════════════════════════════════
+     ПОПАП КАРТОЧКИ РОДСТВЕННИКА (с событиями)
+     ══════════════════════════════════════ */
+  window.openRelativePopup = async function(nodeId) {
+    if (!nodeId) return;
+    await loadNodes();
+    const node = allNodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    document.getElementById('relative-popup')?.remove();
+
+    const name = node.full_name || node.fullName || 'Без имени';
+    const years = node.years || '';
+    const desc = node.description || '';
+    const photo = node.photo_url || node.photoUrl || '';
+
+    // Загружаем события этого узла
+    let events = [];
+    try {
+      const r = await fetch(`${BASE}/api/timeline-events?treeId=${encodeURIComponent(currentTreeId)}&nodeId=${nodeId}`);
+      const j = await r.json();
+      if (j.ok) events = j.data.filter(e => e.type !== 'birth' && e.type !== 'death');
+    } catch (_) {}
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tree-modal-overlay';
+    overlay.id = 'relative-popup';
+
+    const eventsHTML = events.length
+      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${e.year}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}">🗑</button></div>`).join('')
+      : '<p style="color:var(--cream-dim);font-size:13px;text-align:center;">Нет событий</p>';
+
+    overlay.innerHTML = `
+      <div class="tree-modal" style="max-width:520px;">
+        <button class="tree-modal__close" id="rp-close">×</button>
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;">
+          <div style="width:80px;height:80px;border-radius:8px;overflow:hidden;background:rgba(200,168,75,0.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            ${photo ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;"/>` : '<span style="font-size:32px;">👤</span>'}
+          </div>
+          <div>
+            <h2 class="tree-modal__title" style="margin-bottom:4px;">${name}</h2>
+            <p style="font-family:var(--font-ui);font-size:12px;color:var(--gold);letter-spacing:0.1em;">${years}</p>
+            ${desc ? `<p style="font-family:var(--font-body);font-size:13px;color:var(--cream-dim);margin-top:6px;">${desc}</p>` : ''}
+          </div>
+        </div>
+
+        <div class="rp-section-title">События жизни</div>
+        <div class="rp-events" id="rp-events">${eventsHTML}</div>
+
+        <div class="rp-add-event" id="rp-add-event" style="display:none;">
+          <input type="number" id="rp-ev-year" placeholder="Год" min="1800" max="2030" style="width:70px;"/>
+          <input type="text" id="rp-ev-title" placeholder="Событие (свадьба, переезд...)" style="flex:1;"/>
+          <input type="text" id="rp-ev-city" placeholder="Город" style="width:100px;"/>
+          <button class="rp-ev-save" id="rp-ev-save">✓</button>
+        </div>
+        <button class="tree-tool" id="rp-add-btn" style="width:100%;margin-top:12px;">+ Добавить событие</button>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          ${isEditMode ? `<button class="tree-tool" id="rp-edit-btn">✏️ Редактировать</button>` : ''}
+          <button class="tree-modal__btn tree-modal__btn--cancel" id="rp-close2" style="flex:1;">Закрыть</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    // Закрытие
+    const close = () => overlay.remove();
+    document.getElementById('rp-close').addEventListener('click', close);
+    document.getElementById('rp-close2').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+    // Кнопка редактирования → открывает полную модалку
+    document.getElementById('rp-edit-btn')?.addEventListener('click', () => { close(); openNodeModal(nodeId, 'edit'); });
+
+    // Добавление события
+    const addBtn = document.getElementById('rp-add-btn');
+    const addForm = document.getElementById('rp-add-event');
+    addBtn.addEventListener('click', () => { addForm.style.display = 'flex'; addBtn.style.display = 'none'; document.getElementById('rp-ev-year')?.focus(); });
+
+    document.getElementById('rp-ev-save')?.addEventListener('click', async () => {
+      const year = parseInt(document.getElementById('rp-ev-year').value, 10);
+      const title = document.getElementById('rp-ev-title').value.trim();
+      const city = document.getElementById('rp-ev-city').value.trim();
+      if (!year || !title) return;
+
+      try {
+        const r = await fetch(`${BASE}/api/timeline-events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ treeId: currentTreeId, year, type: 'custom', title, city, nodeId }),
+        });
+        const j = await r.json();
+        if (j.ok) { close(); window.openRelativePopup(nodeId); }
+      } catch (_) {}
+    });
+
+    // Удаление событий
+    overlay.querySelectorAll('.rp-event__del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const eid = btn.dataset.eid;
+        try {
+          await fetch(`${BASE}/api/timeline-events/${eid}`, { method: 'DELETE' });
+          close(); window.openRelativePopup(nodeId);
+        } catch (_) {}
+      });
+    });
+  };
 
 })();
