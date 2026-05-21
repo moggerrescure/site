@@ -14,9 +14,557 @@
   const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
   let isEditMode = false;
   let allNodes   = [];
+  let clansCache = {};
 
   const urlParams   = new URLSearchParams(window.location.search);
   let currentTreeId = urlParams.get('tree') || 'default';
+
+  /* ── HISTORY IS HANDLED EXCLUSIVELY VIA PERSONAL EVENTS ── */
+
+  /* ── INTERACTIVE TIMELINE TOOLTIP BUILDER ── */
+  function getPersonTimelineHtml(person) {
+    if (!person || !person.years) return '';
+    const match = person.years.match(/(\d{4})[^\d]*(\d{4})?/);
+    if (!match) return '';
+    const birth = parseInt(match[1]);
+    const isOngoing = (person.years.endsWith('–') || person.years.endsWith('-') || person.years.endsWith('—'));
+    const death = match[2] ? parseInt(match[2]) : null;
+    const deathYear = death || new Date().getFullYear();
+    
+    // 1. Birth
+    const events = [{ year: birth, text: 'Рождение', type: 'life' }];
+    
+    // 2. Spouse & Marriage
+    let spouseId = person.spouseOf || person.spouse_id || person.spouseId || null;
+    if (!spouseId && typeof getLocalConnections === 'function') {
+      try {
+        const localConns = getLocalConnections();
+        const conn = localConns.find(c => c.type === 'marriage' && (c.a === person.id || c.b === person.id));
+        if (conn) {
+          spouseId = conn.a === person.id ? conn.b : conn.a;
+        }
+      } catch(e) {}
+    }
+    
+    const cleanName = (nameStr) => (nameStr || '').replace(/\n/g, ' ').trim();
+    
+    let spouseName = '';
+    if (spouseId) {
+      let spouseNode = null;
+      if (typeof personById !== 'undefined' && personById[spouseId]) {
+        spouseNode = personById[spouseId];
+      } else if (typeof allNodes !== 'undefined') {
+        spouseNode = allNodes.find(n => n.id === spouseId);
+      }
+      if (spouseNode) {
+        spouseName = cleanName(spouseNode.name || spouseNode.full_name || spouseNode.fullName);
+      }
+    }
+    
+    // Collect children to estimate marriage and add child birth events
+    const childBirthYears = [];
+    const childrenEvents = [];
+    
+    if (typeof GENERATIONS !== 'undefined') {
+      GENERATIONS.forEach(gen => {
+        if (gen.childrenMap) {
+          const list = gen.childrenMap[person.id] || (spouseId && gen.childrenMap[spouseId]) || [];
+          list.forEach(cid => {
+            const childNode = personById[cid];
+            if (childNode) {
+              const cName = cleanName(childNode.name);
+              const cMatch = childNode.years ? childNode.years.match(/(\d{4})/) : null;
+              if (cMatch) {
+                const cBorn = parseInt(cMatch[1]);
+                childBirthYears.push(cBorn);
+                childrenEvents.push({ year: cBorn, text: `Рождение ребенка (${cName})`, type: 'life' });
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    if (typeof allNodes !== 'undefined') {
+      allNodes.forEach(n => {
+        let pids = [];
+        try {
+          if (n.parent_ids) pids = typeof n.parent_ids === 'string' ? JSON.parse(n.parent_ids) : n.parent_ids;
+          else if (n.parentIds) pids = typeof n.parentIds === 'string' ? JSON.parse(n.parentIds) : n.parentIds;
+        } catch(e) {}
+        if (Array.isArray(pids) && (pids.includes(person.id) || (spouseId && pids.includes(spouseId)))) {
+          const cName = cleanName(n.name || n.full_name || n.fullName);
+          const cMatch = n.years ? n.years.match(/(\d{4})/) : null;
+          if (cMatch) {
+            const cBorn = parseInt(cMatch[1]);
+            childBirthYears.push(cBorn);
+            childrenEvents.push({ year: cBorn, text: `Рождение ребенка (${cName})`, type: 'life' });
+          }
+        }
+      });
+    }
+    
+    events.push(...childrenEvents);
+    
+    // Determine Marriage Year
+    if (spouseId) {
+      let marriageYear = null;
+      try {
+        const custom = JSON.parse(localStorage.getItem('memory_custom_events') || '[]');
+        const mEvent = custom.find(e => 
+          (e._nodeId === person.id || e.nodeId === person.id) && 
+          (e.type === 'marriage' || /брак|свадьба|женитьб|венчан/i.test(e.title || '') || /брак|свадьба|женитьб|венчан/i.test(e.description || ''))
+        );
+        if (mEvent) {
+          marriageYear = parseInt(mEvent.year);
+        }
+      } catch(e) {}
+      
+      if (!marriageYear) {
+        childBirthYears.sort((a, b) => a - b);
+        if (childBirthYears.length > 0) {
+          marriageYear = Math.max(birth + 18, childBirthYears[0] - 1);
+        } else {
+          marriageYear = birth + 25;
+        }
+      }
+      
+      marriageYear = Math.min(marriageYear, deathYear);
+      marriageYear = Math.max(marriageYear, birth + 18);
+      
+      events.push({ year: marriageYear, text: `Брак с ${spouseName || 'супругом(ой)'}`, type: 'marriage' });
+    }
+    
+    // 3. Custom events
+    try {
+      const custom = JSON.parse(localStorage.getItem('memory_custom_events') || '[]');
+      custom.forEach(e => {
+        if ((e._nodeId === person.id || e.nodeId === person.id) && e.type !== 'birth' && e.type !== 'death') {
+          const cy = parseInt(e.year);
+          if (cy >= birth && cy <= deathYear) {
+            events.push({ year: cy, text: e.title, type: 'custom' });
+          }
+        }
+      });
+    } catch(e) {}
+    
+    // 4. Death or Present day
+    if (death) {
+      events.push({ year: death, text: 'Уход из жизни', type: 'life' });
+    } else if (isOngoing) {
+      events.push({ year: new Date().getFullYear(), text: 'Наши дни', type: 'life' });
+    }
+    
+    events.sort((a, b) => a.year - b.year);
+    
+    // De-duplicate events by year + text
+    const uniqueEvents = [];
+    const seen = new Set();
+    events.forEach(ev => {
+      const key = `${ev.year}_${ev.text}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueEvents.push(ev);
+      }
+    });
+    
+    return `
+      <div class="tree-tooltip__mini-timeline">
+        ${uniqueEvents.map(ev => `
+          <div class="tree-tooltip__event ${ev.type === 'custom' ? 'tree-tooltip__event--custom' : ev.type === 'marriage' ? 'tree-tooltip__event--marriage' : ''}">
+            <span class="tree-tooltip__event-year ${ev.type === 'custom' ? 'tree-tooltip__event-year--custom' : ev.type === 'marriage' ? 'tree-tooltip__event-year--marriage' : ''}">${ev.year}</span>
+            <span class="tree-tooltip__event-text">${ev.text}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  /* ── PREMIUM GLASSMORPHIC CUSTOM PROMPT ── */
+  function showCustomPrompt(title, placeholder, onConfirm) {
+    const old = document.getElementById('custom-prompt-modal');
+    if (old) old.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'custom-prompt-modal';
+    backdrop.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 15000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    `;
+
+    const panel = document.createElement('div');
+    panel.style.cssText = `
+      background: rgba(18, 18, 18, 0.85);
+      border: 1px solid rgba(200, 168, 75, 0.3);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+      font-family: var(--font-body);
+      color: var(--cream);
+    `;
+
+    panel.innerHTML = `
+      <h3 style="margin-top:0;font-family:var(--font-display);font-size:20px;color:var(--gold-light);margin-bottom:12px;">${title}</h3>
+      <input type="text" id="custom-prompt-input" placeholder="${placeholder}" style="
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        color: #fff;
+        font-size: 15px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+        outline: none;
+        transition: border-color 0.3s;
+      " />
+      <div style="display:flex;justify-content:flex-end;gap:12px;">
+        <button id="custom-prompt-cancel" style="
+          padding: 8px 16px;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.15);
+          color: var(--cream-dim);
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background 0.3s;
+        ">Отмена</button>
+        <button id="custom-prompt-ok" style="
+          padding: 8px 20px;
+          background: var(--gold);
+          border: none;
+          color: #121212;
+          font-weight: 600;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background 0.3s;
+        ">OK</button>
+      </div>
+    `;
+
+    backdrop.appendChild(panel);
+    document.body.appendChild(backdrop);
+
+    const input = panel.querySelector('#custom-prompt-input');
+    input.focus();
+
+    requestAnimationFrame(() => {
+      backdrop.style.opacity = '1';
+      panel.style.transform = 'scale(1)';
+    });
+
+    const close = () => {
+      backdrop.style.opacity = '0';
+      panel.style.transform = 'scale(0.9)';
+      setTimeout(() => backdrop.remove(), 300);
+    };
+
+    const handleConfirm = () => {
+      const val = input.value.trim();
+      if (val) {
+        onConfirm(val);
+      }
+      close();
+    };
+
+    panel.querySelector('#custom-prompt-cancel').addEventListener('click', close);
+    panel.querySelector('#custom-prompt-ok').addEventListener('click', handleConfirm);
+    
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleConfirm();
+      if (e.key === 'Escape') close();
+    });
+
+    input.addEventListener('focus', () => {
+      input.style.borderColor = 'var(--gold)';
+    });
+    input.addEventListener('blur', () => {
+      input.style.borderColor = 'rgba(255,255,255,0.1)';
+    });
+  }
+
+  /* ── CUSTOM CONNECTION MODAL ── */
+  /* ── CUSTOM CONNECTION MODAL ── */
+  function showConnectionTypeModal(idA, idB, clickX, clickY, onConfirm, onCancel) {
+    const old = document.getElementById('connection-type-modal');
+    if (old) old.remove();
+    const oldBackdrop = document.getElementById('connection-modal-backdrop');
+    if (oldBackdrop) oldBackdrop.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'connection-modal-backdrop';
+    backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:none;pointer-events:auto;';
+
+    const modal = document.createElement('div');
+    modal.id = 'connection-type-modal';
+    modal.className = 'connection-modal';
+    modal.style.cssText = `
+      position: absolute;
+      left: ${clickX}px;
+      top: ${clickY}px;
+      transform: translate(-50%, -50%);
+      z-index: 10000;
+      pointer-events: auto;
+    `;
+    modal.innerHTML = `
+      <div class="connection-modal__content connection-modal__content--popup">
+        <h3 class="connection-modal__title">Тип соединения</h3>
+        <div class="connection-modal__options">
+          <button class="connection-modal__btn" data-type="spouse">💍 Брак</button>
+          <button class="connection-modal__btn" data-type="parent">🧬 Родство</button>
+          <button class="connection-modal__btn" data-type="kin">🌿 Ветвь</button>
+        </div>
+        <div class="connection-modal__colors-label">Цвет нити:</div>
+        <div class="connection-modal__colors">
+          <span class="connection-color-dot connection-color-dot--selected" style="background:#c8a84b;" data-color="#c8a84b"></span>
+          <span class="connection-color-dot" style="background:#7ec8b4;" data-color="#7ec8b4"></span>
+          <span class="connection-color-dot" style="background:#c87e7e;" data-color="#c87e7e"></span>
+          <span class="connection-color-dot" style="background:#4b8cc8;" data-color="#4b8cc8"></span>
+          <input type="color" id="connection-custom-color" value="#c8a84b" style="width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;padding:0;background:none;" />
+        </div>
+        <button class="connection-modal__btn connection-modal__btn--cancel" id="connection-cancel-btn">Отмена</button>
+      </div>`;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+
+    const rect = modal.getBoundingClientRect();
+    let left = clickX;
+    let top = clickY;
+    if (left - rect.width / 2 < 10) left = rect.width / 2 + 10;
+    if (left + rect.width / 2 > window.innerWidth - 10) left = window.innerWidth - rect.width / 2 - 10;
+    if (top - rect.height / 2 < 10) top = rect.height / 2 + 10;
+    if (top + rect.height / 2 > window.innerHeight - 10) top = window.innerHeight - rect.height / 2 - 10;
+
+    modal.style.left = `${left + window.scrollX}px`;
+    modal.style.top = `${top + window.scrollY}px`;
+
+    let selectedColor = '#c8a84b';
+    const dots = modal.querySelectorAll('.connection-color-dot');
+    const customPicker = modal.querySelector('#connection-custom-color');
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        dots.forEach(d => d.classList.remove('connection-color-dot--selected'));
+        dot.classList.add('connection-color-dot--selected');
+        selectedColor = dot.dataset.color;
+        customPicker.value = selectedColor;
+      });
+    });
+    customPicker.addEventListener('input', (e) => {
+      dots.forEach(d => d.classList.remove('connection-color-dot--selected'));
+      selectedColor = e.target.value;
+    });
+    modal.querySelectorAll('.connection-modal__options button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        onConfirm(btn.dataset.type, selectedColor);
+        modal.remove();
+        backdrop.remove();
+      });
+    });
+    const handleCancel = () => {
+      onCancel();
+      modal.remove();
+      backdrop.remove();
+    };
+    modal.querySelector('#connection-cancel-btn').addEventListener('click', handleCancel);
+    backdrop.addEventListener('click', handleCancel);
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') { handleCancel(); document.removeEventListener('keydown', handleEsc); }
+    };
+    document.addEventListener('keydown', handleEsc);
+  }
+
+  /* ── BARYCENTRIC LAYOUT SORTING ── */
+  function sortDynamicGenerations(gens) {
+    const sortedGenIndices = Object.keys(gens).map(Number).sort((a,b) => a-b);
+    if (sortedGenIndices.length === 0) return;
+
+    const firstGenIdx = sortedGenIndices[0];
+    gens[firstGenIdx] = groupSpousesDynamic(gens[firstGenIdx]);
+
+    for (let i = 1; i < sortedGenIndices.length; i++) {
+      const g = sortedGenIndices[i];
+      const prevG = sortedGenIndices[i - 1];
+      const prevPeople = gens[prevG] || [];
+      const parentIndices = {};
+      prevPeople.forEach((p, idx) => { parentIndices[p.id] = idx; });
+
+      const people = gens[g] || [];
+      const weights = {};
+
+      people.forEach((p, idx) => {
+        let pids = [];
+        try {
+          if (p.parent_ids) {
+            pids = typeof p.parent_ids === 'string' ? JSON.parse(p.parent_ids) : p.parent_ids;
+          } else if (p.parentIds) {
+            pids = typeof p.parentIds === 'string' ? JSON.parse(p.parentIds) : p.parentIds;
+          }
+        } catch(e) {
+          pids = [];
+        }
+        if (!Array.isArray(pids)) pids = [];
+
+        let weight = 0, count = 0;
+        pids.forEach(pid => {
+          if (parentIndices[pid] !== undefined) {
+            weight += parentIndices[pid];
+            count++;
+          }
+        });
+        weights[p.id] = count > 0 ? weight / count : idx;
+      });
+
+      const paired = new Set();
+      people.forEach(p => {
+        if (paired.has(p.id)) return;
+        const spouseId = p.spouse_id || p.spouseId;
+        if (spouseId && !paired.has(spouseId)) {
+          const spouse = people.find(sp => sp.id === spouseId);
+          if (spouse) {
+            const w1 = weights[p.id] !== undefined ? weights[p.id] : 0;
+            const w2 = weights[spouse.id] !== undefined ? weights[spouse.id] : 0;
+            const avg = (w1 + w2) / 2;
+            weights[p.id] = avg - 0.1;
+            weights[spouse.id] = avg + 0.1;
+            paired.add(p.id);
+            paired.add(spouseId);
+          }
+        }
+      });
+
+      people.sort((a, b) => (weights[a.id] ?? 0) - (weights[b.id] ?? 0));
+      gens[g] = groupSpousesDynamic(people);
+    }
+  }
+
+  function groupSpousesDynamic(people) {
+    const result = [];
+    const visited = new Set();
+    people.forEach(p => {
+      if (visited.has(p.id)) return;
+      result.push(p);
+      visited.add(p.id);
+      const spouseId = p.spouse_id || p.spouseId;
+      if (spouseId) {
+        const spouse = people.find(sp => sp.id === spouseId);
+        if (spouse && !visited.has(spouse.id)) {
+          result.push(spouse);
+          visited.add(spouse.id);
+        }
+      }
+    });
+    return result;
+  }
+
+  /* ── TOOLTIP DOM ELEMENT ── */
+  let tooltip = document.querySelector('.tree-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.className = 'tree-tooltip';
+    tooltip.style.cssText = 'position:fixed;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:200';
+    document.body.appendChild(tooltip);
+  }
+
+  /* ── LINEAGE HIGHLIGHT DYNAMIC ── */
+  let highlightedDynamicId = null;
+  function highlightDynamicNode(id) {
+    const container = document.getElementById('tree-dynamic');
+    if (!container) return;
+    
+    highlightedDynamicId = id;
+    container.classList.add('has-highlight');
+    
+    const parentsOf = {};
+    const childrenOf = {};
+    const spouseOf = {};
+    
+    allNodes.forEach(n => {
+      const spouseId = n.spouse_id || n.spouseId;
+      if (spouseId) spouseOf[n.id] = spouseId;
+      
+      let pids = [];
+      try {
+        if (n.parent_ids) pids = typeof n.parent_ids === 'string' ? JSON.parse(n.parent_ids) : n.parent_ids;
+        else if (n.parentIds) pids = typeof n.parentIds === 'string' ? JSON.parse(n.parentIds) : n.parentIds;
+      } catch(e) {}
+      if (Array.isArray(pids)) {
+        pids.forEach(pid => {
+          parentsOf[n.id] = parentsOf[n.id] || [];
+          if (!parentsOf[n.id].includes(pid)) parentsOf[n.id].push(pid);
+          
+          childrenOf[pid] = childrenOf[pid] || [];
+          if (!childrenOf[pid].includes(n.id)) childrenOf[pid].push(n.id);
+        });
+      }
+    });
+    
+    function getAncestors(nid, acc = new Set()) {
+      (parentsOf[nid] || []).forEach(p => { if (!acc.has(p)) { acc.add(p); getAncestors(p, acc); } });
+      return acc;
+    }
+    function getDescendants(nid, acc = new Set()) {
+      (childrenOf[nid] || []).forEach(c => { if (!acc.has(c)) { acc.add(c); getDescendants(c, acc); } });
+      return acc;
+    }
+    
+    const ancestors = getAncestors(id);
+    const descendants = getDescendants(id);
+    const spouse = spouseOf[id];
+    const lineageSet = new Set([id, ...ancestors, ...descendants]);
+    if (spouse) lineageSet.add(spouse);
+    
+    container.querySelectorAll('.tree-node').forEach(el => {
+      const nid = el.dataset.id;
+      el.classList.remove('tree-node--active', 'tree-node--ancestor', 'tree-node--descendant', 'tree-node--dim');
+      if (nid === id || nid === spouse) el.classList.add('tree-node--active');
+      else if (ancestors.has(nid)) el.classList.add('tree-node--ancestor');
+      else if (descendants.has(nid)) el.classList.add('tree-node--descendant');
+      else el.classList.add('tree-node--dim');
+    });
+    
+    const svg = container.querySelector('.tree-dynamic-svg');
+    if (svg) {
+      svg.querySelectorAll('path').forEach(p => {
+        const a = p.dataset.a || p.getAttribute('data-a');
+        const b = p.dataset.b || p.getAttribute('data-b');
+        if (a && b) {
+          const isActive = lineageSet.has(a) && lineageSet.has(b);
+          p.classList.add(isActive ? 'thread-path--active' : 'thread-path--dim');
+        } else {
+          p.classList.add('thread-path--dim');
+        }
+      });
+    }
+  }
+  
+  function clearHighlightDynamic() {
+    highlightedDynamicId = null;
+    const container = document.getElementById('tree-dynamic');
+    if (!container) return;
+    container.classList.remove('has-highlight');
+    container.querySelectorAll('.tree-node').forEach(el => {
+      el.classList.remove('tree-node--active', 'tree-node--ancestor', 'tree-node--descendant', 'tree-node--dim');
+    });
+    const svg = container.querySelector('.tree-dynamic-svg');
+    if (svg) {
+      svg.querySelectorAll('path').forEach(p => {
+        p.classList.remove('thread-path--active', 'thread-path--dim');
+      });
+    }
+  }
 
   /* ── localStorage helpers ── */
   const NODES_KEY = () => `tree_nodes_${currentTreeId}`;
@@ -434,8 +982,8 @@
         const lineEl = item.querySelector('.tree-legend__line');
         if (!lineEl) return;
         let type = 'line';
-        if (lineEl.classList.contains('tree-legend__line--braid')) type = 'marriage';
-        else if (lineEl.classList.contains('tree-legend__line--wood')) type = 'parent';
+        if (lineEl.classList.contains('tree-legend__line--braid') || lineEl.classList.contains('tree-legend__line--marriage')) type = 'marriage';
+        else if (lineEl.classList.contains('tree-legend__line--wood') || lineEl.classList.contains('tree-legend__line--kinship')) type = 'parent';
 
         if (connectionMode === type) { cancelConnectionMode(); return; }
         cancelConnectionMode();
@@ -639,6 +1187,8 @@
       const r = await fetch(`${BASE}/api/family-clans?treeId=${encodeURIComponent(currentTreeId)}`);
       const j = await r.json();
       if (!j.ok) return;
+      clansCache = {};
+      j.data.forEach(c => { clansCache[c.id] = c; });
       legend.innerHTML = j.data.map(c => `
         <div class="clan-legend__item" data-clan="${c.id}" style="--clan-color:${c.color}">
           <span class="clan-legend__badge" style="background:${c.color};box-shadow:0 0 10px ${c.color}44;">${c.icon}</span>
@@ -710,6 +1260,7 @@
     }
     const gens = {};
     allNodes.forEach(n => { const g = n.generation || 0; if (!gens[g]) gens[g] = []; gens[g].push(n); });
+    sortDynamicGenerations(gens);
     const GEN_LABELS = ['Прапрародители','Прародители','Родители','Наше поколение','Дети','Внуки'];
     let sorted = Object.keys(gens).map(Number).sort((a,b) => a-b);
 
@@ -802,6 +1353,48 @@
         }
       })
     );
+
+    /* Hover Tooltip для динамических карточек */
+    container.querySelectorAll('.tree-node').forEach(nodeEl => {
+      const nid = nodeEl.dataset.id;
+      const node = allNodes.find(n => n.id === nid);
+      if (!node) return;
+
+      nodeEl.addEventListener('mouseenter', ev => {
+        const timelineHtml = getPersonTimelineHtml(node);
+        const name = (node.full_name || node.fullName || 'Без имени').replace(/\n/g, ' ');
+        
+        let clan = null;
+        if (typeof CLANS !== 'undefined' && CLANS[node.clan_id || node.clanId]) {
+          clan = CLANS[node.clan_id || node.clanId];
+        } else if (clansCache[node.clan_id || node.clanId]) {
+          clan = clansCache[node.clan_id || node.clanId];
+        } else {
+          clan = { name: 'Род семьи', icon: '🌳', color: '#c8a84b' };
+        }
+
+        tooltip.innerHTML = `
+          <div class="tree-tooltip__inner">
+            <span class="tree-tooltip__icon">${clan.icon}</span>
+            <strong>${clan.name}</strong>
+            <span>${name}</span>
+            ${timelineHtml}
+            ${node.linked_profile_id || node.linkedProfileId ? `<span class="tree-tooltip__hint">Двойной клик → страница памяти</span>` : ''}
+          </div>`;
+        tooltip.style.opacity = '1';
+        tooltip.style.left    = ev.clientX + 14 + 'px';
+        tooltip.style.top     = ev.clientY - 10 + 'px';
+      });
+
+      nodeEl.addEventListener('mousemove', ev => {
+        tooltip.style.left = ev.clientX + 14 + 'px';
+        tooltip.style.top  = ev.clientY - 10 + 'px';
+      });
+
+      nodeEl.addEventListener('mouseleave', () => {
+        tooltip.style.opacity = '0';
+      });
+    });
   }
 
   /* ── SVG нити — линии идут ОТ НИЗА карточек ── */
@@ -1140,11 +1733,11 @@
 
     loadClansIntoSelect();
     document.getElementById('tm-add-clan')?.addEventListener('click', () => {
-      const name = prompt('Название рода:');
-      if (!name) return;
-      const color = '#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0');
-      fetch(`${BASE}/api/family-clans`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, color, treeId: currentTreeId}) })
-        .then(r => r.json()).then(j => { if (j.ok) loadClansIntoSelect(j.data.id); });
+      showCustomPrompt('Название рода', 'Например: Род Ивановых', (name) => {
+        const color = '#' + Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0');
+        fetch(`${BASE}/api/family-clans`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, color, treeId: currentTreeId}) })
+          .then(r => r.json()).then(j => { if (j.ok) loadClansIntoSelect(j.data.id); });
+      });
     });
 
     const photoInput = document.getElementById('tm-photo-file');

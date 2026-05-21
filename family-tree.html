@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/responsive.css" />
-  <link rel="stylesheet" href="styles/tree.css" />
+  <link rel="stylesheet" href="styles/tree.css?v=3" />
 </head>
 <body class="tree-page">
 
@@ -48,6 +48,14 @@
       <!-- injected by tree.js -->
     </div>
     <button class="tree-edit-btn" id="tree-edit-btn">✏️ Редактировать дерево</button>
+  </div>
+
+  <!-- SEARCH BAR -->
+  <div class="tree-search-wrap">
+    <div class="tree-search">
+      <span class="tree-search__icon">🔍</span>
+      <input type="text" id="tree-search-input" placeholder="Поиск родственника по имени или году..." />
+    </div>
   </div>
 
   <!-- Панель инструментов — появляется только в edit mode -->
@@ -114,8 +122,8 @@
   <script src="js/favicon.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth-ui.js"></script>
-  <script src="js/tree.js"></script>
-  <script src="js/tree-edit.js"></script>
+  <script src="js/tree.js?v=3"></script>
+  <script src="js/tree-edit.js?v=3"></script>
   <script src="js/reveal.js"></script>
   <script src="js/nav.js"></script>
 </body>

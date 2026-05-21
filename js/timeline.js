@@ -12,6 +12,9 @@
   const wrap = document.getElementById('timeline');
   if (!wrap) return;
 
+  const photoMap = {};
+  let showHistory = true;
+
   /* ── RUSSIA / USSR HISTORICAL EVENTS ── */
   const HISTORY = [
     { year: 1905, title: 'Первая русская революция',    desc: 'Волнения по всей стране',                 icon: '🏛' },
@@ -102,17 +105,23 @@
       const born = mBoth ? parseInt(mBoth[1]) : (mBorn ? parseInt(mBorn[1]) : null);
       const died = mBoth ? parseInt(mBoth[2]) : (born && mDied && parseInt(mDied[1]) !== born ? parseInt(mDied[1]) : null);
 
+      const pId = node.id || node.personId || node.person_id || node.page_id;
+
       if (born) events.push({
         year: born, type: 'birth',
         title: 'Родился / Родилась', subtitle: name,
         city: node.city || '', age: null,
         _fromTree: true, treeId, treeName, treeColor,
+        photo: node.photo_url || node.photo || '',
+        personId: pId,
       });
       if (died) events.push({
         year: died, type: 'death',
         title: 'Ушёл из жизни / Ушла из жизни', subtitle: name,
         city: node.city || '', age: died - born,
         _fromTree: true, treeId, treeName, treeColor,
+        photo: node.photo_url || node.photo || '',
+        personId: pId,
       });
     });
     return events;
@@ -132,6 +141,8 @@
         subtitle: p.name,
         city: p.city,
         age: null,
+        photo: photoMap[p.id] || '',
+        personId: p.id,
       });
       if (dy) events.push({
         year: dy, type: 'death', person: p,
@@ -139,6 +150,8 @@
         subtitle: p.name,
         city: p.city,
         age: age,
+        photo: photoMap[p.id] || '',
+        personId: p.id,
       });
     });
 
@@ -176,9 +189,6 @@
   function buildEventHTML(e, i) {
     const side       = i % 2 === 0 ? 'left' : 'right';
     const icon       = e.icon || ICON[e.type] || '◆';
-    const personLink = e.person
-      ? `<a class="timeline__link" href="person.html?id=${e.person.id}">страница памяти →</a>`
-      : '';
     const ageTag = e.age
       ? `<span class="timeline__age">${e.age} лет прожито</span>`
       : '';
@@ -195,6 +205,44 @@
       ? `<span style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.1em;color:${e.treeColor || '#c8a84b'};opacity:0.85;">${e.treeName}</span>`
       : '';
 
+    const personId = e.personId || e.person?.id;
+    
+    // Avatar
+    const photo = e.photo || (personId ? photoMap[personId] : '');
+    let headerHtml = '';
+    if (e.type === 'birth' || e.type === 'death') {
+      const avatar = photo
+        ? `<img class="timeline__avatar" src="${photo}" alt="${e.subtitle || ''}" />`
+        : `<div class="timeline__avatar--empty"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;fill:currentColor;"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`;
+      
+      headerHtml = `
+        <div class="timeline__card-header-row">
+          ${avatar}
+          <div class="timeline__card-header-info">
+            <div class="timeline__year">${e.year}</div>
+            <h3 class="timeline__title">${e.title}</h3>
+          </div>
+        </div>`;
+    } else {
+      headerHtml = `
+        <div class="timeline__year">${e.year}</div>
+        <h3 class="timeline__title">${e.title}</h3>`;
+    }
+
+    // Actions Row
+    let actionsHtml = '';
+    if (personId) {
+      const treeLink = `family-tree.html?highlight=${encodeURIComponent(personId)}`;
+      const pageLink = e.person || e._fromTree
+        ? `<a class="timeline__link" href="person.html?id=${encodeURIComponent(personId)}" style="margin-top:0;">страница памяти →</a>`
+        : '';
+      actionsHtml = `
+        <div class="timeline__actions-row">
+          <a class="timeline__tree-link" href="${treeLink}">🌳 Показать на дереве</a>
+          ${pageLink}
+        </div>`;
+    }
+
     return `
       <article class="timeline__item timeline__item--${side} timeline__item--${e.type}"
                data-type="${e.type}" data-year="${e.year}">
@@ -203,15 +251,14 @@
         </div>
         <div class="timeline__card${histClass}">
           ${customDel}
-          <div class="timeline__year">${e.year}</div>
-          <h3 class="timeline__title">${e.title}</h3>
+          ${headerHtml}
           <p class="timeline__subtitle">${e.subtitle}</p>
           <div class="timeline__meta">
             ${cityHtml}
             ${ageTag}
             ${treeTag}
           </div>
-          ${personLink}
+          ${actionsHtml}
         </div>
       </article>`;
   }
@@ -470,6 +517,14 @@
               ${d}–${d+9}
             </button>`).join('')}
         </div>
+      </div>
+      <div class="tl-controls-group">
+        <label class="tl-toggle">
+          <input type="checkbox" id="tl-toggle-history" ${showHistory ? 'checked' : ''} />
+          <span class="tl-toggle__slider"></span>
+          <span class="tl-toggle__label">Показывать историю страны</span>
+        </label>
+        <button id="tl-print-btn" class="tl-print-btn">🖨️ Распечатать летопись</button>
       </div>`;
 
     filtersEl.querySelectorAll('[data-ftype]').forEach(btn => {
@@ -479,11 +534,27 @@
       btn.addEventListener('click', () => { activeDecade = btn.dataset.fdecade === 'all' ? 'all' : parseInt(btn.dataset.fdecade); render(); });
     });
 
+    const historyToggle = filtersEl.querySelector('#tl-toggle-history');
+    if (historyToggle) {
+      historyToggle.addEventListener('change', e => {
+        showHistory = e.target.checked;
+        render();
+      });
+    }
+
+    const printBtn = filtersEl.querySelector('#tl-print-btn');
+    if (printBtn) {
+      printBtn.addEventListener('click', () => {
+        window.print();
+      });
+    }
+
     /* Filter events */
     const filtered = allEvents.filter(e => {
       const typeOk   = activeType === 'all' || e.type === activeType;
       const decadeOk = activeDecade === 'all' || Math.floor(e.year / 10) * 10 === activeDecade;
-      return typeOk && decadeOk;
+      const historyOk = showHistory || e.type !== 'history';
+      return typeOk && decadeOk && historyOk;
     });
 
     /* Clear and rebuild timeline items */
@@ -596,6 +667,31 @@
   }
 
   /* INIT */
+  async function loadPhotos() {
+    try {
+      if (typeof API !== 'undefined') {
+        const [profilesRes, peopleRes] = await Promise.all([
+          API.get('/api/profiles').catch(() => null),
+          API.get('/api/people?page=1&limit=100').catch(() => null)
+        ]);
+        
+        const list = [];
+        if (profilesRes?.data) list.push(...profilesRes.data);
+        if (peopleRes?.data) list.push(...peopleRes.data);
+        
+        list.forEach(p => {
+          if (p.id) {
+            photoMap[p.id] = p.photo || p.photo_url || '';
+          }
+        });
+        render();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  loadPhotos();
   render();
   buildForm();
 })();

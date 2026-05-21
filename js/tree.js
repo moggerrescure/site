@@ -72,6 +72,289 @@
   const personById = {};
   GENERATIONS.forEach(g => g.people.forEach(p => { personById[p.id] = p; }));
 
+  /* ── HISTORY IS HANDLED EXCLUSIVELY VIA PERSONAL EVENTS ── */
+
+  /* ── BARYCENTRIC LAYOUT SORTING ── */
+  function sortGenerationPeople(generations) {
+    generations[0].people = groupSpouses(generations[0].people);
+    for (let g = 1; g < generations.length; g++) {
+      const prevGen = generations[g - 1];
+      const prevPeople = prevGen.people;
+      const parentIndices = {};
+      prevPeople.forEach((p, idx) => { parentIndices[p.id] = idx; });
+      const childrenMap = prevGen.childrenMap || {};
+      const parentOfPerson = {};
+      Object.entries(childrenMap).forEach(([parentId, childIds]) => {
+        childIds.forEach(cid => {
+          if (!parentOfPerson[cid]) parentOfPerson[cid] = [];
+          parentOfPerson[cid].push(parentId);
+        });
+      });
+      const people = generations[g].people;
+      const weights = {};
+      people.forEach((p, idx) => {
+        const parents = parentOfPerson[p.id] || [];
+        let weight = 0, count = 0;
+        parents.forEach(pid => {
+          if (parentIndices[pid] !== undefined) {
+            weight += parentIndices[pid];
+            count++;
+          }
+        });
+        weights[p.id] = count > 0 ? weight / count : idx;
+      });
+      const paired = new Set();
+      people.forEach(p => {
+        if (p.spouseOf && !paired.has(p.id) && !paired.has(p.spouseOf)) {
+          const spouse = people.find(sp => sp.id === p.spouseOf);
+          if (spouse) {
+            const w1 = weights[p.id] !== undefined ? weights[p.id] : 0;
+            const w2 = weights[spouse.id] !== undefined ? weights[spouse.id] : 0;
+            const avg = (w1 + w2) / 2;
+            weights[p.id] = avg - 0.1;
+            weights[spouse.id] = avg + 0.1;
+            paired.add(p.id);
+            paired.add(spouse.id);
+          }
+        }
+      });
+      generations[g].people.sort((a, b) => weights[a.id] - weights[b.id]);
+    }
+  }
+
+  function groupSpouses(people) {
+    const result = [];
+    const visited = new Set();
+    people.forEach(p => {
+      if (visited.has(p.id)) return;
+      result.push(p);
+      visited.add(p.id);
+      if (p.spouseOf) {
+        const spouse = people.find(sp => sp.id === p.spouseOf);
+        if (spouse && !visited.has(spouse.id)) {
+          result.push(spouse);
+          visited.add(spouse.id);
+        }
+      }
+    });
+    return result;
+  }
+
+  /* ── CUSTOM CONNECTION MODAL ── */
+  function showConnectionTypeModal(idA, idB, onConfirm, onCancel) {
+    const old = document.getElementById('connection-type-modal');
+    if (old) old.remove();
+    const modal = document.createElement('div');
+    modal.id = 'connection-type-modal';
+    modal.className = 'connection-modal';
+    modal.innerHTML = `
+      <div class="connection-modal__content">
+        <h3 class="connection-modal__title">Тип соединения</h3>
+        <p class="connection-modal__desc">Выберите тип связи и цвет нити</p>
+        <div class="connection-modal__options">
+          <button class="connection-modal__btn" data-type="spouse">💍 Брачный союз</button>
+          <button class="connection-modal__btn" data-type="parent">🧬 Родство (Родитель → Ребёнок)</button>
+          <button class="connection-modal__btn" data-type="kin">🌿 Ветвь (Связь родов)</button>
+        </div>
+        <div style="font-family:var(--font-body);font-size:12px;color:var(--gold);margin-bottom:8px;">Цвет нити:</div>
+        <div class="connection-modal__colors">
+          <span class="connection-color-dot connection-color-dot--selected" style="background:#c8a84b;" data-color="#c8a84b"></span>
+          <span class="connection-color-dot" style="background:#7ec8b4;" data-color="#7ec8b4"></span>
+          <span class="connection-color-dot" style="background:#c87e7e;" data-color="#c87e7e"></span>
+          <span class="connection-color-dot" style="background:#4b8cc8;" data-color="#4b8cc8"></span>
+          <input type="color" id="connection-custom-color" value="#c8a84b" style="width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;padding:0;background:none;" />
+        </div>
+        <button class="connection-modal__btn connection-modal__btn--cancel" id="connection-cancel-btn">Отмена</button>
+      </div>`;
+    document.body.appendChild(modal);
+    let selectedColor = '#c8a84b';
+    const dots = modal.querySelectorAll('.connection-color-dot');
+    const customPicker = modal.querySelector('#connection-custom-color');
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        dots.forEach(d => d.classList.remove('connection-color-dot--selected'));
+        dot.classList.add('connection-color-dot--selected');
+        selectedColor = dot.dataset.color;
+        customPicker.value = selectedColor;
+      });
+    });
+    customPicker.addEventListener('input', (e) => {
+      dots.forEach(d => d.classList.remove('connection-color-dot--selected'));
+      selectedColor = e.target.value;
+    });
+    modal.querySelectorAll('.connection-modal__options button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        onConfirm(btn.dataset.type, selectedColor);
+        modal.remove();
+      });
+    });
+    modal.querySelector('#connection-cancel-btn').addEventListener('click', () => {
+      onCancel();
+      modal.remove();
+    });
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') { onCancel(); modal.remove(); document.removeEventListener('keydown', handleEsc); }
+    };
+    document.addEventListener('keydown', handleEsc);
+  }
+
+  /* ── INTERACTIVE TIMELINE TOOLTIP BUILDER ── */
+  function getPersonTimelineHtml(person) {
+    if (!person || !person.years) return '';
+    const match = person.years.match(/(\d{4})[^\d]*(\d{4})?/);
+    if (!match) return '';
+    const birth = parseInt(match[1]);
+    const isOngoing = (person.years.endsWith('–') || person.years.endsWith('-') || person.years.endsWith('—'));
+    const death = match[2] ? parseInt(match[2]) : null;
+    const deathYear = death || new Date().getFullYear();
+    
+    // 1. Birth
+    const events = [{ year: birth, text: 'Рождение', type: 'life' }];
+    
+    // 2. Spouse & Marriage
+    let spouseId = person.spouseOf || person.spouse_id || person.spouseId || null;
+    if (!spouseId && typeof getLocalConnections === 'function') {
+      try {
+        const localConns = getLocalConnections();
+        const conn = localConns.find(c => c.type === 'marriage' && (c.a === person.id || c.b === person.id));
+        if (conn) {
+          spouseId = conn.a === person.id ? conn.b : conn.a;
+        }
+      } catch(e) {}
+    }
+    
+    const cleanName = (nameStr) => (nameStr || '').replace(/\n/g, ' ').trim();
+    
+    let spouseName = '';
+    if (spouseId) {
+      let spouseNode = null;
+      if (typeof personById !== 'undefined' && personById[spouseId]) {
+        spouseNode = personById[spouseId];
+      } else if (typeof allNodes !== 'undefined') {
+        spouseNode = allNodes.find(n => n.id === spouseId);
+      }
+      if (spouseNode) {
+        spouseName = cleanName(spouseNode.name || spouseNode.full_name || spouseNode.fullName);
+      }
+    }
+    
+    // Collect children to estimate marriage and add child birth events
+    const childBirthYears = [];
+    const childrenEvents = [];
+    
+    if (typeof GENERATIONS !== 'undefined') {
+      GENERATIONS.forEach(gen => {
+        if (gen.childrenMap) {
+          const list = gen.childrenMap[person.id] || (spouseId && gen.childrenMap[spouseId]) || [];
+          list.forEach(cid => {
+            const childNode = personById[cid];
+            if (childNode) {
+              const cName = cleanName(childNode.name);
+              const cMatch = childNode.years ? childNode.years.match(/(\d{4})/) : null;
+              if (cMatch) {
+                const cBorn = parseInt(cMatch[1]);
+                childBirthYears.push(cBorn);
+                childrenEvents.push({ year: cBorn, text: `Рождение ребенка (${cName})`, type: 'life' });
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    if (typeof allNodes !== 'undefined') {
+      allNodes.forEach(n => {
+        let pids = [];
+        try {
+          if (n.parent_ids) pids = typeof n.parent_ids === 'string' ? JSON.parse(n.parent_ids) : n.parent_ids;
+          else if (n.parentIds) pids = typeof n.parentIds === 'string' ? JSON.parse(n.parentIds) : n.parentIds;
+        } catch(e) {}
+        if (Array.isArray(pids) && (pids.includes(person.id) || (spouseId && pids.includes(spouseId)))) {
+          const cName = cleanName(n.name || n.full_name || n.fullName);
+          const cMatch = n.years ? n.years.match(/(\d{4})/) : null;
+          if (cMatch) {
+            const cBorn = parseInt(cMatch[1]);
+            childBirthYears.push(cBorn);
+            childrenEvents.push({ year: cBorn, text: `Рождение ребенка (${cName})`, type: 'life' });
+          }
+        }
+      });
+    }
+    
+    events.push(...childrenEvents);
+    
+    // Determine Marriage Year
+    if (spouseId) {
+      let marriageYear = null;
+      try {
+        const custom = JSON.parse(localStorage.getItem('memory_custom_events') || '[]');
+        const mEvent = custom.find(e => 
+          (e._nodeId === person.id || e.nodeId === person.id) && 
+          (e.type === 'marriage' || /брак|свадьба|женитьб|венчан/i.test(e.title || '') || /брак|свадьба|женитьб|венчан/i.test(e.description || ''))
+        );
+        if (mEvent) {
+          marriageYear = parseInt(mEvent.year);
+        }
+      } catch(e) {}
+      
+      if (!marriageYear) {
+        childBirthYears.sort((a, b) => a - b);
+        if (childBirthYears.length > 0) {
+          marriageYear = Math.max(birth + 18, childBirthYears[0] - 1);
+        } else {
+          marriageYear = birth + 25;
+        }
+      }
+      
+      marriageYear = Math.min(marriageYear, deathYear);
+      marriageYear = Math.max(marriageYear, birth + 18);
+      
+      events.push({ year: marriageYear, text: `Брак с ${spouseName || 'супругом(ой)'}`, type: 'marriage' });
+    }
+    
+    // 3. Custom events
+    try {
+      const custom = JSON.parse(localStorage.getItem('memory_custom_events') || '[]');
+      custom.forEach(e => {
+        if ((e._nodeId === person.id || e.nodeId === person.id) && e.type !== 'birth' && e.type !== 'death') {
+          const cy = parseInt(e.year);
+          if (cy >= birth && cy <= deathYear) {
+            events.push({ year: cy, text: e.title, type: 'custom' });
+          }
+        }
+      });
+    } catch(e) {}
+    
+    // 4. Death or Present day
+    if (death) {
+      events.push({ year: death, text: 'Уход из жизни', type: 'life' });
+    } else if (isOngoing) {
+      events.push({ year: new Date().getFullYear(), text: 'Наши дни', type: 'life' });
+    }
+    
+    events.sort((a, b) => a.year - b.year);
+    
+    // De-duplicate events by year + text
+    const uniqueEvents = [];
+    const seen = new Set();
+    events.forEach(ev => {
+      const key = `${ev.year}_${ev.text}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueEvents.push(ev);
+      }
+    });
+    
+    return `
+      <div class="tree-tooltip__mini-timeline">
+        ${uniqueEvents.map(ev => `
+          <div class="tree-tooltip__event ${ev.type === 'custom' ? 'tree-tooltip__event--custom' : ev.type === 'marriage' ? 'tree-tooltip__event--marriage' : ''}">
+            <span class="tree-tooltip__event-year ${ev.type === 'custom' ? 'tree-tooltip__event-year--custom' : ev.type === 'marriage' ? 'tree-tooltip__event-year--marriage' : ''}">${ev.year}</span>
+            <span class="tree-tooltip__event-text">${ev.text}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
   /* ── Если кастомное дерево — tree.js не рисует статику ── */
   const _urlTree = new URLSearchParams(window.location.search).get('tree');
   if (_urlTree && _urlTree !== 'default') return;
@@ -113,6 +396,7 @@
   }
 
   /* ── BUILD GENERATION ROWS ── */
+  sortGenerationPeople(GENERATIONS);
   const reversed = [...GENERATIONS].reverse();
 
   reversed.forEach((gen, ri) => {
@@ -478,7 +762,7 @@
   }
 
   /* Draw one animated braided thread between two nodes, snapping to BOTTOM of cards */
-  function drawAnimatedConnection(idA, idB, connType) {
+  function drawAnimatedConnection(idA, idB, connType, customColor) {
     const elA = nodeEls[idA], elB = nodeEls[idB];
     if (!elA || !elB) return;
 
@@ -496,9 +780,11 @@
     const cy1  = y1 + drop;
     const cy2  = y2 + drop;
 
-    const colors = isMarriage
-      ? ['#e2c97e', '#c8a84b', '#e2c97ebb']
-      : clanColors(personA?.clanId || 'ivanov');
+    const colors = customColor
+      ? [customColor, customColor, customColor + 'bb']
+      : (isMarriage
+        ? ['#e2c97e', '#c8a84b', '#e2c97ebb']
+        : clanColors(personA?.clanId || 'ivanov'));
 
     const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     group.classList.add('custom-connection');
@@ -596,15 +882,21 @@
           showConnectHint('Теперь кликните на вторую карточку…');
         } else if (connectFirst !== id) {
           // Draw connection
-          const connType = prompt(
-            'Тип соединения:\n1 — Брачный союз\n2 — Родство\nВведите 1 или 2:',
-            '1'
-          );
-          const type = connType === '2' ? 'kin' : 'spouse';
-          customConnections.push({ a: connectFirst, b: id, type });
-          drawAnimatedConnection(connectFirst, id, type);
-          nodeEls[connectFirst].classList.remove('connect-selected');
-          exitConnectMode();
+          const nodeFirstId = connectFirst;
+          const nodeSecondId = id;
+          nodeEls[nodeFirstId].classList.remove('connect-selected');
+          showConnectionTypeModal(nodeFirstId, nodeSecondId, (type, color) => {
+            customConnections.push({ a: nodeFirstId, b: nodeSecondId, type, color });
+            // Save to local connections
+            const conns = JSON.parse(localStorage.getItem('tree_connections_default') || '[]');
+            conns.push({ id: Date.now().toString(36), a: nodeFirstId, b: nodeSecondId, type, color });
+            localStorage.setItem('tree_connections_default', JSON.stringify(conns));
+            // Draw
+            drawAnimatedConnection(nodeFirstId, nodeSecondId, type, color);
+            exitConnectMode();
+          }, () => {
+            exitConnectMode();
+          });
         }
         return;
       }
@@ -929,11 +1221,13 @@
     const clan   = person ? CLANS[person.clanId] : null;
     el.addEventListener('mouseenter', ev => {
       if (!clan) return;
+      const timelineHtml = getPersonTimelineHtml(person);
       tooltip.innerHTML = `
         <div class="tree-tooltip__inner">
           <span class="tree-tooltip__icon">${clan.icon}</span>
           <strong>${clan.name}</strong>
           <span>${person.name.replace('\n',' ')}</span>
+          ${timelineHtml}
           <span class="tree-tooltip__hint">Двойной клик → страница памяти</span>
         </div>`;
       tooltip.style.opacity = '1';
@@ -947,6 +1241,50 @@
     el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
   });
 
-  window.addEventListener('load',   () => setTimeout(drawThreads, 300));
+  /* ── SEARCH INPUT EVENT HANDLER ── */
+  const searchInput = document.getElementById('tree-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        if (highlightedId) {
+          highlight(highlightedId);
+        } else {
+          clearHighlight();
+        }
+        return;
+      }
+      wrapper.classList.add('has-highlight');
+      Object.entries(nodeEls).forEach(([nid, el]) => {
+        const person = personById[nid];
+        const nameMatch = person && person.name.toLowerCase().includes(q);
+        const yearsMatch = person && person.years && person.years.toLowerCase().includes(q);
+        const matches = nameMatch || yearsMatch;
+        if (matches) {
+          el.classList.remove('tree-node--dim');
+          el.classList.add('tree-node--active');
+        } else {
+          el.classList.add('tree-node--dim');
+          el.classList.remove('tree-node--active');
+        }
+      });
+      svgEl.querySelectorAll('.thread-path').forEach(p => {
+        p.classList.add('thread-path--dim');
+        p.classList.remove('thread-path--active');
+      });
+    });
+  }
+
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      drawThreads();
+      const highlightId = new URLSearchParams(window.location.search).get('highlight');
+      if (highlightId && nodeEls[highlightId]) {
+        const el = nodeEls[highlightId];
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlight(highlightId);
+      }
+    }, 300);
+  });
   window.addEventListener('resize', () => setTimeout(drawThreads, 200));
 })();
