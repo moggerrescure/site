@@ -958,6 +958,10 @@ async function createFamilyClan(req, res) {
 
   if (!name) return send(res, 400, { ok: false, error: 'Название рода обязательно' });
 
+  // Проверка на дубликат имени в том же дереве
+  const existing = db.prepare('SELECT id FROM family_clans WHERE tree_id = ? AND name = ?').get(treeId, name);
+  if (existing) return send(res, 400, { ok: false, error: 'Род с таким названием уже существует' });
+
   try {
     db.prepare('INSERT INTO family_clans (id, tree_id, name, color, icon, description) VALUES (?,?,?,?,?,?)').run(id, treeId, name, color, icon, description);
     send(res, 201, { ok: true, data: { id, treeId, name, color, icon, description } });
