@@ -660,18 +660,27 @@ async function updateProfileInBot(req, res, params) {
         'INSERT INTO content_blocks (profile_id, text, image_url, block_order) VALUES (?, ?, ?, ?)'
       );
 
-      body.orderedBlocks.forEach((block, i) => {
+      const BLOCK_KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
+      let customCounter = 7;
+
+      body.orderedBlocks.forEach((block) => {
         if (block && block.text && block.text.trim()) {
-          // Для кастомных блоков сохраняем title в начале текста через разделитель
           let text = block.text.trim().slice(0, 1000);
           let imageUrl = block.image || null;
 
-          // Если есть кастомный title — сохраняем как "TITLE::text"
-          if (block.key === 'custom' && block.title) {
-            text = `CUSTOM_TITLE:${block.title.slice(0, 100)}::${text}`;
+          let order = 0;
+          const stdIndex = BLOCK_KEYS.indexOf(block.key);
+          if (stdIndex >= 0) {
+            order = stdIndex + 1;
+          } else {
+            // Если кастомный блок — сохраняем как "TITLE::text"
+            if (block.title) {
+              text = `CUSTOM_TITLE:${block.title.slice(0, 100)}::${text}`;
+            }
+            order = customCounter++;
           }
 
-          insertBlock.run(profileId, text, imageUrl, i + 1);
+          insertBlock.run(profileId, text, imageUrl, order);
         }
       });
     } else if (body.sections && typeof body.sections === 'object') {

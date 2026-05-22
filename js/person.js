@@ -221,24 +221,29 @@
   function render(person, source) {
     document.title = `${person.name} — Память`;
 
-    // Если sections пусто — генерируем на лету из bio или создаем пустые заготовки для edit mode
+    // Если sections пусто — генерируем на лету из bio или создаем пустые заготовки
     const isEditMode = new URLSearchParams(window.location.search).get('edit') === '1';
     if (!person.sections || typeof person.sections !== 'object' || !Object.keys(person.sections).length) {
-      if (isEditMode) {
-        if (person.bio && person.bio.trim()) {
-          person.sections = autoSplitBioToSections(person);
-        } else {
-          const KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
-          const TITLES = ['Детство и юность', 'Образование', 'Профессиональный путь', 'Семья', 'Хобби и увлечения', 'Наследие'];
-          person.sections = {};
-          KEYS.forEach((key, i) => {
-            person.sections[key] = { title: TITLES[i], text: '', image: '' };
-          });
-        }
-      } else {
+      if (person.bio && person.bio.trim()) {
         person.sections = autoSplitBioToSections(person);
+      } else {
+        person.sections = {};
       }
     }
+
+    // В edit mode гарантируем наличие всех 6 стандартных секций, чтобы пользователь мог их заполнить
+    if (isEditMode) {
+      const KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
+      const TITLES = ['Детство и юность', 'Образование', 'Профессиональный путь', 'Семья', 'Хобби и увлечения', 'Наследие'];
+      KEYS.forEach((key, i) => {
+        if (!person.sections[key]) {
+          person.sections[key] = { title: TITLES[i], text: '', image: '' };
+        } else if (!person.sections[key].title) {
+          person.sections[key].title = TITLES[i];
+        }
+      });
+    }
+
 
     const bcName = document.getElementById('breadcrumb-name');
     if (bcName) bcName.textContent = person.name.split(' ').slice(0, 2).join(' ');
