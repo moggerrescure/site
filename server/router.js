@@ -76,13 +76,12 @@ function checkTreeAuth(req, res, treeId) {
 
   const tree = db.prepare('SELECT user_id FROM family_trees WHERE id = ?').get(treeId);
   if (!tree) {
-    if (treeId === `${req.user.id}-default`) {
-      db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
-        .run(treeId, 'Моё древо', req.user.id);
-      return true;
-    }
-    send(res, 404, { ok: false, error: 'Tree not found' });
-    return false;
+    // Дерево не найдено — автоматически создаём для текущего пользователя.
+    // Это покрывает случаи, когда дерево было создано в localStorage (до серверного фикса)
+    // или когда пользователь переходит по прямой ссылке на новое дерево.
+    db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+      .run(treeId, treeId, req.user.id);
+    return true;
   }
   if (tree.user_id !== req.user.id) {
     send(res, 403, { ok: false, error: 'Access denied' });
