@@ -886,6 +886,26 @@
           const nodeSecondId = id;
           nodeEls[nodeFirstId].classList.remove('connect-selected');
           showConnectionTypeModal(nodeFirstId, nodeSecondId, (type, color) => {
+            if (type === 'spouse') {
+              const personA = personById[nodeFirstId];
+              const personB = personById[nodeSecondId];
+              if (personA && personB) {
+                const genA = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeFirstId));
+                const genB = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeSecondId));
+                if (genA !== -1 && genB !== -1 && genA !== genB) {
+                  alert('Брак разрешен только между членами одного поколения!');
+                  exitConnectMode();
+                  return;
+                }
+                const clanA = personA.clanId;
+                const clanB = personB.clanId;
+                if (clanA && clanB && clanA === clanB) {
+                  alert('Брак между членами одного рода запрещен!');
+                  exitConnectMode();
+                  return;
+                }
+              }
+            }
             customConnections.push({ a: nodeFirstId, b: nodeSecondId, type, color });
             // Save to local connections
             const conns = JSON.parse(localStorage.getItem('tree_connections_default') || '[]');

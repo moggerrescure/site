@@ -57,10 +57,101 @@ function matchRoute(pattern, pathname) {
   return params;
 }
 
+/* ── Auth helpers ── */
+function checkAuth(req, res) {
+  const header = req.headers['authorization'] || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const payload = auth.verifyJWT(token);
+  if (!payload) {
+    send(res, 401, { ok: false, error: 'Unauthorized' });
+    return false;
+  }
+  req.user = payload;
+  return true;
+}
+
+function checkTreeAuth(req, res, treeId) {
+  if (!checkAuth(req, res)) return false;
+  if (req.user.name === 'krutko' && treeId === 'default') return true;
+
+  const tree = db.prepare('SELECT user_id FROM family_trees WHERE id = ?').get(treeId);
+  if (!tree) {
+    if (treeId === `${req.user.id}-default`) {
+      db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+        .run(treeId, 'Моё древо', req.user.id);
+      return true;
+    }
+    send(res, 404, { ok: false, error: 'Tree not found' });
+    return false;
+  }
+  if (tree.user_id !== req.user.id) {
+    send(res, 403, { ok: false, error: 'Access denied' });
+    return false;
+  }
+  return true;
+}
+
+function checkNodeAuth(req, res, nodeId) {
+  if (!checkAuth(req, res)) return false;
+  const node = db.prepare('SELECT tree_id FROM family_nodes WHERE id = ?').get(nodeId);
+  if (!node) {
+    send(res, 404, { ok: false, error: 'Node not found' });
+    return false;
+  }
+  return checkTreeAuth(req, res, node.tree_id);
+}
+
+function checkClanAuth(req, res, clanId) {
+  if (!checkAuth(req, res)) return false;
+  const clan = db.prepare('SELECT tree_id FROM family_clans WHERE id = ?').get(clanId);
+  if (!clan) {
+    send(res, 404, { ok: false, error: 'Clan not found' });
+    return false;
+  }
+  return checkTreeAuth(req, res, clan.tree_id);
+}
+
+function checkTimelineEventAuth(req, res, eventId) {
+  if (!checkAuth(req, res)) return false;
+  const ev = db.prepare('SELECT tree_id FROM timeline_events WHERE id = ?').get(eventId);
+  if (!ev) {
+    send(res, 404, { ok: false, error: 'Event not found' });
+    return false;
+  }
+  return checkTreeAuth(req, res, ev.tree_id);
+}
+
 /* ══════════════════════════════════════
    SEED data
    ══════════════════════════════════════ */
+function seedKrutkoUser() {
+  let krutko = db.prepare('SELECT id FROM users WHERE name = ? OR email = ?').get('krutko', 'krutko@memory.site');
+  let krutkoId;
+  if (!krutko) {
+    krutkoId = 'krutko-admin-uuid';
+    const hash = auth.hashPassword('11111111');
+    db.prepare('INSERT OR IGNORE INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)').run(
+      krutkoId,
+      'krutko',
+      'krutko@memory.site',
+      hash,
+      'admin'
+    );
+    console.log('✅ Seeded admin user krutko');
+  } else {
+    krutkoId = krutko.id;
+  }
+
+  // Ensure default family tree exists and is owned by krutko
+  db.prepare("INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES ('default', 'Основное', ?)").run(krutkoId);
+
+  // Update orphaned people and family_trees records to belong to krutko
+  db.prepare('UPDATE people SET user_id = ? WHERE user_id IS NULL').run(krutkoId);
+  db.prepare('UPDATE family_trees SET user_id = ? WHERE user_id IS NULL').run(krutkoId);
+}
+
 function seedIfEmpty() {
+  seedKrutkoUser();
   const count = db.prepare('SELECT COUNT(*) as c FROM people').get();
   if (count.c > 0) return;
 
@@ -135,15 +226,20 @@ async function registerHandler(req, res) {
   const { name, email, password } = body;
   if (!name || !email || !password) return send(res, 400, { ok: false, error: 'name, email and password required' });
 
-  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (exists) return send(res, 409, { ok: false, error: 'Email already registered' });
+  const exists = db.prepare('SELECT id FROM users WHERE email = ? OR name = ?').get(email, name);
+  if (exists) return send(res, 409, { ok: false, error: 'Email or Username already registered' });
 
   const id   = randomUUID();
   const hash = auth.hashPassword(password);
   db.prepare('INSERT INTO users (id,name,email,password) VALUES (?,?,?,?)').run(id, name, email, hash);
 
-  const token = auth.signJWT({ id, name, email, role: 'member' });
-  send(res, 201, { ok: true, token, user: { id, name, email, role: 'member' } });
+  const rootTreeId = `${id}-default`;
+  // Create user's default family tree
+  db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+    .run(rootTreeId, 'Моё древо', id);
+
+  const token = auth.signJWT({ id, name, email, role: 'member', rootTreeId });
+  send(res, 201, { ok: true, token, user: { id, name, email, role: 'member', rootTreeId } });
 }
 
 /* ── /api/auth/login ── */
@@ -152,24 +248,31 @@ async function loginHandler(req, res) {
   const { email, password } = body;
   if (!email || !password) return send(res, 400, { ok: false, error: 'email and password required' });
 
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  const user = db.prepare('SELECT * FROM users WHERE email = ? OR name = ?').get(email, email);
   if (!user) return send(res, 401, { ok: false, error: 'Invalid credentials' });
 
   let valid = false;
   try { valid = auth.verifyPassword(password, user.password); } catch { valid = false; }
   if (!valid) return send(res, 401, { ok: false, error: 'Invalid credentials' });
 
-  const token = auth.signJWT({ id: user.id, name: user.name, email: user.email, role: user.role });
-  send(res, 200, { ok: true, token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+  const rootTreeId = user.name === 'krutko' ? 'default' : `${user.id}-default`;
+  // Ensure default tree exists for this user
+  db.prepare("INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)")
+    .run(rootTreeId, 'Моё древо', user.id);
+
+  const token = auth.signJWT({ id: user.id, name: user.name, email: user.email, role: user.role, rootTreeId });
+  send(res, 200, { ok: true, token, user: { id: user.id, name: user.name, email: user.email, role: user.role, rootTreeId } });
 }
 
 /* ── /api/auth/me ── */
 function meHandler(req, res) {
-  send(res, 200, { ok: true, user: req.user });
+  const rootTreeId = req.user.name === 'krutko' ? 'default' : `${req.user.id}-default`;
+  send(res, 200, { ok: true, user: { ...req.user, rootTreeId } });
 }
 
 /* ── GET /api/people ── */
 function getPeople(req, res) {
+  if (!checkAuth(req, res)) return;
   const url = new URL(req.url, 'http://localhost');
   const page  = Math.max(1, parseInt(url.searchParams.get('page')  || '1', 10));
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '9', 10)));
@@ -177,8 +280,8 @@ function getPeople(req, res) {
   const city  = (url.searchParams.get('city') || '').trim();
   const offset = (page - 1) * limit;
 
-  let where = 'WHERE 1=1';
-  const args = [];
+  let where = 'WHERE user_id = ?';
+  const args = [req.user.id];
   if (q)    { where += ' AND (name LIKE ? OR bio LIKE ?)'; args.push(`%${q}%`, `%${q}%`); }
   if (city) { where += ' AND city = ?'; args.push(city); }
 
@@ -190,14 +293,18 @@ function getPeople(req, res) {
 
 /* ── GET /api/people/:id ── */
 function getOnePerson(req, res, params) {
+  if (!checkAuth(req, res)) return;
   const person = db.prepare('SELECT * FROM people WHERE id = ?').get(params.id);
   if (!person) return send(res, 404, { ok: false, error: 'Not found' });
+  if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
+
   const reviews = db.prepare('SELECT id,author,text,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.id);
   send(res, 200, { ok: true, data: { ...person, reviews } });
 }
 
 /* ── POST /api/people ── */
 async function createPerson(req, res) {
+  if (!checkAuth(req, res)) return;
   const body = await parseBody(req);
   const { name, born, died = '', city = '', bio = '', burial = '', burial_query = '' } = body;
   if (!name || !born) return send(res, 400, { ok: false, error: 'name and born required' });
@@ -205,8 +312,8 @@ async function createPerson(req, res) {
   const id = body.id || name.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').replace(/-+/g, '-').slice(0, 60);
   const safeId = id + '-' + Date.now().toString(36);
 
-  db.prepare(`INSERT INTO people (id,name,born,died,city,bio,burial,burial_query) VALUES (?,?,?,?,?,?,?,?)`)
-    .run(safeId, name, born, died, city, bio, burial, burial_query);
+  db.prepare(`INSERT INTO people (id,name,born,died,city,bio,burial,burial_query,user_id) VALUES (?,?,?,?,?,?,?,?,?)`)
+    .run(safeId, name, born, died, city, bio, burial, burial_query, req.user.id);
 
   const row = db.prepare('SELECT * FROM people WHERE id = ?').get(safeId);
   send(res, 201, { ok: true, data: row });
@@ -214,8 +321,10 @@ async function createPerson(req, res) {
 
 /* ── PUT /api/people/:id ── */
 async function updatePerson(req, res, params) {
-  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!checkAuth(req, res)) return;
+  const person = db.prepare('SELECT user_id FROM people WHERE id = ?').get(params.id);
   if (!person) return send(res, 404, { ok: false, error: 'Not found' });
+  if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
 
   const body = await parseBody(req);
   const fields = ['name','born','died','city','bio','burial','burial_query'];
@@ -232,24 +341,31 @@ async function updatePerson(req, res, params) {
 
 /* ── DELETE /api/people/:id ── */
 function deletePerson(req, res, params) {
-  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.id);
+  if (!checkAuth(req, res)) return;
+  const person = db.prepare('SELECT user_id FROM people WHERE id = ?').get(params.id);
   if (!person) return send(res, 404, { ok: false, error: 'Not found' });
+  if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
   db.prepare('DELETE FROM people WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
 
 /* ── GET /api/reviews/:personId ── */
 function getReviews(req, res, params) {
-  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.personId);
+  if (!checkAuth(req, res)) return;
+  const person = db.prepare('SELECT id, user_id FROM people WHERE id = ?').get(params.personId);
   if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+  if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
+
   const rows = db.prepare('SELECT id,author,text,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.personId);
   send(res, 200, { ok: true, data: rows });
 }
 
 /* ── POST /api/reviews/:personId ── */
 async function createReview(req, res, params) {
-  const person = db.prepare('SELECT id FROM people WHERE id = ?').get(params.personId);
+  if (!checkAuth(req, res)) return;
+  const person = db.prepare('SELECT id, user_id FROM people WHERE id = ?').get(params.personId);
   if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
+  if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
 
   const body = await parseBody(req);
   const { author, text } = body;
@@ -263,8 +379,13 @@ async function createReview(req, res, params) {
 
 /* ── DELETE /api/reviews/:id ── */
 function deleteReview(req, res, params) {
-  const row = db.prepare('SELECT id FROM reviews WHERE id = ?').get(params.id);
+  if (!checkAuth(req, res)) return;
+  const row = db.prepare('SELECT id, person_id FROM reviews WHERE id = ?').get(params.id);
   if (!row) return send(res, 404, { ok: false, error: 'Not found' });
+
+  const person = db.prepare('SELECT user_id FROM people WHERE id = ?').get(row.person_id);
+  if (!person || person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
+
   db.prepare('DELETE FROM reviews WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
@@ -694,11 +815,98 @@ async function uploadPhoto(req, res, params) {
    FAMILY TREE
    ══════════════════════════════════════ */
 
-/* ── GET /api/family-nodes — все узлы дерева ── */
+function validateMarriage(nodeA, nodeB) {
+  if (!nodeA || !nodeB) return { valid: false, error: 'Родственник не найден в базе данных' };
+  if (nodeA.generation !== nodeB.generation) {
+    return { valid: false, error: 'Брак невозможен между разными поколениями (разница в возрасте/поколении)' };
+  }
+  if (nodeA.clan_id && nodeB.clan_id && nodeA.clan_id === nodeB.clan_id) {
+    return { valid: false, error: 'Браки между членами одного рода запрещены' };
+  }
+  return { valid: true };
+}
+
+/* ── GET /api/family-connections ── */
+function getFamilyConnections(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const treeId = (url.searchParams.get('treeId') || 'default').toString().slice(0, 50);
+  if (!checkTreeAuth(req, res, treeId)) return;
+
+  const rows = db.prepare('SELECT * FROM family_connections WHERE tree_id = ?').all(treeId);
+  const connections = rows.map(r => ({
+    id: r.id,
+    treeId: r.tree_id,
+    nodeA: r.node_a,
+    nodeB: r.node_b,
+    type: r.type,
+    color: r.color,
+  }));
+  send(res, 200, { ok: true, data: connections });
+}
+
+/* ── POST /api/family-connections ── */
+async function createFamilyConnection(req, res) {
+  const body = await parseBody(req);
+  const treeId = (body.treeId || 'default').toString().slice(0, 50);
+  if (!checkTreeAuth(req, res, treeId)) return;
+
+  const { nodeA, nodeB, type, color } = body;
+  if (!nodeA || !nodeB || !type) {
+    return send(res, 400, { ok: false, error: 'nodeA, nodeB и type обязательны' });
+  }
+
+  // Брак: проверка поколения и рода
+  if (type === 'marriage') {
+    const nA = db.prepare('SELECT generation, clan_id FROM family_nodes WHERE id = ?').get(nodeA);
+    const nB = db.prepare('SELECT generation, clan_id FROM family_nodes WHERE id = ?').get(nodeB);
+    const validation = validateMarriage(nA, nB);
+    if (!validation.valid) {
+      return send(res, 400, { ok: false, error: validation.error });
+    }
+
+    // Автоматически линкуем супругов в family_nodes
+    db.prepare('UPDATE family_nodes SET spouse_id = ? WHERE id = ?').run(nodeB, nodeA);
+    db.prepare('UPDATE family_nodes SET spouse_id = ? WHERE id = ?').run(nodeA, nodeB);
+  }
+
+  const id = body.id || randomUUID();
+  try {
+    db.prepare('INSERT INTO family_connections (id, tree_id, node_a, node_b, type, color) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, treeId, nodeA, nodeB, type, color || null);
+    send(res, 201, { ok: true, data: { id, treeId, nodeA, nodeB, type, color } });
+  } catch (e) {
+    send(res, 500, { ok: false, error: e.message });
+  }
+}
+
+/* ── DELETE /api/family-connections/:id ── */
+function deleteFamilyConnection(req, res, params) {
+  if (!checkAuth(req, res)) return;
+  const conn = db.prepare('SELECT * FROM family_connections WHERE id = ?').get(params.id);
+  if (!conn) return send(res, 404, { ok: false, error: 'Связь не найдена' });
+  if (!checkTreeAuth(req, res, conn.tree_id)) return;
+
+  if (conn.type === 'marriage') {
+    // Очищаем spouse_id у обоих узлов
+    db.prepare('UPDATE family_nodes SET spouse_id = NULL WHERE id = ?').run(conn.node_a);
+    db.prepare('UPDATE family_nodes SET spouse_id = NULL WHERE id = ?').run(conn.node_b);
+  }
+
+  db.prepare('DELETE FROM family_connections WHERE id = ?').run(params.id);
+  send(res, 200, { ok: true });
+}
+
+/* ── GET /api/family-trees ── */
 function getFamilyTrees(req, res) {
-  const rows = db.prepare("SELECT DISTINCT tree_id FROM family_nodes ORDER BY tree_id").all();
-  const trees = rows.map(r => r.tree_id);
-  if (!trees.includes('default')) trees.unshift('default');
+  if (!checkAuth(req, res)) return;
+  const rows = db.prepare("SELECT id FROM family_trees WHERE user_id = ? ORDER BY id").all(req.user.id);
+  let trees = rows.map(r => r.id);
+  const rootTreeId = req.user.name === 'krutko' ? 'default' : `${req.user.id}-default`;
+  if (!trees.includes(rootTreeId)) {
+    db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+      .run(rootTreeId, 'Моё древо', req.user.id);
+    trees.unshift(rootTreeId);
+  }
   send(res, 200, { ok: true, data: trees });
 }
 
@@ -706,6 +914,7 @@ function getFamilyTrees(req, res) {
 function getFamilyClans(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const treeId = (url.searchParams.get('treeId') || 'default').toString().slice(0, 50);
+  if (!checkTreeAuth(req, res, treeId)) return;
   const rows = db.prepare('SELECT * FROM family_clans WHERE tree_id = ? ORDER BY created_at ASC').all(treeId);
   send(res, 200, { ok: true, data: rows });
 }
@@ -715,6 +924,8 @@ async function createFamilyClan(req, res) {
   const body = await parseBody(req);
   const id = (body.id || '').toString().trim().toLowerCase().replace(/[^a-zа-яё0-9]/gi, '-').slice(0, 30) || randomUUID().slice(0, 8);
   const treeId = (body.treeId || 'default').toString().slice(0, 50);
+  if (!checkTreeAuth(req, res, treeId)) return;
+
   const name = (body.name || '').toString().trim().slice(0, 100);
   const color = (body.color || '#c8a84b').toString().slice(0, 20);
   const icon = (body.icon || '✦').toString().slice(0, 4);
@@ -732,8 +943,7 @@ async function createFamilyClan(req, res) {
 
 /* ── DELETE /api/family-clans/:id ── */
 function deleteFamilyClan(req, res, params) {
-  const clan = db.prepare('SELECT * FROM family_clans WHERE id = ?').get(params.id);
-  if (!clan) return send(res, 404, { ok: false, error: 'Clan not found' });
+  if (!checkClanAuth(req, res, params.id)) return;
   db.prepare('DELETE FROM family_clans WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
@@ -741,6 +951,7 @@ function deleteFamilyClan(req, res, params) {
 function getFamilyNodes(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const treeId = (url.searchParams.get('treeId') || 'default').toString().slice(0, 50);
+  if (!checkTreeAuth(req, res, treeId)) return;
 
   const rows = db.prepare(
     'SELECT * FROM family_nodes WHERE tree_id = ? ORDER BY generation ASC, gen_order ASC'
@@ -768,8 +979,10 @@ function getFamilyNodes(req, res) {
 /* ── POST /api/family-nodes — создать узел ── */
 async function createFamilyNode(req, res) {
   const body = await parseBody(req);
-  const id = randomUUID();
   const treeId = (body.treeId || 'default').toString().slice(0, 50);
+  if (!checkTreeAuth(req, res, treeId)) return;
+
+  const id = randomUUID();
   const fullName = (body.fullName || '').toString().trim().slice(0, 200);
   const years = (body.years || '').toString().trim().slice(0, 50);
   const clanId = (body.clanId || 'ivanov').toString().slice(0, 30);
@@ -781,6 +994,17 @@ async function createFamilyNode(req, res) {
   const linkedProfileId = body.linkedProfileId || null;
   const photoUrl = (body.photoUrl || '').toString().slice(0, 500);
   const description = (body.description || '').toString().trim().slice(0, 300);
+
+  // Проверка брака при создании узла с супругом
+  if (spouseId) {
+    const spouse = db.prepare('SELECT generation, clan_id FROM family_nodes WHERE id = ?').get(spouseId);
+    if (spouse) {
+      const validation = validateMarriage({ generation, clan_id: clanId }, spouse);
+      if (!validation.valid) {
+        return send(res, 400, { ok: false, error: validation.error });
+      }
+    }
+  }
 
   db.prepare(`
     INSERT INTO family_nodes (id, tree_id, full_name, years, clan_id, age_class, generation, gen_order, spouse_id, parent_ids, linked_profile_id, photo_url, description)
@@ -798,10 +1022,27 @@ async function createFamilyNode(req, res) {
 
 /* ── PUT /api/family-nodes/:id — обновить узел ── */
 async function updateFamilyNode(req, res, params) {
+  if (!checkNodeAuth(req, res, params.id)) return;
   const node = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
   if (!node) return send(res, 404, { ok: false, error: 'Node not found' });
 
   const body = await parseBody(req);
+
+  // Проверка брака при изменении супруга, поколения или рода
+  const newSpouseId = body.spouseId !== undefined ? body.spouseId : node.spouse_id;
+  const newGeneration = body.generation !== undefined ? parseInt(body.generation, 10) : node.generation;
+  const newClanId = body.clanId !== undefined ? body.clanId : node.clan_id;
+
+  if (newSpouseId) {
+    const spouse = db.prepare('SELECT generation, clan_id FROM family_nodes WHERE id = ?').get(newSpouseId);
+    if (spouse) {
+      const validation = validateMarriage({ generation: newGeneration, clan_id: newClanId }, spouse);
+      if (!validation.valid) {
+        return send(res, 400, { ok: false, error: validation.error });
+      }
+    }
+  }
+
   const fields = [];
   const vals = [];
 
@@ -809,9 +1050,9 @@ async function updateFamilyNode(req, res, params) {
   if (body.years !== undefined)           { fields.push('years = ?');             vals.push(body.years.toString().slice(0, 50)); }
   if (body.clanId !== undefined)          { fields.push('clan_id = ?');           vals.push(body.clanId.toString().slice(0, 30)); }
   if (body.ageClass !== undefined)        { fields.push('age_class = ?');         vals.push(body.ageClass === 'old' ? 'old' : 'young'); }
-  if (body.generation !== undefined)      { fields.push('generation = ?');        vals.push(parseInt(body.generation, 10) || 0); }
+  if (body.generation !== undefined)      { fields.push('generation = ?');        vals.push(newGeneration); }
   if (body.genOrder !== undefined)        { fields.push('gen_order = ?');         vals.push(parseInt(body.genOrder, 10) || 0); }
-  if (body.spouseId !== undefined)        { fields.push('spouse_id = ?');         vals.push(body.spouseId || null); }
+  if (body.spouseId !== undefined)        { fields.push('spouse_id = ?');         vals.push(newSpouseId); }
   if (body.parentIds !== undefined)       { fields.push('parent_ids = ?');        vals.push(Array.isArray(body.parentIds) ? JSON.stringify(body.parentIds.slice(0, 4)) : '[]'); }
   if (body.linkedProfileId !== undefined) { fields.push('linked_profile_id = ?'); vals.push(body.linkedProfileId || null); }
   if (body.photoUrl !== undefined)        { fields.push('photo_url = ?');         vals.push(body.photoUrl.toString().slice(0, 500)); }
@@ -822,12 +1063,23 @@ async function updateFamilyNode(req, res, params) {
   fields.push("updated_at = datetime('now')");
   db.prepare(`UPDATE family_nodes SET ${fields.join(', ')} WHERE id = ?`).run(...vals, params.id);
 
+  // Если супруг изменился — обновляем встречные ссылки
+  if (body.spouseId !== undefined) {
+    if (node.spouse_id && node.spouse_id !== newSpouseId) {
+      db.prepare("UPDATE family_nodes SET spouse_id = NULL WHERE id = ?").run(node.spouse_id);
+    }
+    if (newSpouseId) {
+      db.prepare("UPDATE family_nodes SET spouse_id = ? WHERE id = ?").run(params.id, newSpouseId);
+    }
+  }
+
   const row = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
   send(res, 200, { ok: true, data: row });
 }
 
 /* ── DELETE /api/family-nodes/:id ── */
 function deleteFamilyNode(req, res, params) {
+  if (!checkNodeAuth(req, res, params.id)) return;
   const node = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
   if (!node) return send(res, 404, { ok: false, error: 'Node not found' });
 
@@ -923,6 +1175,7 @@ async function createTimelineEvent(req, res) {
 }
 
 async function updateTimelineEvent(req, res, params) {
+  if (!checkTimelineEventAuth(req, res, params.id)) return;
   const ev = db.prepare('SELECT * FROM timeline_events WHERE id = ?').get(params.id);
   if (!ev) return send(res, 404, { ok: false, error: 'Not found' });
   const body = await parseBody(req);
@@ -942,6 +1195,7 @@ async function updateTimelineEvent(req, res, params) {
 }
 
 function deleteTimelineEvent(req, res, params) {
+  if (!checkTimelineEventAuth(req, res, params.id)) return;
   const ev = db.prepare('SELECT * FROM timeline_events WHERE id = ?').get(params.id);
   if (!ev) return send(res, 404, { ok: false, error: 'Not found' });
   if (!['custom', 'marriage', 'move'].includes(ev.type)) return send(res, 400, { ok: false, error: 'Cannot delete auto-generated events' });
@@ -951,6 +1205,7 @@ function deleteTimelineEvent(req, res, params) {
 
 /* ── GET /api/family-nodes/:id — один узел ── */
 function getFamilyNodeById(req, res, params) {
+  if (!checkNodeAuth(req, res, params.id)) return;
   const node = db.prepare('SELECT * FROM family_nodes WHERE id = ?').get(params.id);
   if (!node) return send(res, 404, { ok: false, error: 'Node not found' });
   send(res, 200, { ok: true, data: node });
@@ -1039,6 +1294,13 @@ async function dispatch(req, res) {
     }
     if ((p = matchRoute('/api/reviews/delete/:id', pathname))) {
       if (method === 'DELETE') { if (!checkAuth()) return; return deleteReview(req, res, p); }
+    }
+
+    /* ── /api/family-connections ── */
+    if (method === 'GET'  && pathname === '/api/family-connections') return getFamilyConnections(req, res);
+    if (method === 'POST' && pathname === '/api/family-connections') return await createFamilyConnection(req, res);
+    if ((p = matchRoute('/api/family-connections/:id', pathname))) {
+      if (method === 'DELETE') return deleteFamilyConnection(req, res, p);
     }
 
     /* ── /api/family-nodes ── */

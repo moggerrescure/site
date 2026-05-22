@@ -8,6 +8,18 @@
    ═══════════════════════════════════════════════ */
 
 (function () {
+  const urlParams   = new URLSearchParams(window.location.search);
+  let currentTreeId = urlParams.get('tree') || 'default';
+
+  // Transparent Tree Selection: redirect user to their rootTreeId if they are on default
+  if (typeof API !== 'undefined') {
+    const user = API.getUser();
+    if (user && user.rootTreeId && user.rootTreeId !== 'default' && currentTreeId === 'default') {
+      window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+      return;
+    }
+  }
+
   const editBtn = document.getElementById('tree-edit-btn');
   if (!editBtn) return;
 
@@ -15,9 +27,6 @@
   let isEditMode = false;
   let allNodes   = [];
   let clansCache = {};
-
-  const urlParams   = new URLSearchParams(window.location.search);
-  let currentTreeId = urlParams.get('tree') || 'default';
 
   /* ── HISTORY IS HANDLED EXCLUSIVELY VIA PERSONAL EVENTS ── */
 
@@ -952,7 +961,7 @@
         else { errEl.textContent = j.error || 'Ошибка'; errEl.style.display = 'block'; }
       } catch (_) {}
 
-      if (!saved) {
+      if (!saved && !errEl.textContent) {
         const arr = getLocalNodes();
         const node = { ...nodeData, id: 'local-' + Date.now() };
         arr.push(node); saveLocalNodes(arr); allNodes = arr;
@@ -1017,6 +1026,17 @@
     document.body.appendChild(t);
   }
 
+  function showErrorToast(msg) {
+    document.getElementById('conn-toast')?.remove();
+    document.getElementById('err-toast')?.remove();
+    const t = document.createElement('div');
+    t.id = 'err-toast';
+    t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(26,12,12,0.92);border:1px solid rgba(239,68,68,0.5);border-radius:30px;padding:12px 24px;font-family:var(--font-body);font-size:14px;color:#ff9e9e;z-index:9999;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,0.7);animation:toastIn 0.3s ease;pointer-events:auto;';
+    t.innerHTML = `<span id="err-toast-msg">⚠️ ${msg}</span><button onclick="document.getElementById('err-toast')?.remove()" style="background:none;border:none;color:#ffcccc;font-size:18px;cursor:pointer;margin-left:8px;line-height:1;">×</button>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+
   function updateConnectionToast(step) {
     const msg = document.getElementById('conn-toast-msg');
     if (!msg) return;
@@ -1036,6 +1056,26 @@
       if (nodeId === connectionNodeA) {
         nodeEl.classList.remove('tree-node--conn-selected');
         connectionNodeA = null; connectionStep = 0; return true;
+      }
+      if (connectionMode === 'marriage') {
+        const nodeA = allNodes.find(n => n.id === connectionNodeA);
+        const nodeB = allNodes.find(n => n.id === nodeId);
+        if (nodeA && nodeB) {
+          const genA = nodeA.generation || 0;
+          const genB = nodeB.generation || 0;
+          if (genA !== genB) {
+            showErrorToast('Брак разрешен только между членами одного поколения!');
+            cancelConnectionMode();
+            return true;
+          }
+          const clanA = nodeA.clan_id || nodeA.clanId;
+          const clanB = nodeB.clan_id || nodeB.clanId;
+          if (clanA && clanB && clanA === clanB) {
+            showErrorToast('Брак между членами одного рода запрещен!');
+            cancelConnectionMode();
+            return true;
+          }
+        }
       }
       connectNodes(connectionNodeA, nodeId, connectionMode);
       nodeEl.classList.add('tree-node--conn-selected');
@@ -1071,7 +1111,7 @@
 
     fetch(`${BASE}/api/family-connections`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ treeId: currentTreeId, nodeA: idA, nodeB: idB, connectionType: type }),
+      body: JSON.stringify({ treeId: currentTreeId, nodeA: idA, nodeB: idB, type: type, color: lineColor }),
     }).catch(() => {});
 
     /* Нарисовать нити — и в dynamic и в static контейнере */
@@ -1121,6 +1161,23 @@
 
 
 
+  async function syncConnectionsFromDb() {
+    try {
+      const r = await fetch(`${BASE}/api/family-connections?treeId=${currentTreeId}`);
+      const j = await r.json();
+      if (j.ok && Array.isArray(j.data)) {
+        const conns = j.data.map(c => ({
+          id: c.id,
+          a: c.nodeA,
+          b: c.nodeB,
+          type: c.type,
+          color: c.color,
+        }));
+        saveLocalConnections(conns);
+      }
+    } catch (_) {}
+  }
+
   /* ════════════════════════════════════════════
      ИНИЦИАЛИЗАЦИЯ — СТАТИЧЕСКОЕ ИЛИ ДИНАМИЧЕСКОЕ
      ════════════════════════════════════════════ */
@@ -1136,9 +1193,14 @@
     dc.className = 'tree-dynamic'; dc.id = 'tree-dynamic';
     document.querySelector('.tree-section')?.appendChild(dc);
 
-    loadNodes().then(() => { renderDynamicTree(dc); initLegendConnections(); });
+    syncConnectionsFromDb().then(() => {
+      loadNodes().then(() => { renderDynamicTree(dc); initLegendConnections(); });
+    });
   } else {
     /* Default дерево — статическое, но соединения тоже работают */
+    syncConnectionsFromDb().then(() => {
+      // Done syncing default connections
+    });
 
     /* Вешаем соединение на статические карточки */
     function attachStaticNodeClicks() {
@@ -1798,16 +1860,35 @@
         photoUrl:  document.getElementById('tm-photo-url').value,
       };
 
+      // Validation for spouse generation and clan
+      if (data.spouseId) {
+        const spouseNode = allNodes.find(n => n.id === data.spouseId);
+        if (spouseNode) {
+          const spouseGen = spouseNode.generation || 0;
+          const spouseClan = spouseNode.clan_id || spouseNode.clanId;
+          if (spouseGen !== data.generation) {
+            err.textContent = 'Брак разрешен только между членами одного поколения!';
+            err.style.display = 'block';
+            return;
+          }
+          if (spouseClan && data.clanId && spouseClan === data.clanId) {
+            err.textContent = 'Брак между членами одного рода запрещен!';
+            err.style.display = 'block';
+            return;
+          }
+        }
+      }
+
       let saved = false;
       try {
         const url = isNew ? `${BASE}/api/family-nodes` : `${BASE}/api/family-nodes/${nodeId}`;
         const r = await fetch(url, { method: isNew ? 'POST' : 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
         const j = await r.json();
-        if (j.ok) { saved = true; syncTimelineAndStats(); reloadTreeInPlace(); }
+        if (j.ok) { saved = true; close(); syncTimelineAndStats(); reloadTreeInPlace(); }
         else { err.textContent = j.error || 'Ошибка'; err.style.display = 'block'; }
       } catch (_) {}
 
-      if (!saved) {
+      if (!saved && !err.textContent) {
         const arr = getLocalNodes();
         if (isNew) { const n = {...data, id:'local-'+Date.now()}; arr.push(n); allNodes.push(n); }
         else {

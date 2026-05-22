@@ -127,20 +127,12 @@
     font-size: clamp(32px, 4vw, 46px);
   }
 
-  .vine-card__text {
+  .memory-card__text {
     font-size: 19px;
   }
 
-  .vine-card__author {
+  .memory-card__author {
     font-size: 21px;
-  }
-
-  .vine-card__caption {
-    font-size: 17px;
-  }
-
-  .vine-subtitle {
-    font-size: 20px;
   }
 
   .burial-place {

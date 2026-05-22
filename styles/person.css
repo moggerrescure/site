@@ -369,311 +369,23 @@
   vertical-align: middle;
 }
 
-
-
 /* ═══════════════════════════════════════════════
-   ЛИАНА ПАМЯТИ
+   ВОСПОМИНАНИЯ БЛИЗКИХ (СЕТКА)
    ═══════════════════════════════════════════════ */
 
-.vine-section {
+.memories-section {
   margin-bottom: 80px;
 }
 
-.vine-subtitle {
-  text-align: center;
-  font-family: var(--font-body);
-  font-size: 16px;
-  font-style: italic;
-  font-weight: 300;
-  color: var(--cream-dim);
-  margin-top: -24px;
-  margin-bottom: 50px;
-  opacity: 0.7;
-}
-
-.vine-layout {
-  position: relative;
-  width: 100%;
-  min-height: 600px;
-}
-
-/* ── Нить по центру ── */
-.vine-rope-wrap {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
-  width: 40px;
-  z-index: 2;
-  pointer-events: auto;
-}
-
-.vine-rope-svg {
-  width: 40px;
-  display: block;
-}
-
-/* Сжатие нити при клике */
-@keyframes ropeSqueeze {
-  0%   { transform: scaleX(1); filter: brightness(1); }
-  30%  { transform: scaleX(0.5) scaleY(1.02); filter: brightness(2); }
-  60%  { transform: scaleX(1.2) scaleY(0.99); filter: brightness(1.4); }
-  100% { transform: scaleX(1); filter: brightness(1); }
-}
-.vine-rope--squeeze {
-  animation: ropeSqueeze 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-origin: center center;
-}
-
-/* Бриллиант-узелок */
-.vine-knot-diamond {
-  transition: transform 0.3s, filter 0.3s;
-  transform-origin: center;
-  transform-box: fill-box;
-  filter: drop-shadow(0 0 3px rgba(200,168,75,0.5));
-}
-.vine-knot:hover .vine-knot-diamond {
-  transform: scale(1.5) rotate(20deg);
-  filter: drop-shadow(0 0 8px rgba(255,240,180,0.9));
-}
-
-@keyframes knotSqueeze {
-  0%   { transform: scale(1) rotate(0deg);    }
-  25%  { transform: scale(2) rotate(45deg);   }
-  60%  { transform: scale(0.6) rotate(-20deg);}
-  100% { transform: scale(1) rotate(0deg);    }
-}
-.vine-knot--squeeze .vine-knot-diamond {
-  animation: knotSqueeze 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ── Карточки ── */
-.vine-cards {
-  position: relative;
+.memories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
   width: 100%;
 }
 
-.vine-card {
-  position: absolute;
-  width: calc(50% - 44px);
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.vine-card--visible { opacity: 1; transform: translateY(0); }
-
-.vine-card--left  { right: calc(50% + 20px); text-align: left; }
-.vine-card--right { left:  calc(50% + 20px); text-align: left; }
-
-/* Коннектор и точка */
-.vine-card__connector {
-  position: absolute;
-  top: 54px;
-  height: 1px;
-  width: 20px;
-}
-.vine-card__connector--left  { right: -20px; background: linear-gradient(90deg, transparent, rgba(200,168,75,0.6)); }
-.vine-card__connector--right { left:  -20px; background: linear-gradient(90deg, rgba(200,168,75,0.6), transparent); }
-
-.vine-card__knot {
-  position: absolute;
-  top: 48px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff9e6, var(--gold));
-  box-shadow: 0 0 6px rgba(200,168,75,0.6);
-}
-.vine-card__knot--left  { right: -23px; }
-.vine-card__knot--right { left:  -23px; }
-
-/* Внутри карточки */
-.vine-card__inner {
-  background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(200,168,75,0.04));
-  border: 1px solid rgba(200,168,75,0.18);
-  border-radius: 10px;
-  padding: 0;
-  overflow: hidden;
-  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
-}
-.vine-card__inner:hover {
-  border-color: rgba(200,168,75,0.4);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(200,168,75,0.12);
-  transform: translateY(-3px);
-}
-
-/* ── Split-layout: фото слева + инфо справа ── */
-.vine-card__split {
-  display: flex;
-  align-items: stretch;
-  min-height: 160px;
-}
-
-.vine-card__split-media {
-  flex: 0 0 45%;
-  max-width: 45%;
-  overflow: hidden;
-  position: relative;
-}
-
-.vine-card__split-info {
-  flex: 1;
-  padding: 18px 16px 16px 18px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  border-left: 1px solid rgba(200,168,75,0.1);
-}
-
-.vine-card__split .vine-card__media--photo,
-.vine-card__split .vine-card__media--video {
-  width: 100%;
-  height: 100%;
-  min-height: 160px;
-  aspect-ratio: unset;
-  border-radius: 0;
-  border: none;
-}
-
-.vine-card__split-img {
-  width: 100%;
-  height: 100%;
-  min-height: 160px;
-  object-fit: cover;
-  display: block;
-}
-
-.vine-card__type-tag {
-  font-family: var(--font-ui);
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gold-dim);
-  opacity: 0.8;
-}
-
-/* Текст без фото */
-.vine-card__text-only {
-  padding: 20px 22px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* Медиа-блок */
-.vine-card__media {
-  width: 100%;
-  overflow: hidden;
-}
-.vine-card__media--photo {
-  aspect-ratio: 4/3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: linear-gradient(135deg, rgba(200,168,75,0.06), rgba(200,168,75,0.1));
-  color: var(--gold-dim);
-}
-.vine-card__media--video {
-  aspect-ratio: 4/3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: linear-gradient(135deg, rgba(80,60,20,0.2), rgba(8,8,8,0.85));
-  position: relative;
-  overflow: hidden;
-}
-.vine-card__media--video::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(200,168,75,0.02) 0px, rgba(200,168,75,0.02) 1px, transparent 1px, transparent 4px);
-}
-
-.vine-card__img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.vine-card__photo-icon { font-size: 26px; opacity: 0.45; }
-.vine-card__photo-label {
-  font-family: var(--font-ui);
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  opacity: 0.55;
-  text-align: center;
-  padding: 0 8px;
-}
-
-.vine-card__play {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: rgba(200,168,75,0.2);
-  border: 1.5px solid rgba(200,168,75,0.5);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: var(--gold-light);
-  position: relative; z-index: 1;
-  transition: background 0.3s, transform 0.3s;
-}
-.vine-card__inner:hover .vine-card__play {
-  background: rgba(200,168,75,0.35);
-  transform: scale(1.12);
-}
-.vine-card__duration {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: var(--gold-dim);
-  position: relative; z-index: 1;
-}
-
-.vine-card__caption {
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-style: italic;
-  font-weight: 300;
-  color: var(--cream-dim);
-  line-height: 1.5;
-}
-
-/* Текстовые поля */
-.vine-card__type-badge {
-  display: inline-block;
-  font-family: var(--font-ui);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--gold-dim);
-  border: 1px solid rgba(200,168,75,0.2);
-  border-radius: 3px;
-  padding: 2px 7px;
-  margin-bottom: 8px;
-  align-self: flex-start;
-}
-.vine-card__text {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-style: italic;
-  font-weight: 300;
-  color: var(--cream);
-  line-height: 1.65;
-  margin: 0;
-}
-.vine-card__text::before { content: '"'; color: var(--gold-dim); }
-.vine-card__text::after  { content: '"'; color: var(--gold-dim); }
-.vine-card__author {
-  font-family: var(--font-script);
-  font-size: 17px;
-  color: var(--gold-light);
-  letter-spacing: 0.02em;
-  margin: 0;
-}
-.vine-card__author::before { content: '— '; color: var(--gold-dim); }
-
-/* Пусто */
-.vine-empty {
+.memories-empty {
+  grid-column: 1 / -1;
   text-align: center;
   font-family: var(--font-body);
   font-style: italic;
@@ -682,23 +394,121 @@
   padding: 60px 20px;
 }
 
-/* ── Mobile ── */
-@media (max-width: 700px) {
-  .vine-rope-wrap { display: none; }
-  .vine-cards { position: static; display: flex; flex-direction: column; gap: 16px; padding: 0 8px; }
-  .vine-card { position: static; width: 100%; text-align: left; opacity: 1; transform: none; }
-  .vine-card--visible { opacity: 1; transform: none; }
-  .vine-card__connector, .vine-card__knot { display: none; }
-  .vine-layout { min-height: unset; }
-  .vine-card__split { flex-direction: column; }
-  .vine-card__split-media { flex: unset; max-width: 100%; }
-  .vine-card__split .vine-card__media--photo,
-  .vine-card__split .vine-card__media--video { min-height: 160px; }
-  .vine-card__split-info { border-left: none; border-top: 1px solid rgba(200,168,75,0.1); }
+/* Карточка воспоминания */
+.memory-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(200, 168, 75, 0.03));
+  border: 1px solid rgba(200, 168, 75, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1),
+              box-shadow 0.4s cubic-bezier(0.165, 0.84, 0.44, 1),
+              border-color 0.4s ease;
+  backdrop-filter: blur(8px);
 }
 
-@media (max-width: 960px) and (min-width: 701px) {
-  .vine-card { width: calc(50% - 34px); }
+.memory-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(200, 168, 75, 0.35);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(200, 168, 75, 0.15);
+}
+
+/* Разделенная карточка с фото */
+.memory-card__split {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.memory-card__split-media {
+  width: 100%;
+  aspect-ratio: 16/10;
+  overflow: hidden;
+  position: relative;
+}
+
+.memory-card__split-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.memory-card:hover .memory-card__split-img {
+  transform: scale(1.05);
+}
+
+.memory-card__split-info {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: 12px;
+}
+
+/* Текстовая карточка */
+.memory-card__text-only {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Бейдж типа */
+.memory-card__type-badge {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-dim);
+  border: 1px solid rgba(200, 168, 75, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
+  align-self: flex-start;
+}
+
+/* Текст воспоминания */
+.memory-card__text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--cream);
+  line-height: 1.65;
+  margin: 0;
+  position: relative;
+}
+
+.memory-card__text::before {
+  content: '«';
+  color: var(--gold-dim);
+  font-size: 1.2em;
+  margin-right: 2px;
+}
+
+.memory-card__text::after {
+  content: '»';
+  color: var(--gold-dim);
+  font-size: 1.2em;
+  margin-left: 2px;
+}
+
+/* Автор воспоминания */
+.memory-card__author {
+  font-family: var(--font-script);
+  font-size: 18px;
+  color: var(--gold-light);
+  margin: 0;
+  margin-top: auto;
+  align-self: flex-end;
+}
+
+.memory-card__author::before {
+  content: '— ';
+  color: var(--gold-dim);
 }
 
 

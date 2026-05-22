@@ -11,6 +11,32 @@ const API = (() => {
   function getToken() { return localStorage.getItem(TOKEN_KEY); }
   function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
 
+  // Global fetch interceptor to automatically append JWT bearer token to any /api/ requests
+  const originalFetch = window.fetch;
+  window.fetch = async function (resource, options = {}) {
+    const url = typeof resource === 'string' ? resource : (resource instanceof URL ? resource.href : resource?.url || '');
+    if (url && (url.startsWith('/api/') || url.includes('/api/'))) {
+      const token = getToken();
+      if (token) {
+        options.headers = options.headers || {};
+        if (options.headers instanceof Headers) {
+          if (!options.headers.has('Authorization')) {
+            options.headers.set('Authorization', 'Bearer ' + token);
+          }
+        } else if (Array.isArray(options.headers)) {
+          if (!options.headers.some(([key]) => key.toLowerCase() === 'authorization')) {
+            options.headers.push(['Authorization', 'Bearer ' + token]);
+          }
+        } else {
+          if (!options.headers['Authorization'] && !options.headers['authorization']) {
+            options.headers['Authorization'] = 'Bearer ' + token;
+          }
+        }
+      }
+    }
+    return originalFetch.call(this, resource, options);
+  };
+
   async function req(method, path, body, isForm) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -47,17 +73,30 @@ const API = (() => {
 
     getToken, setToken,
     isLoggedIn: () => !!getToken(),
+    getUser() {
+      try {
+        const u = localStorage.getItem('memory_user');
+        return u ? JSON.parse(u) : null;
+      } catch {
+        return null;
+      }
+    },
 
     async login(email, password) {
       const r = await req('POST', '/api/auth/login', { email, password });
       setToken(r.token);
+      if (r.user) localStorage.setItem('memory_user', JSON.stringify(r.user));
       return r;
     },
     async register(name, email, password) {
       const r = await req('POST', '/api/auth/register', { name, email, password });
       setToken(r.token);
+      if (r.user) localStorage.setItem('memory_user', JSON.stringify(r.user));
       return r;
     },
-    logout() { setToken(null); },
+    logout() {
+      setToken(null);
+      localStorage.removeItem('memory_user');
+    },
   };
 })();

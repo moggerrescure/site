@@ -4,6 +4,84 @@
    ═══════════════════════════════════════════════ */
 
 (function () {
+  // Inject style block for Page Guard and Modal Styling
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    .page-guard-blur-wrapper {
+      filter: blur(15px);
+      pointer-events: none;
+      user-select: none;
+      transition: filter 0.5s ease;
+    }
+    .page-guard-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 99998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 12, 0.6);
+      backdrop-filter: blur(10px);
+    }
+    .page-guard-box {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3rem 2rem;
+      border-radius: 24px;
+      max-width: 450px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+      animation: guardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes guardFadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .page-guard-box__logo {
+      font-size: 3rem;
+      color: #c8a84b;
+      margin-bottom: 1.5rem;
+      text-shadow: 0 0 15px rgba(200, 168, 75, 0.4);
+    }
+    .page-guard-box__title {
+      font-family: 'Outfit', 'Inter', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #fff 0%, #a5a5a6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .page-guard-box__text {
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .page-guard-box__btn {
+      background: linear-gradient(135deg, #c8a84b 0%, #a6842c 100%);
+      color: #0d0d0f;
+      border: none;
+      font-weight: 600;
+      padding: 1rem 2.5rem;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 20px rgba(200, 168, 75, 0.2);
+    }
+    .page-guard-box__btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px rgba(200, 168, 75, 0.35);
+    }
+  `;
+  document.head.appendChild(styleEl);
+
   const nav = document.querySelector('.nav__inner');
   if (!nav) return;
 
@@ -44,7 +122,7 @@
             <input class="auth-modal__input" type="text" name="name" placeholder="Имя" required autocomplete="name"/>
           </div>` : ''}
           <div class="auth-modal__field">
-            <input class="auth-modal__input" type="email" name="email" placeholder="Email" required autocomplete="email"/>
+            <input class="auth-modal__input" type="${mode === 'login' ? 'text' : 'email'}" name="email" placeholder="${mode === 'login' ? 'Email или Логин' : 'Email'}" required autocomplete="email"/>
           </div>
           <div class="auth-modal__field">
             <input class="auth-modal__input" type="password" name="password" placeholder="Пароль" required minlength="6" autocomplete="current-password"/>
@@ -64,9 +142,21 @@
     document.body.appendChild(overlay);
     overlay.querySelector('input')?.focus();
 
-    document.getElementById('auth-close').onclick  = closeModal;
+    document.getElementById('auth-close').onclick  = () => {
+      closeModal();
+      if (!API.isLoggedIn() && isPrivate) {
+        window.location.href = 'index.html';
+      }
+    };
     document.getElementById('auth-switch').onclick = () => openModal(mode === 'login' ? 'register' : 'login');
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    overlay.addEventListener('click', e => { 
+      if (e.target === overlay) {
+        closeModal(); 
+        if (!API.isLoggedIn() && isPrivate) {
+          window.location.href = 'index.html';
+        }
+      }
+    });
     document.addEventListener('keydown', onEsc);
 
     document.getElementById('auth-form').addEventListener('submit', async e => {
@@ -98,5 +188,54 @@
     document.removeEventListener('keydown', onEsc);
   }
 
-  function onEsc(e) { if (e.key === 'Escape') closeModal(); }
+  function onEsc(e) { 
+    if (e.key === 'Escape') {
+      closeModal(); 
+      if (!API.isLoggedIn() && isPrivate) {
+        window.location.href = 'index.html';
+      }
+    }
+  }
+
+  // Expose function globally
+  window.openAuthModal = openModal;
+
+  // Page Guard Logic
+  const privatePages = ['/memory.html', '/family-tree.html', '/timeline.html', '/person.html'];
+  const currentPath = window.location.pathname.toLowerCase();
+  const isPrivate = privatePages.some(page => currentPath.endsWith(page));
+
+  if (isPrivate && !API.isLoggedIn()) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const bodyChildren = Array.from(document.body.children);
+      const blurWrapper = document.createElement('div');
+      blurWrapper.className = 'page-guard-blur-wrapper';
+
+      bodyChildren.forEach(child => {
+        if (child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE') {
+          blurWrapper.appendChild(child);
+        }
+      });
+      document.body.appendChild(blurWrapper);
+
+      const guardOverlay = document.createElement('div');
+      guardOverlay.className = 'page-guard-overlay';
+      guardOverlay.innerHTML = `
+        <div class="page-guard-box">
+          <div class="page-guard-box__logo">✦</div>
+          <h2 class="page-guard-box__title">Личная Книга Памяти</h2>
+          <p class="page-guard-box__text">Доступ к семейному древу и страницам памяти ограничен. Войдите в свой личный кабинет или зарегистрируйтесь для продолжения.</p>
+          <button class="page-guard-box__btn" id="page-guard-login-btn">Войти в систему</button>
+        </div>
+      `;
+      document.body.appendChild(guardOverlay);
+
+      document.getElementById('page-guard-login-btn').onclick = () => {
+        openModal('login');
+      };
+
+      // Automatically open modal immediately
+      openModal('login');
+    });
+  }
 })();

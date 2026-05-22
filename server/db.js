@@ -117,7 +117,40 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_timeline_node ON timeline_events(node_id);
   CREATE INDEX IF NOT EXISTS idx_timeline_profile ON timeline_events(profile_id);
 
+  CREATE TABLE IF NOT EXISTS family_connections (
+    id TEXT PRIMARY KEY,
+    tree_id TEXT NOT NULL,
+    node_a TEXT NOT NULL,
+    node_b TEXT NOT NULL,
+    type TEXT NOT NULL,
+    color TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   INSERT OR IGNORE INTO family_trees (id, name) VALUES ('default', 'Основное');
 `);
+
+// Run migrations safely
+try {
+  const columnsPeople = db.prepare('PRAGMA table_info(people)').all();
+  const hasUserIdInPeople = columnsPeople.some(col => col.name === 'user_id');
+  if (!hasUserIdInPeople) {
+    db.exec('ALTER TABLE people ADD COLUMN user_id TEXT;');
+    console.log('Migration: Added user_id column to people table.');
+  }
+} catch (e) {
+  console.error('Migration error for people table:', e);
+}
+
+try {
+  const columnsTrees = db.prepare('PRAGMA table_info(family_trees)').all();
+  const hasUserIdInTrees = columnsTrees.some(col => col.name === 'user_id');
+  if (!hasUserIdInTrees) {
+    db.exec('ALTER TABLE family_trees ADD COLUMN user_id TEXT;');
+    console.log('Migration: Added user_id column to family_trees table.');
+  }
+} catch (e) {
+  console.error('Migration error for family_trees table:', e);
+}
 
 module.exports = db;
