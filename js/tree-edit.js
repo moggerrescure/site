@@ -2104,17 +2104,21 @@
     overlay.className = 'tree-modal-overlay';
     overlay.id = 'card-type-chooser';
     overlay.innerHTML = `
-      <div class="tree-modal" style="max-width:420px;text-align:center;">
+      <div class="tree-modal tree-modal--chooser">
         <button class="tree-modal__close" id="ctc-close">×</button>
         <h2 class="tree-modal__title">Какую карточку добавить?</h2>
-        <div style="display:flex;gap:16px;margin-top:20px;">
+        <div class="ctc-options">
           <button class="ctc-option" id="ctc-memory">
-            <span class="ctc-option__icon">📜</span>
+            <div class="ctc-option__icon-badge">
+              <span class="ctc-option__icon">📜</span>
+            </div>
             <span class="ctc-option__title">Страница памяти</span>
             <span class="ctc-option__desc">Для ушедших — полная страница с биографией</span>
           </button>
           <button class="ctc-option" id="ctc-relative">
-            <span class="ctc-option__icon">👤</span>
+            <div class="ctc-option__icon-badge">
+              <span class="ctc-option__icon">👤</span>
+            </div>
             <span class="ctc-option__title">Родственник</span>
             <span class="ctc-option__desc">Для живых — карточка с событиями</span>
           </button>
