@@ -221,15 +221,29 @@
   function render(person, source) {
     document.title = `${person.name} — Память`;
 
-    // Если sections пусто — генерим пустые блоки-заготовки (заполняются в edit mode)
+    // Если sections пусто — генерируем на лету из bio или создаем пустые заготовки
+    const isEditMode = new URLSearchParams(window.location.search).get('edit') === '1';
     if (!person.sections || typeof person.sections !== 'object' || !Object.keys(person.sections).length) {
+      if (person.bio && person.bio.trim()) {
+        person.sections = autoSplitBioToSections(person);
+      } else {
+        person.sections = {};
+      }
+    }
+
+    // В edit mode гарантируем наличие всех 6 стандартных секций, чтобы пользователь мог их заполнить
+    if (isEditMode) {
       const KEYS = ['childhood', 'education', 'career', 'family', 'hobbies', 'legacy'];
       const TITLES = ['Детство и юность', 'Образование', 'Профессиональный путь', 'Семья', 'Хобби и увлечения', 'Наследие'];
-      person.sections = {};
       KEYS.forEach((key, i) => {
-        person.sections[key] = { title: TITLES[i], text: '', image: '' };
+        if (!person.sections[key]) {
+          person.sections[key] = { title: TITLES[i], text: '', image: '' };
+        } else if (!person.sections[key].title) {
+          person.sections[key].title = TITLES[i];
+        }
       });
     }
+
 
     const bcName = document.getElementById('breadcrumb-name');
     if (bcName) bcName.textContent = person.name.split(' ').slice(0, 2).join(' ');
@@ -819,20 +833,48 @@
       btn.disabled    = true;
       btn.textContent = 'Сохраняем...';
 
+      let photoDataUrl = null;
+      if (rType === 'photo') {
+        if (photoInput && photoInput.files && photoInput.files[0]) {
+          try {
+            const formData = new FormData();
+            formData.append('photo', photoInput.files[0]);
+            const uploadRes = await API.upload('/api/upload-photo', formData);
+            if (uploadRes && uploadRes.ok && uploadRes.url) {
+              photoDataUrl = uploadRes.url;
+            }
+          } catch (uploadErr) {
+            console.error('Photo upload failed:', uploadErr);
+          }
+        }
+        if (!photoDataUrl && selectedPhotoDataUrl) {
+          photoDataUrl = selectedPhotoDataUrl;
+        }
+      }
+
       const newReview = {
         author,
         text,
         reviewType: rType,
-        ...(selectedPhotoDataUrl ? { photoDataUrl: selectedPhotoDataUrl } : {}),
+        ...(photoDataUrl ? { photoDataUrl } : {}),
       };
 
       /* Try API */
       let saved = false;
       try {
         if (typeof API !== 'undefined') {
-          const res = await API.post(`/api/reviews/${encodeURIComponent(id)}`, { author, text });
+          const res = await API.post(`/api/reviews/${encodeURIComponent(id)}`, {
+            author,
+            text,
+            reviewType: rType,
+            photoDataUrl
+          });
           if (res && res.data) {
-            reviews.unshift({ ...res.data, reviewType: rType, photoDataUrl: selectedPhotoDataUrl });
+            reviews.unshift({
+              ...res.data,
+              reviewType: res.data.reviewType || rType,
+              photoDataUrl: res.data.photoDataUrl || photoDataUrl
+            });
             saved = true;
           }
         }
@@ -848,7 +890,7 @@
         } catch {}
       }
 
-      /* Если добавили фото — оно войдёт в лиану через newReview */
+      /* Если добавили фото — оно войдёт в воспоминания через newReview */
 
       /* Сброс формы */
       form.reset();
@@ -862,7 +904,10 @@
 
       /* Перерендер воспоминаний */
       if (typeof window._addMemoryCard === 'function') {
-        window._addMemoryCard(newReview);
+        window._addMemoryCard(saved ? {
+          ...newReview,
+          photoDataUrl: photoDataUrl || selectedPhotoDataUrl
+        } : newReview);
       }
 
       status.style.display = 'block';

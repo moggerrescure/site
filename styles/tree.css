@@ -718,6 +718,135 @@ body.tree-page { overflow-x: hidden; }
   border-top: 1px solid rgba(200,168,75,0.15);
 }
 
+/* ── Card Type Chooser Modal ── */
+.tree-modal--chooser {
+  max-width: 600px !important;
+  padding: 42px 48px !important;
+  text-align: center;
+  background: radial-gradient(circle at top, rgba(30, 30, 30, 0.98), #0d0d0d) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(200, 168, 75, 0.28) !important;
+}
+
+.tree-modal--chooser .tree-modal__title {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, var(--cream) 30%, var(--gold-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 24px;
+}
+
+.ctc-options {
+  display: flex;
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.ctc-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(200, 168, 75, 0.15);
+  border-radius: 12px;
+  padding: 32px 20px;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.ctc-option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(200, 168, 75, 0.08) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.ctc-option__icon-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(200, 168, 75, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  transition: all var(--transition);
+  z-index: 1;
+  box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.05);
+}
+
+.ctc-option__icon {
+  font-size: 30px;
+  transition: transform 0.3s ease;
+}
+
+.ctc-option__title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--cream);
+  margin-bottom: 10px;
+  transition: color 0.3s ease;
+  z-index: 1;
+}
+
+.ctc-option__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--cream-dim);
+  transition: color 0.3s ease;
+  z-index: 1;
+  max-width: 220px;
+}
+
+/* Hover effects */
+.ctc-option:hover {
+  transform: translateY(-6px);
+  border-color: rgba(200, 168, 75, 0.55);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 12px 36px rgba(200, 168, 75, 0.16);
+}
+
+.ctc-option:hover::before {
+  opacity: 1;
+}
+
+.ctc-option:hover .ctc-option__icon-badge {
+  background: rgba(200, 168, 75, 0.12);
+  border-color: var(--gold-light);
+  box-shadow: 0 0 20px rgba(200, 168, 75, 0.35);
+}
+
+.ctc-option:hover .ctc-option__icon {
+  transform: scale(1.18);
+}
+
+.ctc-option:hover .ctc-option__title {
+  color: var(--gold-light);
+}
+
+.ctc-option:hover .ctc-option__desc {
+  color: var(--cream);
+}
+
+@media (max-width: 560px) {
+  .ctc-options {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
 /* ── Mobile modal ── */
 @media (max-width: 560px) {
   .tree-modal-overlay {
@@ -2149,4 +2278,133 @@ body.tree-page { overflow-x: hidden; }
 @keyframes scaleUp {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+/* ── PRINT STYLES ── */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm 6mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #particles-canvas,
+  .nav,
+  .tree-hero,
+  .clan-legend-wrap,
+  .tree-search-wrap,
+  .tree-toolbar,
+  .tree-legend,
+  .footer,
+  .tree-node-controls,
+  .tree-node-ctrl,
+  .tree-gen-card-add,
+  .tree-gen-add-btn,
+  .gen-label__edit,
+  .tree-add-btn,
+  .tree-modal,
+  .tree-overlay,
+  .edit-panel {
+    display: none !important;
+  }
+
+  .tree-section {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .tree-wrapper {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: scale(0.72) !important;
+    transform-origin: top center !important;
+    margin: 0 auto !important;
+    min-width: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .tree-generations {
+    gap: 32px !important;
+  }
+
+  .gen-row {
+    gap: 22px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .gen-label {
+    color: #111111 !important;
+    margin-bottom: 8px !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+  }
+
+  .tree-node {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #c8a84b !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .tree-node__frame {
+    border-color: #c8a84b !important;
+  }
+
+  .tree-node__avatar {
+    background: #f0f0f0 !important;
+    border-color: #cccccc !important;
+  }
+
+  .tree-node__avatar svg {
+    color: #888888 !important;
+  }
+
+  .tree-node__name {
+    color: #000000 !important;
+    font-weight: 600 !important;
+  }
+
+  .tree-node__years {
+    color: #444444 !important;
+    font-weight: bold !important;
+  }
+
+  .tree-node__clan-name {
+    color: #666666 !important;
+  }
+
+  .tree-node__desc {
+    color: #555555 !important;
+  }
+
+  .tree-node__link {
+    display: none !important;
+  }
+
+  .thread-path,
+  .tree-threads path,
+  .tree-dynamic-svg path {
+    opacity: 1 !important;
+    filter: none !important;
+  }
 }

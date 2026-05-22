@@ -589,7 +589,7 @@
       Object.entries(gen.childrenMap || {}).forEach(([parentId, childIds]) => {
         const parentEl = nodeEls[parentId];
         if (!parentEl) return;
-        const parentClan = personById[parentId]?.clanId || 'ivanov';
+        const parentClanId = personById[parentId]?.clanId || '';
         const spouse = personById[parentId]?.spouseOf;
 
         // Избегаем дублирования — обрабатываем пару один раз
@@ -615,13 +615,25 @@
           anchorY = cp.top;
         }
 
-        const colors = clanColors(parentClan);
-
         // Рисуем линии от якоря к каждому ребёнку
         allChildIds.forEach(childId => {
           const childEl = nodeEls[childId];
           if (!childEl) return;
           const cc = getFrameCenter(childEl);
+
+          // Fallback logic for parent-to-child connection line colors
+          let finalClanId = parentClanId;
+          if (!finalClanId && spouse) {
+            finalClanId = personById[spouse]?.clanId || '';
+          }
+          if (!finalClanId) {
+            finalClanId = personById[childId]?.clanId || '';
+          }
+          if (!finalClanId) {
+            finalClanId = 'ivanov';
+          }
+
+          const colors = clanColors(finalClanId);
 
           // Плавная кривая Безье от якоря вверх к ребёнку (дети сверху, родители снизу)
           const midY = anchorY + (cc.bottom - anchorY) * 0.5;
@@ -634,7 +646,7 @@
           path.dataset.kind = 'parent';
           path.dataset.a = parentId;
           path.dataset.b = childId;
-          path.dataset.clan = parentClan;
+          path.dataset.clan = finalClanId;
           svgEl.appendChild(path);
           threadEls[key].push(path);
           delay += 0.08;

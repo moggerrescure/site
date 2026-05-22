@@ -8,6 +8,10 @@
 const fs   = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const zlib = require('node:zlib');
+
+const { runBackup } = require('./backup');
+const { runCleanup } = require('./cleanup');
 
 const envPath = path.join(__dirname, '.env');
 if (fs.existsSync(envPath)) {
@@ -49,10 +53,11 @@ const MIME = {
   '.ttf':  'font/ttf',
 };
 
-/* ── Static file server ── */
 function serveStatic(req, res) {
   const url      = new URL(req.url, 'http://localhost');
   let   pathname = decodeURIComponent(url.pathname);
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  const supportsGzip = acceptEncoding.includes('gzip');
 
   // uploads from server/uploads/
   if (pathname.startsWith('/uploads/')) {
@@ -72,24 +77,38 @@ function serveStatic(req, res) {
 
   if (!file.startsWith(STATIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
 
-  if (!fs.existsSync(file)) {
-    // Try index.html fallback
-    const fallback = path.join(STATIC_DIR, 'index.html');
-    if (fs.existsSync(fallback)) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return fs.createReadStream(fallback).pipe(res);
-    }
+  const fallback = path.join(STATIC_DIR, 'index.html');
+  const targetFile = fs.existsSync(file) ? file : (fs.existsSync(fallback) ? fallback : null);
+
+  if (!targetFile) {
     res.writeHead(404); return res.end('Not found');
   }
 
-  const ext  = path.extname(file).toLowerCase();
+  const ext  = path.extname(targetFile).toLowerCase();
   const mime = MIME[ext] || 'text/plain';
-  res.writeHead(200, { 'Content-Type': mime });
-  fs.createReadStream(file).pipe(res);
+  
+  // Compress text assets (HTML, CSS, JS, JSON, SVG)
+  const compressible = /^(text\/|application\/javascript|application\/json|image\/svg\+xml)/.test(mime);
+
+  if (supportsGzip && compressible) {
+    res.writeHead(200, { 
+      'Content-Type': mime,
+      'Content-Encoding': 'gzip'
+    });
+    return fs.createReadStream(targetFile).pipe(zlib.createGzip()).pipe(res);
+  } else {
+    res.writeHead(200, { 'Content-Type': mime });
+    return fs.createReadStream(targetFile).pipe(res);
+  }
 }
 
 /* ── Main request handler ── */
 const server = http.createServer((req, res) => {
+  // Inject standard security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
   const url = new URL(req.url, 'http://localhost');
 
   if (url.pathname.startsWith('/api/')) {
@@ -119,6 +138,39 @@ server.listen(PORT, () => {
 ║  API: http://localhost:${PORT}/api/       ║
 ╚════════════════════════════════════════╝
   `);
+
+  // Run database backup and file cleanup checks on startup
+  try {
+    console.log('[Startup] Executing automatic database backup...');
+    runBackup();
+  } catch (err) {
+    console.error('[Startup] Automatic backup failed:', err.message);
+  }
+
+  try {
+    console.log('[Startup] Executing automatic uploads cleanup...');
+    runCleanup();
+  } catch (err) {
+    console.error('[Startup] Automatic cleanup failed:', err.message);
+  }
+
+  // Schedule background backups and cleanups every 24 hours
+  const INTERVAL_24H = 24 * 60 * 60 * 1000;
+  setInterval(() => {
+    try {
+      console.log('[Scheduled] Running scheduled database backup...');
+      runBackup();
+    } catch (err) {
+      console.error('[Scheduled] Scheduled backup failed:', err.message);
+    }
+
+    try {
+      console.log('[Scheduled] Running scheduled uploads cleanup...');
+      runCleanup();
+    } catch (err) {
+      console.error('[Scheduled] Scheduled cleanup failed:', err.message);
+    }
+  }, INTERVAL_24H);
 });
 
 server.on('error', err => {
