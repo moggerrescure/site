@@ -7,18 +7,41 @@
 const { randomUUID } = require('node:crypto');
 const path = require('node:path');
 const fs   = require('node:fs');
+const zlib = require('node:zlib');
 const db   = require('./db');
 const auth = require('./auth');
 const upload = require('./upload');
 
 /* ── tiny response helper ── */
 function send(res, status, data) {
-  const body = JSON.stringify(data);
-  res.writeHead(status, {
-    'Content-Type':  'application/json',
-    'Content-Length': Buffer.byteLength(body),
-  });
-  res.end(body);
+  const body = Buffer.from(JSON.stringify(data), 'utf8');
+  const req = res.req;
+  const acceptEncoding = req ? (req.headers['accept-encoding'] || '') : '';
+  
+  if (acceptEncoding.includes('gzip') && body.length > 1024) {
+    zlib.gzip(body, (err, compressed) => {
+      if (err) {
+        res.writeHead(status, {
+          'Content-Type':   'application/json',
+          'Content-Length': body.length,
+        });
+        res.end(body);
+      } else {
+        res.writeHead(status, {
+          'Content-Type':     'application/json',
+          'Content-Encoding': 'gzip',
+          'Content-Length':   compressed.length,
+        });
+        res.end(compressed);
+      }
+    });
+  } else {
+    res.writeHead(status, {
+      'Content-Type':   'application/json',
+      'Content-Length': body.length,
+    });
+    res.end(body);
+  }
 }
 
 /* ── parse JSON body ── */

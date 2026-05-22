@@ -17,7 +17,11 @@ const db = new DatabaseSync(DB_PATH, { open: true });
 /* ── SCHEMA ── */
 db.exec(`
   PRAGMA journal_mode = WAL;
+  PRAGMA synchronous = NORMAL;
   PRAGMA foreign_keys = ON;
+  PRAGMA temp_store = MEMORY;
+  PRAGMA cache_size = -10000;
+  PRAGMA auto_vacuum = INCREMENTAL;
 
   CREATE TABLE IF NOT EXISTS users (
     id         TEXT PRIMARY KEY,
@@ -115,10 +119,6 @@ db.exec(`
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  CREATE INDEX IF NOT EXISTS idx_timeline_tree_year ON timeline_events(tree_id, year);
-  CREATE INDEX IF NOT EXISTS idx_timeline_node ON timeline_events(node_id);
-  CREATE INDEX IF NOT EXISTS idx_timeline_profile ON timeline_events(profile_id);
-
   CREATE TABLE IF NOT EXISTS family_connections (
     id TEXT PRIMARY KEY,
     tree_id TEXT NOT NULL,
@@ -128,6 +128,17 @@ db.exec(`
     color TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE INDEX IF NOT EXISTS idx_timeline_tree_year ON timeline_events(tree_id, year);
+  CREATE INDEX IF NOT EXISTS idx_timeline_node ON timeline_events(node_id);
+  CREATE INDEX IF NOT EXISTS idx_timeline_profile ON timeline_events(profile_id);
+
+  CREATE INDEX IF NOT EXISTS idx_people_user ON people(user_id);
+  CREATE INDEX IF NOT EXISTS idx_family_trees_user ON family_trees(user_id);
+  CREATE INDEX IF NOT EXISTS idx_family_nodes_tree ON family_nodes(tree_id);
+  CREATE INDEX IF NOT EXISTS idx_family_clans_tree ON family_clans(tree_id);
+  CREATE INDEX IF NOT EXISTS idx_family_connections_tree ON family_connections(tree_id);
+  CREATE INDEX IF NOT EXISTS idx_reviews_person ON reviews(person_id);
 
   INSERT OR IGNORE INTO family_trees (id, name) VALUES ('default', 'Основное');
 `);
