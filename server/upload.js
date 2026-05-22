@@ -7,6 +7,14 @@
 const fs   = require('node:fs');
 const path = require('node:path');
 
+// Try loading sharp dynamically for optional compression and WebP conversion
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch (e) {
+  console.warn('⚠️ [Upload] sharp library not loaded. Image compression and WebP conversion disabled. Original files will be saved.');
+}
+
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const MAX_SIZE   = 8 * 1024 * 1024; // 8 MB
 const ALLOWED    = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
@@ -35,7 +43,7 @@ function parseUpload(req, prefix) {
 
     req.on('error', reject);
 
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const body = Buffer.concat(chunks);
         const bodyStr = body.toString('binary');
@@ -59,6 +67,31 @@ function parseUpload(req, prefix) {
           const ext      = path.extname(origName).toLowerCase();
           if (!ALLOWED.has(ext)) { return reject(new Error(`File type not allowed: ${ext}`)); }
 
+          // If sharp is available and not a GIF, compress and convert to WebP
+          if (sharp && ext !== '.gif') {
+            try {
+              const safeName = `${prefix}-${Date.now()}.webp`;
+              const savePath = path.join(UPLOAD_DIR, safeName);
+              const fileBuffer = Buffer.from(fileData, 'binary');
+
+              const compressedBuffer = await sharp(fileBuffer)
+                .resize({
+                  width: 2048,
+                  height: 2048,
+                  fit: 'inside',
+                  withoutEnlargement: true
+                })
+                .webp({ quality: 80 })
+                .toBuffer();
+
+              fs.writeFileSync(savePath, compressedBuffer);
+              return resolve(safeName);
+            } catch (err) {
+              console.error('⚠️ [Upload] sharp compression failed, falling back to original upload:', err.message);
+            }
+          }
+
+          // Fallback if sharp is missing, fails, or for GIF images
           const safeName = `${prefix}-${Date.now()}${ext}`;
           const savePath = path.join(UPLOAD_DIR, safeName);
 

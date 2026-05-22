@@ -137,8 +137,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_family_trees_user ON family_trees(user_id);
   CREATE INDEX IF NOT EXISTS idx_family_nodes_tree ON family_nodes(tree_id);
   CREATE INDEX IF NOT EXISTS idx_family_clans_tree ON family_clans(tree_id);
-  CREATE INDEX IF NOT EXISTS idx_family_connections_tree ON family_connections(tree_id);
   CREATE INDEX IF NOT EXISTS idx_reviews_person ON reviews(person_id);
+  CREATE INDEX IF NOT EXISTS idx_family_connections_tree ON family_connections(tree_id);
+  CREATE INDEX IF NOT EXISTS idx_family_connections_node_a ON family_connections(node_a);
+  CREATE INDEX IF NOT EXISTS idx_family_connections_node_b ON family_connections(node_b);
+  CREATE INDEX IF NOT EXISTS idx_family_nodes_spouse ON family_nodes(spouse_id);
+  CREATE INDEX IF NOT EXISTS idx_family_nodes_linked_profile ON family_nodes(linked_profile_id);
 
   INSERT OR IGNORE INTO family_trees (id, name) VALUES ('default', 'Основное');
 `);
@@ -180,6 +184,13 @@ try {
   }
 } catch (e) {
   console.error('Migration error for reviews table:', e);
+}
+
+// Run query planner optimization based on current indices
+try {
+  db.exec('PRAGMA optimize;');
+} catch (err) {
+  console.error('Failed to run PRAGMA optimize:', err.message);
 }
 
 module.exports = db;

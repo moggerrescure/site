@@ -32,6 +32,13 @@ function runBackup(maxBackups = 10) {
   console.log(`[Backup] Starting hot backup to: ${sqliteSafePath}`);
   
   try {
+    // Consolidate WAL journal logs into the main database before backing up
+    try {
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+    } catch (checkpointErr) {
+      console.warn('[Backup] WAL checkpoint warning:', checkpointErr.message);
+    }
+
     if (fs.existsSync(backupFile)) {
       fs.unlinkSync(backupFile);
     }
