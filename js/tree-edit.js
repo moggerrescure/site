@@ -1692,14 +1692,12 @@
         let parentClanId = parentNode ? (parentNode.clan_id || parentNode.clanId) : '';
 
         // Fallback to child's clan if parent has no clan assigned
-        if ((!parentClanId || parentClanColor === '#c8a84b') && childNode) {
+        if (!parentClanId && childNode) {
           const childClanId = childNode.clan_id || childNode.clanId;
           if (childClanId) {
             const childClanColor = getClanColorOfNode(childNode);
-            if (childClanColor !== '#c8a84b') {
-              parentClanColor = childClanColor;
-              parentClanId = childClanId;
-            }
+            parentClanColor = childClanColor;
+            parentClanId = childClanId;
           }
         }
 
@@ -1970,7 +1968,11 @@
             if (j.ok) {
               await loadAndRenderClans();
               loadClansIntoSelect(j.data.id);
+            } else {
+              alert(j.error || 'Ошибка при добавлении рода');
             }
+          }).catch(() => {
+            alert('Сервер недоступен');
           });
       });
     });
@@ -2078,8 +2080,30 @@
   async function openLinkedProfilePicker(presetGen) {
     let profiles = [];
     try {
-      const r = await fetch(`${BASE}/api/profiles`); const j = await r.json();
-      if (j.ok && j.data) profiles = j.data.filter(p => p.name && p.name !== 'Новая страница');
+      const [resProfiles, resPeople] = await Promise.all([
+        fetch(`${BASE}/api/profiles`).then(r => r.json()).catch(() => ({ ok: false })),
+        fetch(`${BASE}/api/people?limit=1000`).then(r => r.json()).catch(() => ({ ok: false }))
+      ]);
+
+      const list1 = (resProfiles && resProfiles.ok && resProfiles.data) ? resProfiles.data : [];
+      const list2 = (resPeople && resPeople.ok && resPeople.data) ? resPeople.data : [];
+
+      const merged = [...list1, ...list2];
+      const seen = new Set();
+      for (const p of merged) {
+        if (!p.id || seen.has(p.id)) continue;
+        seen.add(p.id);
+        const pName = p.name || p.fullName || '';
+        if (pName && pName !== 'Новая страница') {
+          profiles.push({
+            id: p.id,
+            name: pName,
+            born: p.born || '',
+            died: p.died || '',
+            photo: p.photo || p.photoUrl || ''
+          });
+        }
+      }
     } catch (_) {}
 
     const overlay = document.createElement('div');

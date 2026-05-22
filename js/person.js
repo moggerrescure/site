@@ -833,20 +833,48 @@
       btn.disabled    = true;
       btn.textContent = 'Сохраняем...';
 
+      let photoDataUrl = null;
+      if (rType === 'photo') {
+        if (photoInput && photoInput.files && photoInput.files[0]) {
+          try {
+            const formData = new FormData();
+            formData.append('photo', photoInput.files[0]);
+            const uploadRes = await API.upload('/api/upload-photo', formData);
+            if (uploadRes && uploadRes.ok && uploadRes.url) {
+              photoDataUrl = uploadRes.url;
+            }
+          } catch (uploadErr) {
+            console.error('Photo upload failed:', uploadErr);
+          }
+        }
+        if (!photoDataUrl && selectedPhotoDataUrl) {
+          photoDataUrl = selectedPhotoDataUrl;
+        }
+      }
+
       const newReview = {
         author,
         text,
         reviewType: rType,
-        ...(selectedPhotoDataUrl ? { photoDataUrl: selectedPhotoDataUrl } : {}),
+        ...(photoDataUrl ? { photoDataUrl } : {}),
       };
 
       /* Try API */
       let saved = false;
       try {
         if (typeof API !== 'undefined') {
-          const res = await API.post(`/api/reviews/${encodeURIComponent(id)}`, { author, text });
+          const res = await API.post(`/api/reviews/${encodeURIComponent(id)}`, {
+            author,
+            text,
+            reviewType: rType,
+            photoDataUrl
+          });
           if (res && res.data) {
-            reviews.unshift({ ...res.data, reviewType: rType, photoDataUrl: selectedPhotoDataUrl });
+            reviews.unshift({
+              ...res.data,
+              reviewType: res.data.reviewType || rType,
+              photoDataUrl: res.data.photoDataUrl || photoDataUrl
+            });
             saved = true;
           }
         }
@@ -862,7 +890,7 @@
         } catch {}
       }
 
-      /* Если добавили фото — оно войдёт в лиану через newReview */
+      /* Если добавили фото — оно войдёт в воспоминания через newReview */
 
       /* Сброс формы */
       form.reset();
@@ -876,7 +904,10 @@
 
       /* Перерендер воспоминаний */
       if (typeof window._addMemoryCard === 'function') {
-        window._addMemoryCard(newReview);
+        window._addMemoryCard(saved ? {
+          ...newReview,
+          photoDataUrl: photoDataUrl || selectedPhotoDataUrl
+        } : newReview);
       }
 
       status.style.display = 'block';

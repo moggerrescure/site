@@ -274,7 +274,7 @@ function getPeople(req, res) {
   if (!checkAuth(req, res)) return;
   const url = new URL(req.url, 'http://localhost');
   const page  = Math.max(1, parseInt(url.searchParams.get('page')  || '1', 10));
-  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') || '9', 10)));
+  const limit = Math.min(1000, Math.max(1, parseInt(url.searchParams.get('limit') || '9', 10)));
   const q     = (url.searchParams.get('q') || '').trim();
   const city  = (url.searchParams.get('city') || '').trim();
   const offset = (page - 1) * limit;
@@ -297,7 +297,7 @@ function getOnePerson(req, res, params) {
   if (!person) return send(res, 404, { ok: false, error: 'Not found' });
   if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
 
-  const reviews = db.prepare('SELECT id,author,text,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.id);
+  const reviews = db.prepare('SELECT id,author,text,review_type AS reviewType,photo_url AS photoDataUrl,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.id);
   send(res, 200, { ok: true, data: { ...person, reviews } });
 }
 
@@ -355,7 +355,7 @@ function getReviews(req, res, params) {
   if (!person) return send(res, 404, { ok: false, error: 'Person not found' });
   if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
 
-  const rows = db.prepare('SELECT id,author,text,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.personId);
+  const rows = db.prepare('SELECT id,author,text,review_type AS reviewType,photo_url AS photoDataUrl,created_at FROM reviews WHERE person_id = ? ORDER BY created_at DESC').all(params.personId);
   send(res, 200, { ok: true, data: rows });
 }
 
@@ -367,12 +367,13 @@ async function createReview(req, res, params) {
   if (person.user_id !== req.user.id) return send(res, 403, { ok: false, error: 'Access denied' });
 
   const body = await parseBody(req);
-  const { author, text } = body;
+  const { author, text, reviewType = 'text', photoDataUrl = null } = body;
   if (!author || !text) return send(res, 400, { ok: false, error: 'author and text required' });
 
   const id = randomUUID();
-  db.prepare('INSERT INTO reviews (id,person_id,author,text) VALUES (?,?,?,?)').run(id, params.personId, author.slice(0,120), text.slice(0,2000));
-  const row = db.prepare('SELECT * FROM reviews WHERE id = ?').get(id);
+  db.prepare('INSERT INTO reviews (id,person_id,author,text,review_type,photo_url) VALUES (?,?,?,?,?,?)')
+    .run(id, params.personId, author.slice(0,120), text.slice(0,2000), reviewType, photoDataUrl);
+  const row = db.prepare('SELECT id,person_id,author,text,review_type AS reviewType,photo_url AS photoDataUrl,created_at FROM reviews WHERE id = ?').get(id);
   send(res, 201, { ok: true, data: row });
 }
 
@@ -958,9 +959,11 @@ async function createFamilyClan(req, res) {
 
   if (!name) return send(res, 400, { ok: false, error: 'Название рода обязательно' });
 
-  // Проверка на дубликат имени в том же дереве
-  const existing = db.prepare('SELECT id FROM family_clans WHERE tree_id = ? AND name = ?').get(treeId, name);
-  if (existing) return send(res, 400, { ok: false, error: 'Род с таким названием уже существует' });
+  // Проверка на дубликат имени в том же дереве (регистронезависимо, включая кириллицу)
+  const nameLower = name.toLowerCase();
+  const allClans = db.prepare('SELECT name FROM family_clans WHERE tree_id = ?').all(treeId);
+  const exists = allClans.some(c => c.name.trim().toLowerCase() === nameLower);
+  if (exists) return send(res, 400, { ok: false, error: 'Род с таким названием уже существует' });
 
   try {
     db.prepare('INSERT INTO family_clans (id, tree_id, name, color, icon, description) VALUES (?,?,?,?,?,?)').run(id, treeId, name, color, icon, description);

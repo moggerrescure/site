@@ -47,6 +47,8 @@ db.exec(`
     person_id  TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
     author     TEXT NOT NULL,
     text       TEXT NOT NULL,
+    review_type TEXT NOT NULL DEFAULT 'text',
+    photo_url   TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -151,6 +153,22 @@ try {
   }
 } catch (e) {
   console.error('Migration error for family_trees table:', e);
+}
+
+try {
+  const columnsReviews = db.prepare('PRAGMA table_info(reviews)').all();
+  const hasReviewType = columnsReviews.some(col => col.name === 'review_type');
+  if (!hasReviewType) {
+    db.exec("ALTER TABLE reviews ADD COLUMN review_type TEXT NOT NULL DEFAULT 'text';");
+    console.log('Migration: Added review_type column to reviews table.');
+  }
+  const hasPhotoUrl = columnsReviews.some(col => col.name === 'photo_url');
+  if (!hasPhotoUrl) {
+    db.exec('ALTER TABLE reviews ADD COLUMN photo_url TEXT;');
+    console.log('Migration: Added photo_url column to reviews table.');
+  }
+} catch (e) {
+  console.error('Migration error for reviews table:', e);
 }
 
 module.exports = db;
