@@ -2153,11 +2153,23 @@ body.tree-page { overflow-x: hidden; }
 
 /* ── PRINT STYLES ── */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
+  @page {
+    size: A4 landscape;
+    margin: 8mm 6mm;
   }
-  
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   #particles-canvas,
   .nav,
   .tree-hero,
@@ -2165,33 +2177,104 @@ body.tree-page { overflow-x: hidden; }
   .tree-search-wrap,
   .tree-toolbar,
   .tree-legend,
-  .footer {
+  .footer,
+  .tree-node-controls,
+  .tree-node-ctrl,
+  .tree-gen-card-add,
+  .tree-gen-add-btn,
+  .gen-label__edit,
+  .tree-add-btn,
+  .tree-modal,
+  .tree-overlay,
+  .edit-panel {
     display: none !important;
   }
-  
+
   .tree-section {
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
   }
-  
+
   .tree-wrapper {
     background: transparent !important;
     box-shadow: none !important;
     border: none !important;
-    transform: none !important;
+    transform: scale(0.72) !important;
+    transform-origin: top center !important;
+    margin: 0 auto !important;
+    min-width: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .tree-generations {
+    gap: 32px !important;
+  }
+
+  .gen-row {
+    gap: 22px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .gen-label {
+    color: #111111 !important;
+    margin-bottom: 8px !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
   }
 
   .tree-node {
     background: #ffffff !important;
     color: #000000 !important;
-    border: 1px solid #333333 !important;
+    border: 1px solid #c8a84b !important;
     box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .tree-node__frame {
+    border-color: #c8a84b !important;
+  }
+
+  .tree-node__avatar {
+    background: #f0f0f0 !important;
+    border-color: #cccccc !important;
+  }
+
+  .tree-node__avatar svg {
+    color: #888888 !important;
+  }
+
+  .tree-node__name {
+    color: #000000 !important;
+    font-weight: 600 !important;
+  }
+
+  .tree-node__years {
+    color: #444444 !important;
+    font-weight: bold !important;
+  }
+
+  .tree-node__clan-name {
+    color: #666666 !important;
+  }
+
+  .tree-node__desc {
+    color: #555555 !important;
+  }
+
+  .tree-node__link {
+    display: none !important;
   }
 
   .thread-path,
   .tree-threads path,
   .tree-dynamic-svg path {
-    stroke: #333333 !important;
     opacity: 1 !important;
     filter: none !important;
   }
