@@ -217,14 +217,24 @@
 
 /* ── CARD ── */
 .timeline__card {
-  display: inline-block;
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  max-width: 440px;
   background: linear-gradient(145deg, rgba(255,255,255,0.028) 0%, rgba(200,168,75,0.025) 100%);
   border: 1px solid rgba(200,168,75,0.16);
   border-radius: 6px;
   padding: 22px 26px;
   position: relative;
   transition: all var(--transition);
+  box-sizing: border-box;
+}
+.timeline__item--left .timeline__card {
+  margin-left: auto;
+  margin-right: 0;
+}
+.timeline__item--right .timeline__card {
+  margin-left: 0;
+  margin-right: auto;
 }
 .timeline__item:hover .timeline__card {
   border-color: rgba(200,168,75,0.35);
@@ -247,12 +257,13 @@
   position: absolute;
   top: 36px;
   width: 10px; height: 10px;
-  background: inherit;
+  background: #12100d;
   border: 1px solid rgba(200,168,75,0.16);
   transform: rotate(45deg);
+  box-sizing: border-box;
 }
-.timeline__item--left  .timeline__card::before { right: -6px; border-top: none; border-left: none; }
-.timeline__item--right .timeline__card::before { left:  -6px; border-bottom: none; border-right: none; }
+.timeline__item--left  .timeline__card::before { right: -6px; border-bottom: none; border-left: none; }
+.timeline__item--right .timeline__card::before { left:  -6px; border-top: none; border-right: none; }
 
 /* Delete button (custom events) */
 .timeline__del {
@@ -491,6 +502,11 @@ select.tl-input option {
   }
   .timeline__item .timeline__marker { left: 7px !important; right: auto !important; }
   .timeline__item .timeline__meta   { justify-content: flex-start !important; }
+  .timeline__card {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    max-width: 100% !important;
+  }
   .timeline__card::before {
     left: -6px !important; right: auto !important;
     border-top: none !important; border-right: none !important;
