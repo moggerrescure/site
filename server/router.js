@@ -919,6 +919,23 @@ function getFamilyTrees(req, res) {
   send(res, 200, { ok: true, data: trees });
 }
 
+/* ── POST /api/family-trees — создать новое дерево ── */
+async function createFamilyTree(req, res) {
+  if (!checkAuth(req, res)) return;
+  const body = await parseBody(req);
+  const id   = (body.id || '').toString().trim().slice(0, 50);
+  const name = (body.name || '').toString().trim().slice(0, 100);
+  if (!id || !name) return send(res, 400, { ok: false, error: 'id и name обязательны' });
+
+  try {
+    db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+      .run(id, name, req.user.id);
+    send(res, 201, { ok: true, data: { id, name } });
+  } catch (e) {
+    send(res, 400, { ok: false, error: 'Ошибка создания дерева' });
+  }
+}
+
 /* ── GET /api/family-clans ── */
 function getFamilyClans(req, res) {
   const url = new URL(req.url, 'http://localhost');
@@ -1316,6 +1333,7 @@ async function dispatch(req, res) {
     if (method === 'GET'  && pathname === '/api/family-nodes') return getFamilyNodes(req, res);
     if (method === 'POST' && pathname === '/api/family-nodes') return await createFamilyNode(req, res);
     if (method === 'GET'  && pathname === '/api/family-trees') return getFamilyTrees(req, res);
+    if (method === 'POST' && pathname === '/api/family-trees') return await createFamilyTree(req, res);
     if (method === 'GET'  && pathname === '/api/family-clans') return getFamilyClans(req, res);
     if (method === 'POST' && pathname === '/api/family-clans') return await createFamilyClan(req, res);
 

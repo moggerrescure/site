@@ -790,7 +790,7 @@
 
     requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('ctm-visible')));
 
-    modal.querySelector('#ctm-form').addEventListener('submit', e => {
+    modal.querySelector('#ctm-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
       const firstName = fd.get('firstName')?.trim();
@@ -811,17 +811,43 @@
         parent: 'Родитель', grandparent: 'Дед / Бабушка', greatgrandparent: 'Прапрадед',
       };
 
-      const node = {
-        id: 'local-' + Date.now(),
-        fullName: `${lastName} ${firstName}${fd.get('middleName') ? ' ' + fd.get('middleName').trim() : ''}`,
-        years, generation: 0, ageClass: 'old', treeId,
+      const fullName = `${lastName} ${firstName}${fd.get('middleName') ? ' ' + fd.get('middleName').trim() : ''}`;
+
+      const nodeData = {
+        fullName, years, generation: 0, ageClass: 'old', treeId,
         description: roleLabels[fd.get('role')] || '',
-        city: fd.get('city')?.trim(),
-        bio:  fd.get('bio')?.trim(),
-        photo_url: photoPreview.querySelector('img')?.src || '',
+        photoUrl: photoPreview.querySelector('img')?.src || '',
       };
 
-      localStorage.setItem(`tree_nodes_${treeId}`, JSON.stringify([node]));
+      /* 1. Создаём дерево на сервере */
+      try {
+        await fetch(`${BASE}/api/family-trees`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: treeId, name: treeName })
+        });
+
+        /* 2. Создаём первый узел на сервере */
+        const nodeRes = await fetch(`${BASE}/api/family-nodes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nodeData)
+        });
+        const nodeJson = await nodeRes.json();
+        if (nodeJson.ok && nodeJson.data) {
+          /* Сервер вернул узел — сохраняем в localStorage для немедленного отображения */
+          localStorage.setItem(`tree_nodes_${treeId}`, JSON.stringify([nodeJson.data]));
+        } else {
+          /* Если узел не создался на сервере — сохраняем локально */
+          const localNode = { ...nodeData, id: 'local-' + Date.now(), photo_url: nodeData.photoUrl };
+          localStorage.setItem(`tree_nodes_${treeId}`, JSON.stringify([localNode]));
+        }
+      } catch (_) {
+        /* Сервер недоступен — fallback на localStorage */
+        const localNode = { ...nodeData, id: 'local-' + Date.now(), photo_url: nodeData.photoUrl };
+        localStorage.setItem(`tree_nodes_${treeId}`, JSON.stringify([localNode]));
+      }
+
       const trees = getAllTrees();
       if (!trees.includes(treeId)) { trees.push(treeId); saveAllTrees(trees); }
 
