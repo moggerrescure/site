@@ -524,7 +524,6 @@
           <span class="tl-toggle__slider"></span>
           <span class="tl-toggle__label">Показывать историю страны</span>
         </label>
-        <button id="tl-print-btn" class="tl-print-btn">🖨️ Распечатать летопись</button>
       </div>`;
 
     filtersEl.querySelectorAll('[data-ftype]').forEach(btn => {
@@ -539,13 +538,6 @@
       historyToggle.addEventListener('change', e => {
         showHistory = e.target.checked;
         render();
-      });
-    }
-
-    const printBtn = filtersEl.querySelector('#tl-print-btn');
-    if (printBtn) {
-      printBtn.addEventListener('click', () => {
-        window.print();
       });
     }
 

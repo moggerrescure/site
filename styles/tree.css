@@ -2150,3 +2150,49 @@ body.tree-page { overflow-x: hidden; }
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* ── PRINT STYLES ── */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  #particles-canvas,
+  .nav,
+  .tree-hero,
+  .clan-legend-wrap,
+  .tree-search-wrap,
+  .tree-toolbar,
+  .tree-legend,
+  .footer {
+    display: none !important;
+  }
+  
+  .tree-section {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .tree-wrapper {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+  }
+
+  .tree-node {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #333333 !important;
+    box-shadow: none !important;
+  }
+
+  .thread-path,
+  .tree-threads path,
+  .tree-dynamic-svg path {
+    stroke: #333333 !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+}

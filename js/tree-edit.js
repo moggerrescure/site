@@ -23,6 +23,13 @@
   const editBtn = document.getElementById('tree-edit-btn');
   if (!editBtn) return;
 
+  const printBtn = document.getElementById('tree-print-btn');
+  if (printBtn) {
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
   const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
   let isEditMode = false;
   let allNodes   = [];
