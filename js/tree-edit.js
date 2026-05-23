@@ -1543,6 +1543,13 @@
     if (!legend) return;
     try {
       const r = await fetch(`${BASE}/api/family-clans?treeId=${encodeURIComponent(currentTreeId)}`);
+      if (r.status === 403) {
+        const user = typeof API !== 'undefined' ? API.getUser() : null;
+        if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
+          window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          return;
+        }
+      }
       const j = await r.json();
       if (!j.ok) return;
       clansCache = {};
@@ -2155,11 +2162,17 @@
   async function loadNodes() {
     try {
       const r = await fetch(`${BASE}/api/family-nodes?treeId=${encodeURIComponent(currentTreeId)}`);
+      if (r.status === 403) {
+        const user = typeof API !== 'undefined' ? API.getUser() : null;
+        if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
+          window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          return [];
+        }
+      }
       const j = await r.json();
       if (j.ok) {
         allNodes = j.data;
-        const local = getLocalNodes().filter(ln => !allNodes.find(n => n.id === ln.id));
-        allNodes = [...allNodes, ...local];
+        saveLocalNodes(allNodes);
         return allNodes;
       }
     } catch (_) {}
