@@ -94,6 +94,8 @@ function checkAuth(req, res) {
 }
 
 function checkTreeAuth(req, res, treeId) {
+  if (req.method === 'GET' && treeId === 'default') return true;
+
   if (!checkAuth(req, res)) return false;
   if (req.user.name === 'krutko' && treeId === 'default') return true;
 
@@ -999,6 +1001,7 @@ async function createFamilyClan(req, res) {
 /* ── DELETE /api/family-clans/:id ── */
 function deleteFamilyClan(req, res, params) {
   if (!checkClanAuth(req, res, params.id)) return;
+  db.prepare("UPDATE family_nodes SET clan_id = '' WHERE clan_id = ?").run(params.id);
   db.prepare('DELETE FROM family_clans WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
@@ -1151,6 +1154,7 @@ function deleteFamilyNode(req, res, params) {
     } catch (_) {}
   });
 
+  db.prepare('DELETE FROM family_connections WHERE node_a = ? OR node_b = ?').run(params.id, params.id);
   db.prepare('DELETE FROM family_nodes WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
@@ -1400,8 +1404,9 @@ module.exports = { dispatch, seedIfEmpty, seedFamilyDefaultIfEmpty };
    SEED DEFAULT FAMILY TREE
    ══════════════════════════════════════ */
 function seedFamilyDefaultIfEmpty() {
-  const count = db.prepare("SELECT COUNT(*) as c FROM family_nodes WHERE tree_id = 'default'").get();
-  if (count.c > 0) return;
+  const clansCount = db.prepare("SELECT COUNT(*) as c FROM family_clans WHERE tree_id = 'default'").get();
+  const nodesCount = db.prepare("SELECT COUNT(*) as c FROM family_nodes WHERE tree_id = 'default'").get();
+  if (clansCount.c > 0 && nodesCount.c > 0) return;
 
   const clans = [
     { id: 'ivanov', name: 'Род Ивановых', color: '#c8a84b', icon: '⚔', description: 'Потомственные инженеры и военные' },
@@ -1433,7 +1438,7 @@ function seedFamilyDefaultIfEmpty() {
     const insertClan = db.prepare("INSERT OR IGNORE INTO family_clans (id, tree_id, name, color, icon, description) VALUES (?,?,?,?,?,?)");
     clans.forEach(c => insertClan.run(c.id, 'default', c.name, c.color, c.icon, c.description));
 
-    const insertNode = db.prepare("INSERT INTO family_nodes (id, tree_id, full_name, years, clan_id, generation, gen_order, age_class, spouse_id, parent_ids) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    const insertNode = db.prepare("INSERT OR IGNORE INTO family_nodes (id, tree_id, full_name, years, clan_id, generation, gen_order, age_class, spouse_id, parent_ids) VALUES (?,?,?,?,?,?,?,?,?,?)");
     nodes.forEach(n => insertNode.run(n.id, 'default', n.name, n.years, n.clan, n.gen, n.order, n.age, n.spouse || null, JSON.stringify(n.parents || [])));
 
     db.exec('COMMIT');

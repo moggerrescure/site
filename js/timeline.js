@@ -14,6 +14,8 @@
 
   const photoMap = {};
   let showHistory = true;
+  let dbNodes = [];
+  let dbCustomEvents = [];
 
   /* ── RUSSIA / USSR HISTORICAL EVENTS ── */
   const HISTORY = [
@@ -157,7 +159,7 @@
 
     /* From ACTIVE tree only (not all trees) */
     const treeMeta  = getActivTreeMeta();
-    const treeNodes = loadActiveTreeNodes();
+    const treeNodes = dbNodes.length ? dbNodes : loadActiveTreeNodes();
     treeNodesToEvents(treeNodes, treeMeta).forEach(e => events.push(e));
 
     /* Historical */
@@ -170,7 +172,8 @@
     }));
 
     /* Custom (non-tree) */
-    loadCustom().filter(c => !c._fromTree).forEach(c => events.push({ ...c, type: c.type || 'custom' }));
+    const customEvents = dbCustomEvents.length ? dbCustomEvents : loadCustom();
+    customEvents.filter(c => !c._fromTree).forEach(c => events.push({ ...c, type: c.type || 'custom' }));
 
     events.sort((a, b) => a.year - b.year);
     return events;
@@ -565,6 +568,19 @@
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const id = btn.dataset.id;
+
+        if (dbCustomEvents.some(ev => ev.id === id) && typeof API !== 'undefined') {
+          API.del(`/api/timeline-events/${encodeURIComponent(id)}`)
+            .then(res => {
+              if (res && res.ok) {
+                loadDbData();
+              }
+            })
+            .catch(err => {
+              console.error('Failed to delete timeline event from DB:', err);
+            });
+        }
+
         const arr = loadCustom().filter(ev => ev.id !== id);
         saveCustom(arr);
         render();
@@ -645,6 +661,25 @@
       arr.push(ev);
       saveCustom(arr);
 
+      if (typeof API !== 'undefined') {
+        const treeId = getActiveTreeId() || 'default';
+        API.post('/api/timeline-events', {
+          treeId,
+          year: ev.year,
+          type: ev.type,
+          title: ev.title,
+          subtitle: ev.subtitle,
+          city: ev.city,
+          icon: ev.icon,
+        }).then(res => {
+          if (res && res.ok) {
+            loadDbData();
+          }
+        }).catch(err => {
+          console.error('Failed to save timeline event to DB:', err);
+        });
+      }
+
       e.target.reset();
       const status = document.getElementById('tl-status');
       status.style.display = 'block';
@@ -683,7 +718,30 @@
     }
   }
 
+  async function loadDbData() {
+    const treeId = getActiveTreeId() || 'default';
+    try {
+      if (typeof API !== 'undefined') {
+        const [nodesRes, eventsRes] = await Promise.all([
+          API.get(`/api/family-nodes?treeId=${encodeURIComponent(treeId)}`).catch(() => null),
+          API.get(`/api/timeline-events?treeId=${encodeURIComponent(treeId)}`).catch(() => null)
+        ]);
+
+        if (nodesRes && nodesRes.ok && Array.isArray(nodesRes.data)) {
+          dbNodes = nodesRes.data;
+        }
+        if (eventsRes && eventsRes.ok && Array.isArray(eventsRes.data)) {
+          dbCustomEvents = eventsRes.data.filter(e => e.type !== 'birth' && e.type !== 'death' && e.type !== 'history');
+        }
+        render();
+      }
+    } catch (e) {
+      console.warn('Failed to load database events for timeline:', e);
+    }
+  }
+
   loadPhotos();
+  loadDbData();
   render();
   buildForm();
 })();

@@ -1582,8 +1582,65 @@
 
   /* ── SVG нити — линии идут ОТ НИЗА карточек ── */
   function drawCustomConnections(container, connections) {
-    if (!connections || !connections.length) return;
+    const list = Array.isArray(connections) ? [...connections] : [];
+
+    // Auto-generate lines for custom trees to connect cards based on nodes' DB relations
+    const autoConns = [];
+    if (currentTreeId !== 'default' && Array.isArray(allNodes)) {
+      allNodes.forEach(node => {
+        // 1. Marriage (spouse_id)
+        const spouseId = node.spouse_id || node.spouseId;
+        if (spouseId) {
+          if (node.id < spouseId) { // process each pair only once
+            const exists = list.some(c =>
+              c.type === 'marriage' &&
+              ((c.a === node.id && c.b === spouseId) || (c.a === spouseId && c.b === node.id))
+            );
+            if (!exists) {
+              autoConns.push({
+                id: `auto-m-${node.id}-${spouseId}`,
+                a: node.id,
+                b: spouseId,
+                type: 'marriage'
+              });
+            }
+          }
+        }
+
+        // 2. Kinship (parent_ids)
+        let pids = [];
+        try {
+          if (node.parent_ids) pids = typeof node.parent_ids === 'string' ? JSON.parse(node.parent_ids) : node.parent_ids;
+          else if (node.parentIds) pids = typeof node.parentIds === 'string' ? JSON.parse(node.parentIds) : node.parentIds;
+        } catch (e) {}
+        if (Array.isArray(pids)) {
+          pids.forEach(pid => {
+            if (!pid) return;
+            const exists = list.some(c =>
+              c.type === 'kinship' &&
+              ((c.a === pid && c.b === node.id) || (c.a === node.id && c.b === pid))
+            );
+            if (!exists) {
+              autoConns.push({
+                id: `auto-k-${pid}-${node.id}`,
+                a: pid,
+                b: node.id,
+                type: 'kinship'
+              });
+            }
+          });
+        }
+      });
+    }
+
+    const combined = [...list, ...autoConns];
+
     let svg = container.querySelector('.tree-dynamic-svg');
+    if (!combined.length) {
+      if (svg) svg.innerHTML = '';
+      return;
+    }
+
     if (!svg) {
       svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.className = 'tree-dynamic-svg';
@@ -1605,7 +1662,7 @@
       return clan ? clan.color : '#c8a84b';
     };
 
-    connections.forEach(conn => {
+    combined.forEach(conn => {
       const elA = container.querySelector(`[data-id="${conn.a}"]`);
       const elB = container.querySelector(`[data-id="${conn.b}"]`);
       if (!elA || !elB) return;
@@ -1614,21 +1671,48 @@
       const rA = frameA.getBoundingClientRect();
       const rB = frameB.getBoundingClientRect();
 
-      /* Точки соединения — низ центра каждой карточки */
+      /* Точки соединения и контрольные точки Безье */
       const x1 = rA.left + rA.width / 2 - cr.left;
-      const y1 = rA.bottom - cr.top;
       const x2 = rB.left + rB.width / 2 - cr.left;
-      const y2 = rB.bottom - cr.top;
-
-      /* Контрольные точки кривой Безье — "U-образный" спуск под карточки */
-      const drop = Math.min(Math.abs(y2 - y1) * 0.5 + 40, 120);
-      const cy1  = y1 + drop;
-      const cy2  = y2 + drop;
+      let y1, y2, cy1, cy2, drop = 0;
 
       const nodeA = allNodes.find(n => n.id === conn.a);
       const nodeB = allNodes.find(n => n.id === conn.b);
+      const genA = nodeA ? (nodeA.generation ?? 0) : 0;
+      const genB = nodeB ? (nodeB.generation ?? 0) : 0;
       const clanIdA = nodeA ? (nodeA.clan_id || nodeA.clanId) : '';
       const clanIdB = nodeB ? (nodeB.clan_id || nodeB.clanId) : '';
+
+      if (conn.type === 'marriage') {
+        y1 = rA.bottom - cr.top;
+        y2 = rB.bottom - cr.top;
+        drop = Math.min(Math.abs(y2 - y1) * 0.5 + 40, 120);
+        cy1 = y1 + drop;
+        cy2 = y2 + drop;
+      } else {
+        if (genA < genB) {
+          // A is parent (lower gen, larger Y), B is child (higher gen, smaller Y)
+          y1 = rA.top - cr.top;
+          y2 = rB.bottom - cr.top;
+          const dist = y1 - y2;
+          cy1 = y1 - dist * 0.4;
+          cy2 = y2 + dist * 0.4;
+        } else if (genA > genB) {
+          // B is parent (larger Y), A is child (smaller Y)
+          y1 = rA.bottom - cr.top;
+          y2 = rB.top - cr.top;
+          const dist = y2 - y1;
+          cy1 = y1 + dist * 0.4;
+          cy2 = y2 - dist * 0.4;
+        } else {
+          // same generation fallback
+          y1 = rA.bottom - cr.top;
+          y2 = rB.bottom - cr.top;
+          drop = Math.min(Math.abs(y2 - y1) * 0.5 + 40, 120);
+          cy1 = y1 + drop;
+          cy2 = y2 + drop;
+        }
+      }
 
       if (conn.type === 'marriage') {
         /* Плетёная нить из 3 полос */
@@ -2438,5 +2522,21 @@
       });
     });
   };
+
+  window.addEventListener('resize', () => {
+    if (currentTreeId !== 'default') {
+      const dc = document.getElementById('tree-dynamic');
+      if (dc) {
+        const conns = getLocalConnections();
+        drawCustomConnections(dc, conns);
+      }
+    } else {
+      const tw = document.getElementById('tree-wrapper');
+      if (tw && isEditMode) {
+        const conns = getLocalConnections();
+        drawCustomConnections(tw, conns);
+      }
+    }
+  });
 
 })();

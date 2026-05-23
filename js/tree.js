@@ -7,21 +7,15 @@
 
 (function () {
 
-  /* ═══════════ CLAN DEFINITIONS ═══════════
-     Each clan gets a colour, icon and display name.
-     Every person carries a clanId.
-  */
-  const CLANS = {
+  const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+
+  let CLANS = {
     ivanov:   { name: 'Род Ивановых',   color: '#c8a84b', colorDim: '#6b5a22', icon: '⚔', desc: 'Потомственные инженеры и военные' },
     smirnov:  { name: 'Род Смирновых',  color: '#7ec8b4', colorDim: '#2e6b5e', icon: '⚕', desc: 'Врачи и учёные' },
     kozlov:   { name: 'Род Козловых',   color: '#c87e7e', colorDim: '#6b2e2e', icon: '✦', desc: 'Архитекторы и строители' },
   };
 
-  /* ═══════════ GENERATIONS ═══════════
-     clanId → determines colour of the card border & thread
-     personId → links to person page (matches data.js ids)
-  */
-  const GENERATIONS = [
+  let GENERATIONS = [
     {
       label: 'Прапрародители',
       ageClass: 'old',
@@ -373,96 +367,10 @@
     <path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/>
   </svg>`;
 
-  /* ── BUILD CLAN LEGEND ── */
-  const legendWrap = document.getElementById('tree-clan-legend');
-  if (legendWrap) {
-    legendWrap.innerHTML = Object.entries(CLANS).map(([id, c]) => `
-      <div class="clan-legend__item" data-clan="${id}">
-        <span class="clan-legend__badge" style="background:${c.color};box-shadow:0 0 10px ${c.color}44;">${c.icon}</span>
-        <div class="clan-legend__text">
-          <strong>${c.name}</strong>
-          <span>${c.desc}</span>
-        </div>
-      </div>`).join('');
-
-    legendWrap.querySelectorAll('[data-clan]').forEach(item => {
-      item.addEventListener('click', () => {
-        const cid = item.dataset.clan;
-        filterByClan(cid === activeClan ? null : cid);
-        legendWrap.querySelectorAll('[data-clan]').forEach(el =>
-          el.classList.toggle('clan-legend__item--active', el.dataset.clan === cid && cid !== activeClan));
-      });
-    });
-  }
-
-  /* ── BUILD GENERATION ROWS ── */
-  sortGenerationPeople(GENERATIONS);
-  const reversed = [...GENERATIONS].reverse();
-
-  reversed.forEach((gen, ri) => {
-    const genIndex = GENERATIONS.length - 1 - ri;
-    const rowWrap  = document.createElement('div');
-
-    const lbl = document.createElement('div');
-    lbl.className = 'gen-label';
-    lbl.textContent = gen.label;
-    rowWrap.appendChild(lbl);
-
-    const row = document.createElement('div');
-    row.className = 'gen-row';
-    row.dataset.genIndex = genIndex;
-
-    gen.people.forEach(person => {
-      const clan = CLANS[person.clanId] || CLANS.ivanov;
-      const node = document.createElement('div');
-      node.className = `tree-node tree-node--${gen.ageClass} tree-node--clan-${person.clanId}`;
-      node.dataset.id     = person.id;
-      node.dataset.clan   = person.clanId;
-      node.tabIndex       = 0;
-
-      const nameParts = person.name.split('\n');
-      const clanIcon  = clan.icon;
-
-      node.innerHTML = `
-        <div class="tree-node__frame" title="${nameParts.join(' ')}"
-             style="--clan-color:${clan.color};--clan-dim:${clan.colorDim}">
-          <span class="tree-node__clan-badge" title="${clan.name}">${clanIcon}</span>
-          <div class="tree-node__photo">
-            <div class="tree-node__avatar">${personSVG}</div>
-          </div>
-        </div>
-        <div class="tree-node__info">
-          <div class="tree-node__name">${nameParts[0]}<br/>${nameParts[1] || ''}</div>
-          <div class="tree-node__years">${person.years}</div>
-          <div class="tree-node__clan-name" style="color:${clan.color}">${clan.name}</div>
-        </div>`;
-
-      row.appendChild(node);
-      nodeEls[person.id] = node;
-    });
-
-    rowWrap.appendChild(row);
-    gensEl.appendChild(rowWrap);
-  });
-
   /* ── RELATIONSHIP GRAPH ── */
   const parentsOf  = {};
   const childrenOf = {};
   const spouseOf   = {};
-
-  GENERATIONS.forEach(gen => {
-    gen.people.forEach(p => { if (p.spouseOf) spouseOf[p.id] = p.spouseOf; });
-    Object.entries(gen.childrenMap || {}).forEach(([parentId, kids]) => {
-      childrenOf[parentId] = (childrenOf[parentId] || []).concat(kids);
-      const sp = spouseOf[parentId];
-      if (sp) childrenOf[sp] = (childrenOf[sp] || []).concat(kids);
-      kids.forEach(k => {
-        parentsOf[k] = parentsOf[k] || [];
-        if (!parentsOf[k].includes(parentId)) parentsOf[k].push(parentId);
-        if (sp && !parentsOf[k].includes(sp)) parentsOf[k].push(sp);
-      });
-    });
-  });
 
   function getAncestors(id, acc = new Set()) {
     (parentsOf[id] || []).forEach(p => { if (!acc.has(p)) { acc.add(p); getAncestors(p, acc); } });
@@ -472,6 +380,235 @@
     (childrenOf[id] || []).forEach(c => { if (!acc.has(c)) { acc.add(c); getDescendants(c, acc); } });
     return acc;
   }
+
+  // color dimming utility
+  function dimColor(hex, percent = 0.55) {
+    hex = hex.replace(/^\s*#|\s*$/g, '');
+    if (hex.length === 3) hex = hex.replace(/(.)/g, '$1$1');
+    let r = parseInt(hex.substr(0, 2), 16) || 0;
+    let g = parseInt(hex.substr(2, 2), 16) || 0;
+    let b = parseInt(hex.substr(4, 2), 16) || 0;
+    r = Math.floor(r * percent);
+    g = Math.floor(g * percent);
+    b = Math.floor(b * percent);
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  }
+
+  // Asynchronous Loader from database
+  async function loadDataFromDb() {
+    try {
+      const clansRes = await fetch(`${BASE}/api/family-clans?treeId=default`);
+      const nodesRes = await fetch(`${BASE}/api/family-nodes?treeId=default`);
+      const connsRes = await fetch(`${BASE}/api/family-connections?treeId=default`);
+      const clansJson = await clansRes.json();
+      const nodesJson = await nodesRes.json();
+      const connsJson = await connsRes.json().catch(() => ({ ok: false }));
+
+      if (connsJson.ok && Array.isArray(connsJson.data)) {
+        const conns = connsJson.data.map(c => ({
+          id: c.id,
+          a: c.nodeA,
+          b: c.nodeB,
+          type: c.type,
+          color: c.color,
+        }));
+        localStorage.setItem('tree_connections_default', JSON.stringify(conns));
+      }
+
+      if (clansJson.ok && nodesJson.ok && Array.isArray(clansJson.data) && Array.isArray(nodesJson.data) && clansJson.data.length > 0 && nodesJson.data.length > 0) {
+        // Rebuild CLANS
+        const newClans = {};
+        clansJson.data.forEach(c => {
+          newClans[c.id] = {
+            name: c.name,
+            color: c.color,
+            colorDim: dimColor(c.color, 0.55),
+            icon: c.icon,
+            desc: c.description || ''
+          };
+        });
+        CLANS = newClans;
+
+        // Group nodes by generation
+        const gensMap = {};
+        nodesJson.data.forEach(n => {
+          const g = n.generation !== undefined ? n.generation : 0;
+          if (!gensMap[g]) gensMap[g] = [];
+          gensMap[g].push(n);
+        });
+
+        const GEN_LABELS = ['Прапрародители', 'Прародители', 'Родители', 'Наше поколение', 'Дети', 'Внуки', 'Правнуки'];
+        const maxGen = Math.max(...Object.keys(gensMap).map(Number), 3);
+        
+        const newGenerations = [];
+        for (let g = 0; g <= maxGen; g++) {
+          const peopleInGen = gensMap[g] || [];
+          
+          // Reconstruct childrenMap for generation g based on parentIds of generation g + 1
+          const childrenMap = {};
+          const nextGenPeople = gensMap[g + 1] || [];
+          nextGenPeople.forEach(child => {
+            let pids = [];
+            if (Array.isArray(child.parentIds)) {
+              pids = child.parentIds;
+            } else {
+              try { pids = JSON.parse(child.parentIds || '[]'); } catch (_) { pids = []; }
+            }
+            if (Array.isArray(pids)) {
+              pids.forEach(parentId => {
+                if (!childrenMap[parentId]) childrenMap[parentId] = [];
+                if (!childrenMap[parentId].includes(child.id)) {
+                  childrenMap[parentId].push(child.id);
+                }
+              });
+            }
+          });
+
+          newGenerations.push({
+            label: GEN_LABELS[g] || `Поколение ${g + 1}`,
+            ageClass: g < 2 ? 'old' : 'young',
+            people: peopleInGen.map(n => ({
+              id: n.id,
+              name: n.fullName.includes('\n') ? n.fullName : n.fullName.replace(' ', '\n'),
+              years: n.years || '',
+              spouseOf: n.spouseId || null,
+              clanId: n.clanId || 'ivanov',
+              personPageId: n.linkedProfileId || null,
+              photoUrl: n.photoUrl || ''
+            })),
+            childrenMap
+          });
+        }
+        GENERATIONS = newGenerations;
+        console.log('Successfully loaded default tree clans and nodes from DB:', CLANS, GENERATIONS);
+      } else {
+        console.log('No DB records or invalid formats. Falling back to hardcoded default data.');
+      }
+    } catch (err) {
+      console.warn('Failed to load default tree from DB, falling back to static data:', err);
+    }
+  }
+
+  function computeGraphMaps() {
+    for (const key in personById) delete personById[key];
+    for (const key in parentsOf) delete parentsOf[key];
+    for (const key in childrenOf) delete childrenOf[key];
+    for (const key in spouseOf) delete spouseOf[key];
+
+    GENERATIONS.forEach(g => g.people.forEach(p => { personById[p.id] = p; }));
+
+    GENERATIONS.forEach(gen => {
+      gen.people.forEach(p => { if (p.spouseOf) spouseOf[p.id] = p.spouseOf; });
+      Object.entries(gen.childrenMap || {}).forEach(([parentId, kids]) => {
+        childrenOf[parentId] = (childrenOf[parentId] || []).concat(kids);
+        const sp = spouseOf[parentId];
+        if (sp) childrenOf[sp] = (childrenOf[sp] || []).concat(kids);
+        kids.forEach(k => {
+          parentsOf[k] = parentsOf[k] || [];
+          if (!parentsOf[k].includes(parentId)) parentsOf[k].push(parentId);
+          if (sp && !parentsOf[k].includes(sp)) parentsOf[k].push(sp);
+        });
+      });
+    });
+  }
+
+  function buildTreeDOM() {
+    // 1. Build Clan Legend
+    const legendWrap = document.getElementById('tree-clan-legend');
+    if (legendWrap) {
+      legendWrap.innerHTML = Object.entries(CLANS).map(([id, c]) => `
+        <div class="clan-legend__item" data-clan="${id}">
+          <span class="clan-legend__badge" style="background:${c.color};box-shadow:0 0 10px ${c.color}44;">${c.icon}</span>
+          <div class="clan-legend__text">
+            <strong>${c.name}</strong>
+            <span>${c.desc}</span>
+          </div>
+        </div>`).join('');
+
+      legendWrap.querySelectorAll('[data-clan]').forEach(item => {
+        item.addEventListener('click', () => {
+          const cid = item.dataset.clan;
+          filterByClan(cid === activeClan ? null : cid);
+          legendWrap.querySelectorAll('[data-clan]').forEach(el =>
+            el.classList.toggle('clan-legend__item--active', el.dataset.clan === cid && cid !== activeClan));
+        });
+      });
+    }
+
+    // 2. Build Generation Rows
+    gensEl.innerHTML = '';
+    for (const key in nodeEls) delete nodeEls[key];
+
+    sortGenerationPeople(GENERATIONS);
+    const reversed = [...GENERATIONS].reverse();
+
+    reversed.forEach((gen, ri) => {
+      const genIndex = GENERATIONS.length - 1 - ri;
+      const rowWrap  = document.createElement('div');
+
+      const lbl = document.createElement('div');
+      lbl.className = 'gen-label';
+      lbl.textContent = gen.label;
+      rowWrap.appendChild(lbl);
+
+      const row = document.createElement('div');
+      row.className = 'gen-row';
+      row.dataset.genIndex = genIndex;
+
+      gen.people.forEach(person => {
+        const clan = CLANS[person.clanId] || CLANS.ivanov;
+        const node = document.createElement('div');
+        node.className = `tree-node tree-node--${gen.ageClass} tree-node--clan-${person.clanId}`;
+        node.dataset.id     = person.id;
+        node.dataset.clan   = person.clanId;
+        node.tabIndex       = 0;
+
+        const nameParts = person.name.split('\n');
+        const clanIcon  = clan.icon;
+        const photoHtml = person.photoUrl
+          ? `<img src="${person.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+          : `<div class="tree-node__avatar">${personSVG}</div>`;
+
+        node.innerHTML = `
+          <div class="tree-node__frame" title="${nameParts.join(' ')}"
+               style="--clan-color:${clan.color};--clan-dim:${clan.colorDim}">
+            <span class="tree-node__clan-badge" title="${clan.name}">${clanIcon}</span>
+            <div class="tree-node__photo">
+              ${photoHtml}
+            </div>
+          </div>
+          <div class="tree-node__info">
+            <div class="tree-node__name">${nameParts[0]}<br/>${nameParts[1] || ''}</div>
+            <div class="tree-node__years">${person.years}</div>
+            <div class="tree-node__clan-name" style="color:${clan.color}">${clan.name}</div>
+          </div>`;
+
+        row.appendChild(node);
+        nodeEls[person.id] = node;
+      });
+
+      rowWrap.appendChild(row);
+      gensEl.appendChild(rowWrap);
+    });
+
+    // 3. Attach click and keydown handlers
+    attachCardListeners();
+
+    // 4. Attach tooltips
+    attachTooltipListeners();
+
+    // 5. Connect button
+    attachConnectButtonListener();
+
+    // 6. Search input setup
+    attachSearchListener();
+  }
+
+  // Promise that resolves when data is loaded and DOM is built
+  const dataLoadPromise = loadDataFromDb().then(() => {
+    computeGraphMaps();
+    buildTreeDOM();
+  });
 
   /* ── THREAD DRAWING ── */
   function getFrameCenter(el) {
@@ -552,14 +689,20 @@
           const key = `spouse:${person.id}::${person.spouseOf}`;
           threadEls[key] = [];
 
+          // Determine left and right cards to connect inner edges
+          const leftCard = ca.x < cb.x ? ca : cb;
+          const rightCard = ca.x < cb.x ? cb : ca;
+          const startX = leftCard.right;
+          const endX = rightCard.left;
+
           // Горизонтальная брачная линия — двойная (тонкая + толстая полупрозрачная)
           const y = (ca.y + cb.y) / 2;
           // Фоновая толстая полупрозрачная
-          const bgPath = createThread(`M ${ca.right} ${y} L ${cb.left} ${y}`, colors[0] + '33', 6, delay);
+          const bgPath = createThread(`M ${startX} ${y} L ${endX} ${y}`, colors[0] + '33', 6, delay);
           bgPath.dataset.kind = 'spouse'; bgPath.dataset.a = person.id; bgPath.dataset.b = person.spouseOf; bgPath.dataset.clan = person.clanId;
           svgEl.appendChild(bgPath);
           // Основная тонкая
-          const path = createThread(`M ${ca.right} ${y} L ${cb.left} ${y}`, colors[0], 1.5, delay);
+          const path = createThread(`M ${startX} ${y} L ${endX} ${y}`, colors[0], 1.5, delay);
           path.dataset.kind = 'spouse'; path.dataset.a = person.id; path.dataset.b = person.spouseOf; path.dataset.clan = person.clanId;
           svgEl.appendChild(path);
           threadEls[key].push(bgPath, path);
@@ -667,6 +810,16 @@
     });
 
     if (activeClan) applyFilter(activeClan);
+
+    // Draw user-created custom connections
+    try {
+      const conns = JSON.parse(localStorage.getItem('tree_connections_default') || '[]');
+      if (conns.length) {
+        conns.forEach(c => {
+          drawAnimatedConnection(c.a, c.b, c.type, c.color);
+        });
+      }
+    } catch (e) {}
   }
 
   /* ── CLAN FILTER ── */
@@ -780,17 +933,46 @@
 
     const cA = getFrameCenter(elA), cB = getFrameCenter(elB);
 
-    /* Точки — низ центра каждой карточки */
-    const x1 = cA.x, y1 = cA.bottom;
-    const x2 = cB.x, y2 = cB.bottom;
+    let x1 = cA.x, y1;
+    let x2 = cB.x, y2;
+    let cy1, cy2, drop = 0;
 
     const personA    = personById[idA];
     const isMarriage = connType === 'spouse';
 
-    /* U-образный спуск под карточки */
-    const drop = Math.min(Math.abs(y2 - y1) * 0.4 + 50, 130);
-    const cy1  = y1 + drop;
-    const cy2  = y2 + drop;
+    const genA = GENERATIONS.findIndex(g => g.people.some(p => p.id === idA));
+    const genB = GENERATIONS.findIndex(g => g.people.some(p => p.id === idB));
+
+    if (isMarriage) {
+      y1 = cA.bottom;
+      y2 = cB.bottom;
+      drop = Math.min(Math.abs(y2 - y1) * 0.4 + 50, 130);
+      cy1 = y1 + drop;
+      cy2 = y2 + drop;
+    } else {
+      if (genA !== -1 && genB !== -1 && genA < genB) {
+        // A is parent (older generation, larger Y), B is child (younger generation, smaller Y)
+        y1 = cA.top;
+        y2 = cB.bottom;
+        const dist = y1 - y2;
+        cy1 = y1 - dist * 0.4;
+        cy2 = y2 + dist * 0.4;
+      } else if (genA !== -1 && genB !== -1 && genA > genB) {
+        // B is parent (larger Y), A is child (smaller Y)
+        y1 = cA.bottom;
+        y2 = cB.top;
+        const dist = y2 - y1;
+        cy1 = y1 + dist * 0.4;
+        cy2 = y2 - dist * 0.4;
+      } else {
+        // same generation fallback
+        y1 = cA.bottom;
+        y2 = cB.bottom;
+        drop = Math.min(Math.abs(y2 - y1) * 0.4 + 50, 130);
+        cy1 = y1 + drop;
+        cy2 = y2 + drop;
+      }
+    }
 
     const colors = customColor
       ? [customColor, customColor, customColor + 'bb']
@@ -1242,81 +1424,199 @@
     }, 2000);
   }
 
-  /* ── TOOLTIP on hover ── */
-  const tooltip = document.createElement('div');
-  tooltip.className = 'tree-tooltip';
-  tooltip.style.cssText = 'position:fixed;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:200';
-  document.body.appendChild(tooltip);
+  /* ── EVENT ATTACHERS FOR DYNAMIC DOM ── */
+  function attachCardListeners() {
+    const clickTimers = {};
+    Object.entries(nodeEls).forEach(([id, el]) => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
 
-  Object.entries(nodeEls).forEach(([id, el]) => {
-    const person = personById[id];
-    const clan   = person ? CLANS[person.clanId] : null;
-    el.addEventListener('mouseenter', ev => {
-      if (!clan) return;
-      const timelineHtml = getPersonTimelineHtml(person);
-      tooltip.innerHTML = `
-        <div class="tree-tooltip__inner">
-          <span class="tree-tooltip__icon">${clan.icon}</span>
-          <strong>${clan.name}</strong>
-          <span>${person.name.replace('\n',' ')}</span>
-          ${timelineHtml}
-          <span class="tree-tooltip__hint">Двойной клик → страница памяти</span>
-        </div>`;
-      tooltip.style.opacity = '1';
-      tooltip.style.left    = ev.clientX + 14 + 'px';
-      tooltip.style.top     = ev.clientY - 10 + 'px';
-    });
-    el.addEventListener('mousemove', ev => {
-      tooltip.style.left = ev.clientX + 14 + 'px';
-      tooltip.style.top  = ev.clientY - 10 + 'px';
-    });
-    el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
-  });
-
-  /* ── SEARCH INPUT EVENT HANDLER ── */
-  const searchInput = document.getElementById('tree-search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', e => {
-      const q = e.target.value.toLowerCase().trim();
-      if (!q) {
-        if (highlightedId) {
-          highlight(highlightedId);
-        } else {
-          clearHighlight();
+        // CONNECT MODE
+        if (connectMode) {
+          if (!connectFirst) {
+            connectFirst = id;
+            el.classList.add('connect-selected');
+            showConnectHint('Теперь кликните на вторую карточку…');
+          } else if (connectFirst !== id) {
+            // Draw connection
+            const nodeFirstId = connectFirst;
+            const nodeSecondId = id;
+            nodeEls[nodeFirstId].classList.remove('connect-selected');
+            showConnectionTypeModal(nodeFirstId, nodeSecondId, (type, color) => {
+              if (type === 'spouse') {
+                const personA = personById[nodeFirstId];
+                const personB = personById[nodeSecondId];
+                if (personA && personB) {
+                  const genA = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeFirstId));
+                  const genB = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeSecondId));
+                  if (genA !== -1 && genB !== -1 && genA !== genB) {
+                    alert('Брак разрешен только между членами одного поколения!');
+                    exitConnectMode();
+                    return;
+                  }
+                  const clanA = personA.clanId;
+                  const clanB = personB.clanId;
+                  if (clanA && clanB && clanA === clanB) {
+                    alert('Брак между членами одного рода запрещен!');
+                    exitConnectMode();
+                    return;
+                  }
+                }
+              }
+              customConnections.push({ a: nodeFirstId, b: nodeSecondId, type, color });
+              // Save to local connections
+              const conns = JSON.parse(localStorage.getItem('tree_connections_default') || '[]');
+              conns.push({ id: Date.now().toString(36), a: nodeFirstId, b: nodeSecondId, type, color });
+              localStorage.setItem('tree_connections_default', JSON.stringify(conns));
+              // Draw
+              drawAnimatedConnection(nodeFirstId, nodeSecondId, type, color);
+              exitConnectMode();
+            }, () => {
+              exitConnectMode();
+            });
+          }
+          return;
         }
-        return;
-      }
-      wrapper.classList.add('has-highlight');
-      Object.entries(nodeEls).forEach(([nid, el]) => {
-        const person = personById[nid];
-        const nameMatch = person && person.name.toLowerCase().includes(q);
-        const yearsMatch = person && person.years && person.years.toLowerCase().includes(q);
-        const matches = nameMatch || yearsMatch;
-        if (matches) {
-          el.classList.remove('tree-node--dim');
-          el.classList.add('tree-node--active');
+
+        if (clickTimers[id]) {
+          // double click → navigate or open popup
+          clearTimeout(clickTimers[id]);
+          delete clickTimers[id];
+          const person = personById[id];
+          if (person?.personPageId) {
+            window.location.href = `person.html?id=${person.personPageId}`;
+          } else if (window.openRelativePopup) {
+            window.openRelativePopup(id);
+          }
         } else {
-          el.classList.add('tree-node--dim');
-          el.classList.remove('tree-node--active');
+          clickTimers[id] = setTimeout(() => {
+            delete clickTimers[id];
+            highlight(id);
+          }, 260);
         }
       });
-      svgEl.querySelectorAll('.thread-path').forEach(p => {
-        p.classList.add('thread-path--dim');
-        p.classList.remove('thread-path--active');
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const person = personById[id];
+          if (person?.personPageId) window.location.href = `person.html?id=${person.personPageId}`;
+        }
+        if (e.key === ' ')      { e.preventDefault(); highlight(id); }
+        if (e.key === 'Escape') {
+          if (connectMode) exitConnectMode();
+          else clearHighlight();
+        }
       });
     });
   }
 
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      drawThreads();
-      const highlightId = new URLSearchParams(window.location.search).get('highlight');
-      if (highlightId && nodeEls[highlightId]) {
-        const el = nodeEls[highlightId];
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        highlight(highlightId);
-      }
-    }, 300);
+  function attachTooltipListeners() {
+    // Clean up any existing tooltips
+    document.querySelectorAll('.tree-tooltip').forEach(t => t.remove());
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tree-tooltip';
+    tooltip.style.cssText = 'position:fixed;pointer-events:none;opacity:0;transition:opacity 0.2s;z-index:200';
+    document.body.appendChild(tooltip);
+
+    Object.entries(nodeEls).forEach(([id, el]) => {
+      const person = personById[id];
+      const clan   = person ? CLANS[person.clanId] : null;
+      el.addEventListener('mouseenter', ev => {
+        if (!clan) return;
+        const timelineHtml = getPersonTimelineHtml(person);
+        tooltip.innerHTML = `
+          <div class="tree-tooltip__inner">
+            <span class="tree-tooltip__icon">${clan.icon}</span>
+            <strong>${clan.name}</strong>
+            <span>${person.name.replace('\n',' ')}</span>
+            ${timelineHtml}
+            <span class="tree-tooltip__hint">Двойной клик → страница памяти</span>
+          </div>`;
+        tooltip.style.opacity = '1';
+        tooltip.style.left    = ev.clientX + 14 + 'px';
+        tooltip.style.top     = ev.clientY - 10 + 'px';
+      });
+      el.addEventListener('mousemove', ev => {
+        tooltip.style.left = ev.clientX + 14 + 'px';
+        tooltip.style.top  = ev.clientY - 10 + 'px';
+      });
+      el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+    });
+  }
+
+  function attachConnectButtonListener() {
+    const connectBtn = document.getElementById('tree-connect-btn');
+    if (connectBtn) {
+      /* Снять возможный дублирующийся listener */
+      const freshBtn = connectBtn.cloneNode(true);
+      connectBtn.replaceWith(freshBtn);
+      freshBtn.addEventListener('click', () => {
+        if (connectMode) exitConnectMode();
+        else enterConnectMode();
+      });
+    }
+  }
+
+  function attachSearchListener() {
+    const searchInput = document.getElementById('tree-search-input');
+    if (searchInput) {
+      // Re-bind listener (clone input to drop old listeners if any)
+      const freshInput = searchInput.cloneNode(true);
+      searchInput.replaceWith(freshInput);
+      freshInput.addEventListener('input', e => {
+        const q = e.target.value.toLowerCase().trim();
+        if (!q) {
+          if (highlightedId) {
+            highlight(highlightedId);
+          } else {
+            clearHighlight();
+          }
+          return;
+        }
+        wrapper.classList.add('has-highlight');
+        Object.entries(nodeEls).forEach(([nid, el]) => {
+          const person = personById[nid];
+          const nameMatch = person && person.name.toLowerCase().includes(q);
+          const yearsMatch = person && person.years && person.years.toLowerCase().includes(q);
+          const matches = nameMatch || yearsMatch;
+          if (matches) {
+            el.classList.remove('tree-node--dim');
+            el.classList.add('tree-node--active');
+          } else {
+            el.classList.add('tree-node--dim');
+            el.classList.remove('tree-node--active');
+          }
+        });
+        svgEl.querySelectorAll('.thread-path').forEach(p => {
+          p.classList.add('thread-path--dim');
+          p.classList.remove('thread-path--active');
+        });
+      });
+    }
+  }
+
+  document.addEventListener('click', e => {
+    if (connectMode && !e.target.closest('.tree-node')) { exitConnectMode(); return; }
+    if (!e.target.closest('.tree-node') && !e.target.closest('.clan-legend__item')) clearHighlight();
   });
-  window.addEventListener('resize', () => setTimeout(drawThreads, 200));
+
+  window.addEventListener('load', () => {
+    dataLoadPromise.then(() => {
+      setTimeout(() => {
+        drawThreads();
+        const highlightId = new URLSearchParams(window.location.search).get('highlight');
+        if (highlightId && nodeEls[highlightId]) {
+          const el = nodeEls[highlightId];
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          highlight(highlightId);
+        }
+      }, 300);
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    dataLoadPromise.then(() => {
+      setTimeout(drawThreads, 200);
+    });
+  });
 })();
