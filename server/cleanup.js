@@ -50,6 +50,50 @@ function runCleanup() {
         if (file) referencedFiles.add(file.toLowerCase());
       }
     }
+
+    // From bot profiles database
+    const botDbPath = path.join(__dirname, '..', 'bot', 'data', 'bot.db');
+    if (fs.existsSync(botDbPath)) {
+      const { DatabaseSync } = require('node:sqlite');
+      try {
+        const botDb = new DatabaseSync(botDbPath);
+        
+        // From profiles table
+        try {
+          const botProfiles = botDb.prepare('SELECT main_photo_url FROM profiles').all();
+          for (const row of botProfiles) {
+            if (row.main_photo_url) {
+              const file = path.basename(row.main_photo_url);
+              if (file) referencedFiles.add(file.toLowerCase());
+            }
+          }
+        } catch (_) {}
+
+        // From content_blocks table
+        try {
+          const botBlocks = botDb.prepare('SELECT image_url FROM content_blocks').all();
+          for (const row of botBlocks) {
+            if (row.image_url) {
+              const file = path.basename(row.image_url);
+              if (file) referencedFiles.add(file.toLowerCase());
+            }
+          }
+        } catch (_) {}
+
+        // From gallery_photos table
+        try {
+          const botPhotos = botDb.prepare('SELECT image_url FROM gallery_photos').all();
+          for (const row of botPhotos) {
+            if (row.image_url) {
+              const file = path.basename(row.image_url);
+              if (file) referencedFiles.add(file.toLowerCase());
+            }
+          }
+        } catch (_) {}
+      } catch (botDbErr) {
+        console.error('[Cleanup] Error reading bot database:', botDbErr);
+      }
+    }
   } catch (err) {
     console.error('[Cleanup] Error gathering referenced files from DB:', err);
     throw err;

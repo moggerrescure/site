@@ -268,7 +268,7 @@
     const media = Array.isArray(person.media) ? person.media : [];
 
     const photoHtml = person.photo
-      ? `<img src="${API.resolveUrl(person.photo)}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;"/>`
+      ? `<img src="${API.resolveUrl(person.photo)}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" onerror="this.outerHTML='<div class=\'person-header__photo-inner\'>' + PERSON_SVG + '</div>'"/>`
       : `<div class="person-header__photo-inner">${personSVG}</div>`;
 
     const burialPlace = person.burial || '';

@@ -156,7 +156,7 @@
             <p class="hero__eyebrow">Одна из историй</p>
             <div class="featured-person__card">
               <div class="featured-person__photo">
-                ${p.photo ? `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}"/>`
+                ${p.photo ? `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" onerror="this.outerHTML='<div class=\'featured-person__avatar\'>' + PERSON_SVG + '</div>'"/>`
                           : `<div class="featured-person__avatar">${PERSON_SVG}</div>`}
               </div>
               <div class="featured-person__content">
@@ -194,7 +194,7 @@
           <a class="person-card" href="person.html?id=${encodeURIComponent(p.id)}">
             <div class="person-card__photo">
               ${p.photo
-                ? `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`
+                ? `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.outerHTML='<div class=\'person-card__photo-inner\'>' + PERSON_SVG + '</div>'"/>`
                 : `<div class="person-card__photo-inner">${PERSON_SVG}</div>`}
             </div>
             <div class="person-card__body">

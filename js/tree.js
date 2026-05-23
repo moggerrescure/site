@@ -577,7 +577,7 @@
         const nameParts = person.name.split('\n');
         const clanIcon  = clan.icon;
         const photoHtml = person.photoUrl
-          ? `<img src="${resolveUrl(person.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+          ? `<img src="${resolveUrl(person.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div class=\'tree-node__avatar\'>' + PERSON_SVG + '</div>'">`
           : `<div class="tree-node__avatar">${personSVG}</div>`;
 
         node.innerHTML = `
