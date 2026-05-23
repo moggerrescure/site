@@ -2281,6 +2281,117 @@ body.tree-page { overflow-x: hidden; }
   to { transform: scale(1); opacity: 1; }
 }
 
+/* ── MOBILE ADAPTATION ── */
+@media (max-width: 768px) {
+  .tree-hero {
+    padding: calc(var(--nav-h) + 40px) 16px 20px !important;
+  }
+  .tree-hero__title {
+    font-size: 32px !important;
+  }
+  .tree-hero__sub {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+  }
+
+  .clan-legend-wrap {
+    padding: 0 16px 16px !important;
+  }
+  .clan-legend__hint {
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 8px !important;
+  }
+  .clan-legend {
+    gap: 8px !important;
+  }
+
+  .tree-search-wrap {
+    padding: 0 16px 20px !important;
+  }
+  .tree-search {
+    max-width: 100% !important;
+  }
+
+  .tree-section {
+    padding: 10px 0 120px !important; /* Spacing for fixed bottom toolbar */
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .tree-wrapper {
+    min-width: 960px !important; /* Keep container wide so cards have space */
+    width: max-content !important;
+    padding: 0 20px 80px !important;
+    margin: 0 !important;
+  }
+
+  .tree-generations {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 48px !important; /* Reduced vertical spacing */
+    width: 100% !important;
+  }
+
+  .gen-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 24px !important; /* Smaller gap on mobile */
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+  }
+
+  .tree-node {
+    flex-shrink: 0 !important; /* CRITICAL: Prevents cards from squeezing and overlapping */
+  }
+
+  .tree-node__frame {
+    width: 98px !important;  /* Compact card width */
+    height: 128px !important; /* Compact card height */
+  }
+
+  .tree-node__avatar {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+  }
+
+  .tree-node__photo {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .tree-node__name {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .tree-node__years {
+    font-size: 8px !important;
+  }
+
+  .tree-node__clan-name {
+    font-size: 8px !important;
+  }
+
+  .tree-gen-card-add {
+    width: 98px !important;
+    height: 128px !important;
+    font-size: 11px !important;
+    flex-shrink: 0 !important; /* CRITICAL: Prevents button card from shrinking */
+  }
+
+  .tree-legend {
+    padding: 0 16px 40px !important;
+    gap: 16px !important;
+  }
+}
+
 /* ── PRINT STYLES ── */
 @media print {
   @page {
