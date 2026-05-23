@@ -31,6 +31,17 @@
   }
 
   const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  const resolveUrl = path => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+    if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
+      return BASE + path;
+    }
+    if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
+      return BASE + '/' + path;
+    }
+    return path;
+  };
   let isEditMode = false;
   let allNodes   = [];
   let clansCache = {};
@@ -1675,7 +1686,7 @@
             <div class="tree-node__frame" style="--clan-color:${color}; --clan-dim:${colorDim}">
               ${clan ? `<span class="tree-node__clan-badge" title="${clan.name}">${clan.icon}</span>` : ''}
               <div class="tree-node__photo">
-                ${photo ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;"/>` : `<div class="tree-node__avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`}
+                ${photo ? `<img src="${resolveUrl(photo)}" style="width:100%;height:100%;object-fit:cover;"/>` : `<div class="tree-node__avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`}
               </div>
             </div>
             <div class="tree-node__info">
@@ -2383,7 +2394,7 @@
     const overlay = document.createElement('div');
     overlay.className = 'tree-modal-overlay'; overlay.id = 'tree-node-modal';
     const list = profiles.length
-      ? profiles.map(p => `<button type="button" class="tree-profile-item" data-id="${p.id}"><div class="tree-profile-item__photo">${p.photo ? `<img src="${p.photo}"/>` : '<span>👤</span>'}</div><div class="tree-profile-item__info"><div class="tree-profile-item__name">${p.name}</div><div class="tree-profile-item__dates">${p.born||''} ${p.died?'— '+p.died:''}</div></div></button>`).join('')
+      ? profiles.map(p => `<button type="button" class="tree-profile-item" data-id="${p.id}"><div class="tree-profile-item__photo">${p.photo ? `<img src="${resolveUrl(p.photo)}"/>` : '<span>👤</span>'}</div><div class="tree-profile-item__info"><div class="tree-profile-item__name">${p.name}</div><div class="tree-profile-item__dates">${p.born||''} ${p.died?'— '+p.died:''}</div></div></button>`).join('')
       : '<p style="color:var(--cream-dim);text-align:center;padding:20px;">Нет страниц памяти</p>';
 
     overlay.innerHTML = `<div class="tree-modal"><button class="tree-modal__close" id="tpl-close">×</button><h2 class="tree-modal__title">Выбрать страницу памяти</h2><div class="tree-profile-list">${list}</div><button type="button" class="tree-add-btn tree-add-btn--linked" id="tpl-create" style="width:100%;margin-top:16px;">+ Создать новую страницу</button></div>`;
@@ -2644,7 +2655,7 @@
         <button class="tree-modal__close" id="rp-close">×</button>
         <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;">
           <div style="width:80px;height:80px;border-radius:8px;overflow:hidden;background:rgba(200,168,75,0.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-            ${photo ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;"/>` : '<span style="font-size:32px;">👤</span>'}
+            ${photo ? `<img src="${resolveUrl(photo)}" style="width:100%;height:100%;object-fit:cover;"/>` : '<span style="font-size:32px;">👤</span>'}
           </div>
           <div>
             <h2 class="tree-modal__title" style="margin-bottom:4px;">${name}</h2>

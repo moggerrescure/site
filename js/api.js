@@ -131,6 +131,20 @@ const API = (() => {
   }
 
   return {
+    BASE,
+    resolveUrl(path) {
+      if (!path) return '';
+      if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
+      }
+      if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
+        return BASE + path;
+      }
+      if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
+        return BASE + '/' + path;
+      }
+      return path;
+    },
     get:    (path)       => req('GET',    path),
     post:   (path, body) => req('POST',   path, body),
     put:    (path, body) => req('PUT',    path, body),

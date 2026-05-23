@@ -88,7 +88,7 @@
   }
 
   function photoEl(p) {
-    if (p.photo) return `<img src="${p.photo}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`;
+    if (p.photo) return `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/>`;
     return `<div class="person-card__photo-inner">${PERSON_SVG}</div>`;
   }
 

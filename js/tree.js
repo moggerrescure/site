@@ -8,6 +8,17 @@
 (function () {
 
   const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  const resolveUrl = path => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+    if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
+      return BASE + path;
+    }
+    if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
+      return BASE + '/' + path;
+    }
+    return path;
+  };
 
   let CLANS = {
     ivanov:   { name: 'Род Ивановых',   color: '#c8a84b', colorDim: '#6b5a22', icon: '⚔', desc: 'Потомственные инженеры и военные' },
@@ -566,7 +577,7 @@
         const nameParts = person.name.split('\n');
         const clanIcon  = clan.icon;
         const photoHtml = person.photoUrl
-          ? `<img src="${person.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+          ? `<img src="${resolveUrl(person.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
           : `<div class="tree-node__avatar">${personSVG}</div>`;
 
         node.innerHTML = `
@@ -1391,7 +1402,7 @@
 
     const nameParts = newNode.name.split('\n');
     const photoHtml = data.photo
-      ? `<img src="${data.photo}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+      ? `<img src="${resolveUrl(data.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
       : `<div class="tree-node__avatar">${personSVG}</div>`;
 
     node.innerHTML = `

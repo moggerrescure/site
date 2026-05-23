@@ -129,7 +129,13 @@
     const born = dateParts[0] || dateStr;
     const died = dateParts[1] || '';
 
-    const toUrl = p => p ? `/bot-data/${p}` : '';
+    const toUrl = p => {
+      if (!p) return '';
+      if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:')) return p;
+      if (p.startsWith('/uploads/') || p.startsWith('uploads/')) return API.resolveUrl(p);
+      if (p.startsWith('/bot-data/') || p.startsWith('bot-data/')) return API.resolveUrl(p);
+      return API.resolveUrl(`/bot-data/${p}`);
+    };
     const galleryUrls = gallery.map(toUrl);
 
     // Заголовки бота → ключи 6-блочной схемы
@@ -262,7 +268,7 @@
     const media = Array.isArray(person.media) ? person.media : [];
 
     const photoHtml = person.photo
-      ? `<img src="${person.photo}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;"/>`
+      ? `<img src="${API.resolveUrl(person.photo)}" alt="${person.name}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;"/>`
       : `<div class="person-header__photo-inner">${personSVG}</div>`;
 
     const burialPlace = person.burial || '';
@@ -418,7 +424,7 @@
         inner = `
           <div class="memory-card__split">
             <div class="memory-card__split-media">
-              <img src="${item.photoDataUrl}" alt="фото" class="memory-card__split-img" loading="lazy"/>
+              <img src="${API.resolveUrl(item.photoDataUrl)}" alt="фото" class="memory-card__split-img" loading="lazy"/>
             </div>
             <div class="memory-card__split-info">
               ${badge}
@@ -506,7 +512,7 @@
     track.innerHTML = photos.map((p, i) => {
       return `
         <div class="gallery-slide" data-index="${i}">
-          <img src="${p.src}" alt="${p.caption}" loading="lazy"/>
+          <img src="${API.resolveUrl(p.src)}" alt="${p.caption}" loading="lazy"/>
           ${p.caption ? `<p class="gallery-slide__caption">${p.caption}</p>` : ''}
         </div>`;
     }).join('');
