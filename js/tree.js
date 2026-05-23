@@ -615,13 +615,15 @@
     const frame = el.querySelector('.tree-node__frame');
     const wRect = wrapper.getBoundingClientRect();
     const fRect = frame.getBoundingClientRect();
+    const scaleX = wRect.width / wrapper.offsetWidth || 1;
+    const scaleY = wRect.height / wrapper.offsetHeight || 1;
     return {
-      x: fRect.left - wRect.left + fRect.width  / 2,
-      y: fRect.top  - wRect.top  + fRect.height / 2,
-      top:    fRect.top  - wRect.top,
-      bottom: fRect.bottom - wRect.top,
-      left:   fRect.left - wRect.left,
-      right:  fRect.right - wRect.left,
+      x: (fRect.left - wRect.left) / scaleX + (fRect.width / scaleX) / 2,
+      y: (fRect.top  - wRect.top) / scaleY + (fRect.height / scaleY) / 2,
+      top:    (fRect.top  - wRect.top) / scaleY,
+      bottom: (fRect.bottom - wRect.top) / scaleY,
+      left:   (fRect.left - wRect.left) / scaleX,
+      right:  (fRect.right - wRect.left) / scaleX,
     };
   }
 
