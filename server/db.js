@@ -34,6 +34,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS people (
     id         TEXT PRIMARY KEY,
+    user_id    TEXT,
     name       TEXT NOT NULL,
     born       TEXT NOT NULL,
     died       TEXT NOT NULL DEFAULT '',
@@ -99,6 +100,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS family_trees (
     id         TEXT PRIMARY KEY,
+    user_id    TEXT,
     name       TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -133,8 +135,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_timeline_node ON timeline_events(node_id);
   CREATE INDEX IF NOT EXISTS idx_timeline_profile ON timeline_events(profile_id);
 
-  CREATE INDEX IF NOT EXISTS idx_people_user ON people(user_id);
-  CREATE INDEX IF NOT EXISTS idx_family_trees_user ON family_trees(user_id);
   CREATE INDEX IF NOT EXISTS idx_family_nodes_tree ON family_nodes(tree_id);
   CREATE INDEX IF NOT EXISTS idx_family_clans_tree ON family_clans(tree_id);
   CREATE INDEX IF NOT EXISTS idx_reviews_person ON reviews(person_id);
@@ -184,6 +184,14 @@ try {
   }
 } catch (e) {
   console.error('Migration error for reviews table:', e);
+}
+
+// Create indices that depend on migrated columns
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_people_user ON people(user_id);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_family_trees_user ON family_trees(user_id);');
+} catch (e) {
+  console.error('Failed to create user indices:', e);
 }
 
 // Run query planner optimization based on current indices

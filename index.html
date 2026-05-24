@@ -36,20 +36,53 @@
 
   <!-- HERO -->
   <section class="hero">
-    <div class="hero__inner">
-      <p class="hero__eyebrow">Хранители воспоминаний</p>
-      <h1 class="hero__title">
-        Сохраните память<br />
-        <em>навсегда</em>
-      </h1>
-      <p class="hero__subtitle">
-        Живая летопись вашей семьи — фотографии,<br/>истории и древо рода из поколения в поколение.
-      </p>
-      <div class="hero__actions">
-        <a href="memory.html"      class="btn btn--primary">Страницы памяти</a>
-        <a href="family-tree.html" class="btn btn--ghost">Древо семьи</a>
+    <div class="hero--split">
+      <div class="hero__inner">
+        <p class="hero__eyebrow">Цифровой мемориал нового времени</p>
+        <h1 class="hero__title">
+          Живая память<br />
+          в одном <em>QR-коде</em>
+        </h1>
+        <p class="hero__subtitle">
+          Создайте интерактивную страницу памяти с биографией, семейным древом и хронологией. Свяжите её с физическим памятником с помощью долговечной металлической QR-таблички.
+        </p>
+        <div class="hero__actions">
+          <a href="memory.html"    class="btn btn--primary">Создать страницу</a>
+          <a href="#qr-monuments"  class="btn btn--ghost">Заказать QR-табличку</a>
+        </div>
+      </div>
+      
+      <div class="hero__visual">
+        <div class="qr-plaque" title="Металлическая мемориальная табличка с QR-кодом">
+          <div class="qr-plaque__border"></div>
+          <div class="qr-plaque__bolt qr-plaque__bolt--tl"></div>
+          <div class="qr-plaque__bolt qr-plaque__bolt--tr"></div>
+          <div class="qr-plaque__bolt qr-plaque__bolt--bl"></div>
+          <div class="qr-plaque__bolt qr-plaque__bolt--br"></div>
+          <div class="qr-plaque__content">
+            <div class="qr-plaque__header">
+              <span class="qr-plaque__candle">🕯️</span>
+              <span class="qr-plaque__title">Страница памяти</span>
+            </div>
+            <div class="qr-plaque__qr-wrapper">
+              <svg class="qr-plaque__qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0 0h25v5H0zm0 5h5v15H0zm20 0h5v15h-5zM0 20h25v5H0zm30 0h5v5h-5zm10 0h15v5H40zm20 0h10v5H60zm15 0h10v5H75zm15 0h10v5H90zM0 30h5v15H0zm10 0h10v5H10zm10 10h5v5h-5zm10-10h15v5H30zm20 0h5v15h-5zM0 50h25v5H0zm0 5h5v15H0zm20 0h5v15h-5zM0 70h25v5H0zm30-20h5v5h-5zm10 0h10v5H40zm15 0h10v5H55zm15 0h15v5H70zm15 0h10v5H85zm-55 10h5v5h-5zm10 0h15v5H40zm20 0h5v15h-5zM30 70h15v5H30zm20 0h10v5H50zm15 0h15v5H65zm15 0h10v5H80zm10 0h10v5H90zM30 80h5v15H30zm10 0h10v5H40zm15 0h5v15h-5zm10 0h15v5H65zm15 0h10v5H80z" />
+                <rect x="0" y="0" width="30" height="30" fill="none" stroke="#111111" stroke-width="6"/>
+                <rect x="10" y="10" width="10" height="10" fill="#111111"/>
+                <rect x="70" y="0" width="30" height="30" fill="none" stroke="#111111" stroke-width="6"/>
+                <rect x="80" y="10" width="10" height="10" fill="#111111"/>
+                <rect x="0" y="70" width="30" height="30" fill="none" stroke="#111111" stroke-width="6"/>
+                <rect x="10" y="80" width="10" height="10" fill="#111111"/>
+              </svg>
+            </div>
+            <p class="qr-plaque__instruction">Считайте код смартфоном<br/>чтобы войти в мемориал памяти</p>
+            <div class="qr-plaque__footer">MEMORY.SITE</div>
+          </div>
+          <div class="qr-plaque__shimmer"></div>
+        </div>
       </div>
     </div>
+    
     <div class="hero__orb hero__orb--1"></div>
     <div class="hero__orb hero__orb--2"></div>
     <div class="hero__orb hero__orb--3"></div>
@@ -82,6 +115,129 @@
         <span class="stat__num" data-count="36">0</span>
         <span class="stat__label">воспоминаний</span>
       </div>
+    </div>
+  </section>
+
+  <!-- QR MONUMENTS STEPS -->
+  <section class="qr-steps" id="qr-monuments">
+    <div class="qr-steps__inner">
+      <h2 class="section-title">Как работает живая память</h2>
+      
+      <div class="qr-steps__grid">
+        <!-- Step 1 -->
+        <div class="step-card">
+          <span class="step-card__num">01</span>
+          <span class="step-card__icon">📝</span>
+          <h3 class="step-card__title">Создайте страницу</h3>
+          <p class="step-card__text">
+            Наполните интерактивную страницу памяти: расскажите историю жизни, загрузите фотографии, составьте генеалогическое древо близкого и соберите хронологию дат.
+          </p>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="step-card">
+          <span class="step-card__num">02</span>
+          <span class="step-card__icon">🛠️</span>
+          <h3 class="step-card__title">Закажите QR-код</h3>
+          <p class="step-card__text">
+            Мы изготовим долговечную металлическую табличку с лазерной гравировкой уникального QR-кода. Она устойчива к перепадам температур, дождю, снегу и УФ-лучам.
+          </p>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="step-card">
+          <span class="step-card__num">03</span>
+          <span class="step-card__icon">🕊️</span>
+          <h3 class="step-card__title">Закрепите на мемориале</h3>
+          <p class="step-card__text">
+            Установите табличку на памятнике. Любой посетитель сможет отсканировать код смартфоном, зажечь виртуальную свечу памяти и прикоснуться к истории жизни человека.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES PRESENTATION SHOWCASE -->
+  <section class="showcase" id="features-showcase">
+    <div class="showcase__inner">
+      <h2 class="section-title">Презентация функционала <em>платформы</em></h2>
+      
+      <!-- Feature 1: Family Tree -->
+      <div class="showcase__item">
+        <div class="showcase__text">
+          <span class="showcase__tag">01 · Древо семьи</span>
+          <h3 class="showcase__name">Интерактивное древо рода</h3>
+          <p class="showcase__desc">
+            Визуализируйте историю поколений на одном экране. Уникальный алгоритм автоматически строит интерактивное генеалогическое древо, связывая поколения S-образными линиями родства. С лёгкостью прослеживайте ветви родов, подсвечивайте прямых предков и потомков при клике и переходите к подробным персональным страницам.
+          </p>
+          <a href="family-tree.html" class="feature-card__link">Открыть интерактивное древо</a>
+        </div>
+        <div class="showcase__preview">
+          <div class="feature-image-container">
+            <img src="images/feature_tree.png" alt="Интерактивное генеалогическое древо семьи" class="feature-image" />
+            <div class="feature-image-glare"></div>
+            <div class="feature-image-glow"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Feature 2: Memory Pages -->
+      <div class="showcase__item showcase__item--reverse">
+        <div class="showcase__text">
+          <span class="showcase__tag">02 · Страницы памяти</span>
+          <h3 class="showcase__name">Цифровые страницы воспоминаний</h3>
+          <p class="showcase__desc">
+            Создайте живой мемориал памяти близкого человека. Персональная страница объединяет подробную интерактивную биографию, галерею бережно сохранённых фотографий и аудиозаписей, виртуальный огонёк свечи памяти и тёплые воспоминания от родственников, друзей и коллег, образуя единое пространство вечной памяти.
+          </p>
+          <a href="memory.html" class="feature-card__link">Галерея страниц памяти</a>
+        </div>
+        <div class="showcase__preview">
+          <div class="feature-image-container">
+            <img src="images/feature_memory.png" alt="Цифровая мемориальная страница памяти" class="feature-image" />
+            <div class="feature-image-glare"></div>
+            <div class="feature-image-glow"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Feature 3: Timeline Chronicle -->
+      <div class="showcase__item">
+        <div class="showcase__text">
+          <span class="showcase__tag">03 · Летопись</span>
+          <h3 class="showcase__name">Интерактивная семейная хроника</h3>
+          <p class="showcase__desc">
+            Сопоставляйте жизнь вашей семьи с ходом великой истории. Наша хроника автоматически интегрирует ключевые даты из жизни предков (рождения, важные достижения, памятные события) с ключевыми историческими вехами страны и мира, создавая целостную и живую картину связи эпох.
+          </p>
+          <a href="timeline.html" class="feature-card__link">Исследовать летопись</a>
+        </div>
+        <div class="showcase__preview">
+          <div class="feature-image-container">
+            <img src="images/feature_timeline.png" alt="Интерактивная летопись и хроника событий" class="feature-image" />
+            <div class="feature-image-glare"></div>
+            <div class="feature-image-glow"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Feature 4: QR Plaque Integration -->
+      <div class="showcase__item showcase__item--reverse">
+        <div class="showcase__text">
+          <span class="showcase__tag">04 · QR-таблички</span>
+          <h3 class="showcase__name">Физическое воплощение на мемориалах</h3>
+          <p class="showcase__desc">
+            Свяжите реальный мемориал с цифровой историей. Мы изготавливаем долговечные, погодоустойчивые металлические таблички с лазерной гравировкой QR-кода. Закреплённая на памятнике табличка позволяет любому посетителю мгновенно перейти на страницу памяти и прикоснуться к истории жизни человека.
+          </p>
+          <a href="#qr-monuments" class="feature-card__link">Подробнее об изготовлении</a>
+        </div>
+        <div class="showcase__preview">
+          <div class="feature-image-container">
+            <img src="images/feature_plaque.png" alt="Металлическая мемориальная QR-табличка" class="feature-image" />
+            <div class="feature-image-glare"></div>
+            <div class="feature-image-glow"></div>
+          </div>
+        </div>
+      </div>
+      
     </div>
   </section>
 

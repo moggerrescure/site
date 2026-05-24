@@ -94,6 +94,8 @@ function checkAuth(req, res) {
 }
 
 function checkTreeAuth(req, res, treeId) {
+  if (req.method === 'GET' && treeId === 'default') return true;
+
   if (!checkAuth(req, res)) return false;
   if (req.user.name === 'krutko' && treeId === 'default') return true;
 
@@ -637,6 +639,26 @@ async function handlePhotoUpload(req, res) {
   }
 }
 
+/* ── POST /api/upload-audio — загрузка аудио с сайта ── */
+async function handleAudioUpload(req, res) {
+  try {
+    const filename = await upload.parseUpload(req, 'audio', upload.ALLOWED_AUDIO);
+    send(res, 200, { ok: true, url: '/uploads/' + filename });
+  } catch (err) {
+    send(res, 400, { ok: false, error: err.message });
+  }
+}
+
+/* ── POST /api/upload-video — загрузка видео с сайта ── */
+async function handleVideoUpload(req, res) {
+  try {
+    const filename = await upload.parseUpload(req, 'video', upload.ALLOWED_VIDEO);
+    send(res, 200, { ok: true, url: '/uploads/' + filename });
+  } catch (err) {
+    send(res, 400, { ok: false, error: err.message });
+  }
+}
+
 /* ── PUT /api/profiles/:id — обновление профиля в бот-БД ── */
 async function updateProfileInBot(req, res, params) {
   const profileId = params.id;
@@ -931,15 +953,14 @@ function deleteFamilyConnection(req, res, params) {
 /* ── GET /api/family-trees ── */
 function getFamilyTrees(req, res) {
   if (!checkAuth(req, res)) return;
-  const rows = db.prepare("SELECT id FROM family_trees WHERE user_id = ? ORDER BY id").all(req.user.id);
-  let trees = rows.map(r => r.id);
   const rootTreeId = req.user.name === 'krutko' ? 'default' : `${req.user.id}-default`;
-  if (!trees.includes(rootTreeId)) {
-    db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
-      .run(rootTreeId, 'Моё древо', req.user.id);
-    trees.unshift(rootTreeId);
-  }
-  send(res, 200, { ok: true, data: trees });
+  
+  // Ensure default tree exists for this user
+  db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+    .run(rootTreeId, 'Моё древо', req.user.id);
+
+  const rows = db.prepare("SELECT id, name FROM family_trees WHERE user_id = ? ORDER BY id").all(req.user.id);
+  send(res, 200, { ok: true, data: rows });
 }
 
 /* ── POST /api/family-trees — создать новое дерево ── */
@@ -999,6 +1020,7 @@ async function createFamilyClan(req, res) {
 /* ── DELETE /api/family-clans/:id ── */
 function deleteFamilyClan(req, res, params) {
   if (!checkClanAuth(req, res, params.id)) return;
+  db.prepare("UPDATE family_nodes SET clan_id = '' WHERE clan_id = ?").run(params.id);
   db.prepare('DELETE FROM family_clans WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
@@ -1151,6 +1173,7 @@ function deleteFamilyNode(req, res, params) {
     } catch (_) {}
   });
 
+  db.prepare('DELETE FROM family_connections WHERE node_a = ? OR node_b = ?').run(params.id, params.id);
   db.prepare('DELETE FROM family_nodes WHERE id = ?').run(params.id);
   send(res, 200, { ok: true });
 }
@@ -1320,6 +1343,12 @@ async function dispatch(req, res) {
     if (method === 'POST' && pathname === '/api/upload-photo') {
       return await handlePhotoUpload(req, res);
     }
+    if (method === 'POST' && pathname === '/api/upload-audio') {
+      return await handleAudioUpload(req, res);
+    }
+    if (method === 'POST' && pathname === '/api/upload-video') {
+      return await handleVideoUpload(req, res);
+    }
 
     if ((p = matchRoute('/api/people/:id', pathname))) {
       if (method === 'GET')    return getOnePerson(req, res, p);
@@ -1400,8 +1429,9 @@ module.exports = { dispatch, seedIfEmpty, seedFamilyDefaultIfEmpty };
    SEED DEFAULT FAMILY TREE
    ══════════════════════════════════════ */
 function seedFamilyDefaultIfEmpty() {
-  const count = db.prepare("SELECT COUNT(*) as c FROM family_nodes WHERE tree_id = 'default'").get();
-  if (count.c > 0) return;
+  const clansCount = db.prepare("SELECT COUNT(*) as c FROM family_clans WHERE tree_id = 'default'").get();
+  const nodesCount = db.prepare("SELECT COUNT(*) as c FROM family_nodes WHERE tree_id = 'default'").get();
+  if (clansCount.c > 0 && nodesCount.c > 0) return;
 
   const clans = [
     { id: 'ivanov', name: 'Род Ивановых', color: '#c8a84b', icon: '⚔', description: 'Потомственные инженеры и военные' },
@@ -1433,7 +1463,7 @@ function seedFamilyDefaultIfEmpty() {
     const insertClan = db.prepare("INSERT OR IGNORE INTO family_clans (id, tree_id, name, color, icon, description) VALUES (?,?,?,?,?,?)");
     clans.forEach(c => insertClan.run(c.id, 'default', c.name, c.color, c.icon, c.description));
 
-    const insertNode = db.prepare("INSERT INTO family_nodes (id, tree_id, full_name, years, clan_id, generation, gen_order, age_class, spouse_id, parent_ids) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    const insertNode = db.prepare("INSERT OR IGNORE INTO family_nodes (id, tree_id, full_name, years, clan_id, generation, gen_order, age_class, spouse_id, parent_ids) VALUES (?,?,?,?,?,?,?,?,?,?)");
     nodes.forEach(n => insertNode.run(n.id, 'default', n.name, n.years, n.clan, n.gen, n.order, n.age, n.spouse || null, JSON.stringify(n.parents || [])));
 
     db.exec('COMMIT');

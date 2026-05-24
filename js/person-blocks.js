@@ -135,7 +135,7 @@
     const photoHtml = hasImage
       ? `
         <div class="bio-block__photo">
-          <img src="${escapeAttr(block.image)}" alt="${escapeAttr(title)}" loading="lazy"/>
+          <img src="${escapeAttr(typeof API !== 'undefined' && typeof API.resolveUrl === 'function' ? API.resolveUrl(block.image) : block.image)}" alt="${escapeAttr(title)}" loading="lazy"/>
         </div>
       `
       : '';
