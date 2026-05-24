@@ -1,4 +1,2 @@
 node_modules/
 server/data/backups/
-server/data/*.db-shm
-server/data/*.db-wal

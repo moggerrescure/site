@@ -1715,8 +1715,9 @@
         html += `
           <div class="tree-node tree-node--young${branch}${activeDynamicClan && activeDynamicClan !== clanId ? ' tree-node--clan-dim' : ''}" data-id="${node.id}" data-clan="${clanId || ''}">
             ${isEditMode ? `<div class="tree-node-controls">
-              <button class="tree-node-ctrl" data-action="edit" data-id="${node.id}" title="Редактировать">✏️</button>
-              <button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${node.id}" title="Удалить">🗑</button>
+              <button class="tree-node-ctrl" data-action="edit" data-id="${node.id}" title="Редактировать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+              <button class="tree-node-ctrl tree-node-ctrl--events" data-action="events" data-id="${node.id}" title="События жизни"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+              <button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${node.id}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
             </div>` : ''}
             <div class="tree-node__frame" style="--clan-color:${color}; --clan-dim:${colorDim}">
               ${clan ? `<span class="tree-node__clan-badge" title="${clan.name}">${clan.icon}</span>` : ''}
@@ -1754,7 +1755,15 @@
       container.querySelectorAll('.tree-node-ctrl').forEach(b =>
         b.addEventListener('click', e => {
           e.stopPropagation();
-          b.dataset.action === 'edit' ? openNodeModal(b.dataset.id, 'edit') : deleteNode(b.dataset.id);
+          const action = b.dataset.action;
+          const id = b.dataset.id;
+          if (action === 'edit') {
+            openNodeModal(id, 'edit');
+          } else if (action === 'events') {
+            window.openRelativePopup(id);
+          } else if (action === 'delete') {
+            deleteNode(id);
+          }
         })
       );
     }
@@ -2087,7 +2096,7 @@
         const nid = node.dataset.id || node.dataset.personId || '';
         if (!nid) return;
         const c = document.createElement('div'); c.className = 'tree-node-controls';
-        c.innerHTML = `<button class="tree-node-ctrl" data-action="edit" data-id="${nid}" title="Редактировать">✏️</button><button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${nid}" title="Удалить">🗑</button>`;
+        c.innerHTML = `<button class="tree-node-ctrl" data-action="edit" data-id="${nid}" title="Редактировать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button class="tree-node-ctrl tree-node-ctrl--events" data-action="events" data-id="${nid}" title="События жизни"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button><button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${nid}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>`;
         node.appendChild(c);
         added++;
       });
@@ -2138,6 +2147,7 @@
     if (!btn) return;
     e.stopPropagation(); e.preventDefault();
     if (btn.dataset.action === 'edit')   openNodeModal(btn.dataset.id, 'edit');
+    if (btn.dataset.action === 'events') window.openRelativePopup(btn.dataset.id);
     if (btn.dataset.action === 'delete') deleteNode(btn.dataset.id);
   }
 
@@ -2688,8 +2698,8 @@
     overlay.id = 'relative-popup';
 
     const eventsHTML = events.length
-      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${e.year}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}">🗑</button></div>`).join('')
-      : '<p style="color:var(--cream-dim);font-size:13px;text-align:center;">Нет событий</p>';
+      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${e.year}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div>`).join('')
+      : `<div class="rp-no-events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span>Нет записанных событий</span></div>`;
 
     overlay.innerHTML = `
       <div class="tree-modal" style="max-width:520px;">
@@ -2708,21 +2718,43 @@
         <div class="rp-section-title">События жизни</div>
         <div class="rp-events" id="rp-events">${eventsHTML}</div>
 
-        <div class="rp-add-event" id="rp-add-event" style="display:none;">
-          <input type="number" id="rp-ev-year" placeholder="Год" min="1800" max="2030" style="width:70px;"/>
-          <input type="text" id="rp-ev-title" placeholder="Событие (свадьба, переезд...)" style="flex:1;"/>
-          <input type="text" id="rp-ev-city" placeholder="Город" style="width:100px;"/>
-          <button class="rp-ev-save" id="rp-ev-save">✓</button>
+        <div class="rp-add-event" id="rp-add-event" style="display:none; flex-direction:column; gap:12px;">
+          <div class="rp-templates" style="display:flex; flex-wrap:wrap; gap:6px; width:100%;">
+            <button type="button" class="rp-tpl-btn" data-val="Свадьба">💍 Свадьба</button>
+            <button type="button" class="rp-tpl-btn" data-val="Рождение ребёнка">👶 Рождение</button>
+            <button type="button" class="rp-tpl-btn" data-val="Окончание учёбы">🎓 Выпускной</button>
+            <button type="button" class="rp-tpl-btn" data-val="Начало работы">🛠 Работа</button>
+            <button type="button" class="rp-tpl-btn" data-val="Военная служба">⚔ Служба</button>
+            <button type="button" class="rp-tpl-btn" data-val="Переезд">✈️ Переезд</button>
+          </div>
+          <div style="display:flex; gap:8px; width:100%; align-items:center;">
+            <input type="number" id="rp-ev-year" placeholder="Год" min="1800" max="2030" style="width:70px;"/>
+            <input type="text" id="rp-ev-title" placeholder="Событие (свадьба, переезд...)" style="flex:1;"/>
+            <input type="text" id="rp-ev-city" placeholder="Город" style="width:100px;"/>
+            <button class="rp-ev-save" id="rp-ev-save" title="Сохранить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+          </div>
         </div>
-        <button class="tree-tool" id="rp-add-btn" style="width:100%;margin-top:12px;">+ Добавить событие</button>
+        <button class="rp-add-btn" id="rp-add-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Добавить событие</button>
 
         <div style="display:flex;gap:10px;margin-top:20px;">
-          ${isEditMode ? `<button class="tree-tool" id="rp-edit-btn">✏️ Редактировать</button>` : ''}
+          ${isEditMode ? `<button class="rp-edit-btn" id="rp-edit-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke:currentColor;fill:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Редактировать</button>` : ''}
           <button class="tree-modal__btn tree-modal__btn--cancel" id="rp-close2" style="flex:1;">Закрыть</button>
         </div>
       </div>`;
 
     document.body.appendChild(overlay);
+
+    // Template buttons listeners
+    overlay.querySelectorAll('.rp-tpl-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.val;
+        const titleInput = document.getElementById('rp-ev-title');
+        if (titleInput) {
+          titleInput.value = val;
+          titleInput.focus();
+        }
+      });
+    });
 
     // Закрытие
     const close = () => overlay.remove();

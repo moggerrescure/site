@@ -511,34 +511,64 @@ body.tree-page { overflow-x: hidden; }
 /* Node controls */
 .tree-node-controls {
   position: absolute;
-  top: -10px;
+  top: -16px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(6px);
   display: flex;
-  gap: 4px;
+  gap: 6px;
   z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 4px 6px;
+  border-radius: 20px;
+  border: 1px solid rgba(200, 168, 75, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tree-node:hover .tree-node-controls {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
 }
 .tree-node-ctrl {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(200,168,75,0.3);
-  background: rgba(20,20,20,0.9);
-  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--cream);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tree-node-ctrl svg {
+  width: 13px;
+  height: 13px;
+  stroke: var(--cream-dim);
+  transition: stroke 0.25s ease, transform 0.25s ease;
 }
 .tree-node-ctrl:hover {
-  border-color: var(--gold);
-  background: rgba(200,168,75,0.15);
+  background: rgba(200, 168, 75, 0.15);
+  border-color: rgba(200, 168, 75, 0.8);
+  box-shadow: 0 0 12px rgba(200, 168, 75, 0.35);
   transform: scale(1.15);
 }
+.tree-node-ctrl:hover svg {
+  stroke: var(--gold-light);
+  transform: scale(1.05);
+}
 .tree-node-ctrl--del:hover {
-  border-color: #ff6666;
-  background: rgba(220,60,60,0.15);
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.8);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+}
+.tree-node-ctrl--del:hover svg {
+  stroke: #ff6b6b;
 }
 
 /* Add node button */
@@ -1805,75 +1835,183 @@ body.tree-page { overflow-x: hidden; }
 
 
 /* ══════════════════════════════════════
-   TOOLBAR — edit mode panel
-   ══════════════════════════════════════ */
-.tree-toolbar {
+   TOOLBAR �/* ── Relative popup ── */
+.rp-section-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--gold);
+  margin-bottom: 12px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(200,168,75,0.15);
+}
+.rp-events {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 14px 20px;
-  margin: 0 auto 20px;
-  max-width: 700px;
-  background: rgba(20,20,20,0.8);
-  border: 1px solid rgba(200,168,75,0.2);
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
-  position: sticky;
-  top: 70px;
-  z-index: 100;
-}
-
-.tree-tool {
-  padding: 10px 18px;
-  border-radius: 6px;
-  border: 1px solid rgba(200,168,75,0.2);
-  background: rgba(255,255,255,0.03);
-  color: var(--cream-dim);
-  font-family: var(--font-body);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.25s;
-}
-.tree-tool:hover {
-  border-color: var(--gold);
-  color: var(--gold-light);
-  background: rgba(200,168,75,0.08);
-}
-.tree-tool--exit {
-  border-color: rgba(220,80,80,0.3);
-  color: #f08080;
-}
-.tree-tool--exit:hover {
-  border-color: #f08080;
-  background: rgba(220,80,80,0.1);
-}
-
-/* ── Legend line types — visually distinct ── */
-.tree-legend__line--kinship {
-  display: block;
-  width: 44px;
-  height: 3px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #c8a84b, #e2c97e);
-}
-.tree-legend__line--marriage {
-  display: block;
-  width: 44px;
-  height: 3px;
-  border-radius: 2px;
-  background: repeating-linear-gradient(90deg,
-    #e2c97e 0px, #e2c97e 6px,
-    transparent 6px, transparent 10px);
+  flex-direction: column;
+  gap: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 10px 4px 10px 20px;
   position: relative;
 }
-.tree-legend__line--marriage::before {
-  content: '💍';
+.rp-events:has(.rp-event)::before {
+  content: '';
   position: absolute;
-  right: -18px;
-  top: -7px;
-  font-size: 12px;
+  top: 0; bottom: 0; left: 8px;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(200,168,75,0.05), rgba(200,168,75,0.25) 15%, rgba(200,168,75,0.25) 85%, rgba(200,168,75,0.05));
+}
+.rp-event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  backdrop-filter: blur(8px);
+}
+.rp-event::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid #1a1a1a;
+  box-shadow: 0 0 6px rgba(200,168,75,0.5);
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+.rp-event:hover {
+  background: rgba(200, 168, 75, 0.05);
+  border-color: rgba(200, 168, 75, 0.25);
+  transform: translateX(4px);
+}
+.rp-event:hover::before {
+  background: var(--gold-light);
+  box-shadow: 0 0 10px rgba(226,201,126,0.9);
+  transform: translateY(-50%) scale(1.3);
+}
+.rp-event__year {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--gold-light);
+  font-weight: 600;
+  min-width: 45px;
+}
+.rp-event__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--cream);
+  flex: 1;
+  line-height: 1.4;
+}
+.rp-event__city {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--cream-dim);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+.rp-event__del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #ef4444;
+  opacity: 0.4;
+  transition: all 0.2s;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rp-event__del:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.15);
+  transform: scale(1.15);
+}
+
+.rp-add-event {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(200, 168, 75, 0.2);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.rp-add-event input {
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(200, 168, 75, 0.2);
+  border-radius: 8px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.3s;
+}
+.rp-add-event input:focus {
+  border-color: var(--gold);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(200, 168, 75, 0.15);
+}
+.rp-ev-save {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+  background: rgba(200,168,75,0.15);
+  color: var(--gold);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.rp-ev-save:hover {
+  background: var(--gold);
+  color: var(--black);
+  transform: scale(1.1);
+}
+
+.rp-tpl-btn {
+  background: rgba(200, 168, 75, 0.06);
+  border: 1px solid rgba(200, 168, 75, 0.18);
+  border-radius: 20px;
+  color: var(--cream);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.rp-tpl-btn:hover {
+  background: rgba(200, 168, 75, 0.25);
+  border-color: var(--gold);
+  color: var(--black);
+  transform: translateY(-1px);
+}
+
+.tree-node-ctrl--events:hover {
+  background: rgba(95, 158, 160, 0.15) !important;
+  border-color: rgba(95, 158, 160, 0.8) !important;
+  box-shadow: 0 0 12px rgba(95, 158, 160, 0.35) !important;
+}
+.tree-node-ctrl--events:hover svg {
+  stroke: #a8e6cf !important;
 }
 
 @media (max-width: 560px) {
@@ -2632,3 +2770,128 @@ body.tree-page { overflow-x: hidden; }
   vector-effect: non-scaling-stroke !important;
 }
 
+
+/* ==========================================================================
+   UPGRADED RELATIVE POPUP & LIFE EVENTS STYLES
+   ========================================================================== */
+
+/* 1. Global Reset/Fallback for .tree-tool in case it's used elsewhere */
+.tree-tool {
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(200, 168, 75, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--cream-dim);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.tree-tool:hover {
+  border-color: var(--gold);
+  color: var(--gold-light);
+  background: rgba(200, 168, 75, 0.08);
+}
+
+/* 2. Premium Add Event Button styling */
+.rp-add-btn {
+  width: 100%;
+  padding: 11px;
+  margin-top: 14px;
+  border-radius: 8px;
+  border: 1px dashed rgba(200, 168, 75, 0.35);
+  background: rgba(200, 168, 75, 0.04);
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.rp-add-btn:hover {
+  background: rgba(200, 168, 75, 0.12);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 4px 15px rgba(200, 168, 75, 0.15);
+}
+.rp-add-btn svg {
+  stroke: currentColor;
+  stroke-width: 2.5;
+}
+
+/* 3. Premium Edit Profile button inside popup */
+.rp-edit-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  background: rgba(200, 168, 75, 0.08);
+  color: var(--gold);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.rp-edit-btn:hover {
+  background: var(--gold);
+  color: #1a1a1a;
+  box-shadow: 0 4px 15px rgba(200, 168, 75, 0.25);
+  transform: translateY(-1px);
+}
+.rp-edit-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+}
+
+/* 4. Elegant "No Events" Placeholder */
+.rp-no-events {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--cream-dim);
+  font-family: var(--font-body);
+  font-size: 13px;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  margin: 10px 0;
+}
+.rp-no-events svg {
+  opacity: 0.35;
+  color: var(--gold-dim);
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.rp-no-events span {
+  opacity: 0.8;
+  letter-spacing: 0.02em;
+}
+
+/* 5. Custom scrollbar for events list */
+.rp-events::-webkit-scrollbar {
+  width: 5px;
+}
+.rp-events::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 3px;
+}
+.rp-events::-webkit-scrollbar-thumb {
+  background: rgba(200, 168, 75, 0.25);
+  border-radius: 3px;
+}
+.rp-events::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 168, 75, 0.5);
+}
