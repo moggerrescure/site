@@ -1428,18 +1428,46 @@
     try {
       const r = await fetch(`${BASE}/api/family-trees`);
       const j = await r.json();
-      if (j.ok && Array.isArray(j.data)) trees = j.data;
+      if (j.ok && Array.isArray(j.data)) {
+        trees = j.data.map(item => {
+          if (typeof item === 'string') {
+            return { id: item, name: item === 'default' ? 'Основное' : item };
+          }
+          return item;
+        });
+      }
     } catch (_) {}
     /* Дополняем из localStorage */
     const localTrees = getAllTrees();
-    localTrees.forEach(t => { if (!trees.includes(t)) trees.push(t); });
+    localTrees.forEach(t => {
+      const tid = typeof t === 'string' ? t : t.id;
+      if (!trees.some(x => x.id === tid)) {
+        trees.push({ id: tid, name: tid === 'default' ? 'Основное' : tid });
+      }
+    });
+
     if (trees.length <= 1) return;
+
+    // Deduplicate and filter out redundant default tree if user has rootTreeId
+    const user = typeof API !== 'undefined' ? API.getUser() : null;
+    if (user && user.rootTreeId && user.rootTreeId !== 'default') {
+      trees = trees.filter(t => t.id !== 'default');
+    }
 
     const sw = document.createElement('div');
     sw.className = 'tree-switcher';
+    
+    const optionsHtml = trees.map(t => {
+      let displayName = t.name || t.id;
+      if (t.id === 'default' || t.id.endsWith('-default')) {
+        displayName = 'Основное древо';
+      }
+      return `<option value="${t.id}" ${t.id === currentTreeId ? 'selected' : ''}>${displayName}</option>`;
+    }).join('');
+
     sw.innerHTML = `<label class="tree-switcher__label">Дерево:</label>
       <select class="tree-switcher__select" id="tree-switcher-select">
-        ${trees.map(t => `<option value="${t}" ${t === currentTreeId ? 'selected' : ''}>${t === 'default' ? 'Основное' : t}</option>`).join('')}
+        ${optionsHtml}
       </select>`;
     document.querySelector('.clan-legend-wrap')?.insertBefore(sw, document.querySelector('.clan-legend-wrap').firstChild);
 

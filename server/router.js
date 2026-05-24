@@ -953,15 +953,14 @@ function deleteFamilyConnection(req, res, params) {
 /* ── GET /api/family-trees ── */
 function getFamilyTrees(req, res) {
   if (!checkAuth(req, res)) return;
-  const rows = db.prepare("SELECT id FROM family_trees WHERE user_id = ? ORDER BY id").all(req.user.id);
-  let trees = rows.map(r => r.id);
   const rootTreeId = req.user.name === 'krutko' ? 'default' : `${req.user.id}-default`;
-  if (!trees.includes(rootTreeId)) {
-    db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
-      .run(rootTreeId, 'Моё древо', req.user.id);
-    trees.unshift(rootTreeId);
-  }
-  send(res, 200, { ok: true, data: trees });
+  
+  // Ensure default tree exists for this user
+  db.prepare('INSERT OR IGNORE INTO family_trees (id, name, user_id) VALUES (?, ?, ?)')
+    .run(rootTreeId, 'Моё древо', req.user.id);
+
+  const rows = db.prepare("SELECT id, name FROM family_trees WHERE user_id = ? ORDER BY id").all(req.user.id);
+  send(res, 200, { ok: true, data: rows });
 }
 
 /* ── POST /api/family-trees — создать новое дерево ── */
