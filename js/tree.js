@@ -1652,8 +1652,8 @@
     // Apply styles to enable grab cursor and hide default overflow-x scrollbar
     sectionEl.style.overflow = 'hidden';
     sectionEl.style.cursor = 'grab';
-    wrapper.style.transformOrigin = 'center center';
-    wrapper.style.transition = 'transform 0.05s ease-out';
+
+    const getTarget = () => document.getElementById('tree-dynamic') || wrapper;
 
     let isPointerDown = false;
     let startPointerX = 0;
@@ -1667,7 +1667,12 @@
       dragStartY = clientY - panY;
       startPointerX = clientX;
       startPointerY = clientY;
-      wrapper.style.transition = 'none'; // Instant response during dragging
+      
+      const target = getTarget();
+      if (target) {
+        target.style.transformOrigin = 'center center';
+        target.style.transition = 'none'; // Instant response during dragging
+      }
     };
 
     const onPointerMove = (clientX, clientY) => {
@@ -1690,7 +1695,11 @@
       if (!isPointerDown) return;
       isPointerDown = false;
       sectionEl.style.cursor = 'grab';
-      wrapper.style.transition = 'transform 0.15s ease-out';
+      
+      const target = getTarget();
+      if (target) {
+        target.style.transition = 'transform 0.15s ease-out';
+      }
       
       // Clear isPanning after a short delay so click handler still ignores it
       setTimeout(() => {
@@ -1740,13 +1749,20 @@
       } else {
         zoom = Math.max(0.3, zoom - zoomFactor);
       }
-      wrapper.style.transition = 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      const target = getTarget();
+      if (target) {
+        target.style.transformOrigin = 'center center';
+        target.style.transition = 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      }
       updateTreeTransform();
     }, { passive: false });
   }
 
   function updateTreeTransform() {
-    wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    const target = document.getElementById('tree-dynamic') || wrapper;
+    if (target) {
+      target.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    }
   }
 
   // Hook into dataLoadPromise

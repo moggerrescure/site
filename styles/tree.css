@@ -311,6 +311,7 @@ body.tree-page { overflow-x: hidden; }
   stroke-linejoin: round;
   filter: drop-shadow(0 0 2px currentColor);
   opacity: 0.7;
+  vector-effect: non-scaling-stroke;
 }
 
 /* ── LEGEND (bottom) ── */
@@ -2624,5 +2625,10 @@ body.tree-page { overflow-x: hidden; }
   .tree-node__clan-name {
     font-size: 7px;
   }
+}
+
+.tree-threads path,
+.tree-dynamic-svg path {
+  vector-effect: non-scaling-stroke !important;
 }
 
