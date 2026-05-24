@@ -176,8 +176,13 @@ body.tree-page { overflow-x: hidden; }
   position: relative;
   width: 110px;
   height: 140px;
-  border-radius: 6px;
+  border-radius: 12px;
   overflow: visible;
+  padding: 6px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.4s;
 }
 
@@ -185,12 +190,12 @@ body.tree-page { overflow-x: hidden; }
 .tree-node__frame::before {
   content: '';
   position: absolute;
-  top: -3px; left: 0; right: 0;
-  height: 4px;
-  border-radius: 4px 4px 0 0;
+  top: -2px; left: 12px; right: 12px;
+  height: 3px;
+  border-radius: 3px;
   background: var(--clan-color, var(--gold));
-  box-shadow: 0 0 12px var(--clan-color, var(--gold));
-  z-index: 3;
+  box-shadow: 0 0 10px var(--clan-color, var(--gold));
+  z-index: 5;
   transition: box-shadow 0.4s;
 }
 
@@ -206,7 +211,7 @@ body.tree-page { overflow-x: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 4;
+  z-index: 6;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4), 0 0 8px var(--clan-color, var(--gold));
   border: 1.5px solid rgba(8,8,8,0.6);
   font-weight: 700;
@@ -218,30 +223,45 @@ body.tree-page { overflow-x: hidden; }
   box-shadow: 0 3px 14px rgba(0,0,0,0.5), 0 0 14px var(--clan-color, var(--gold));
 }
 
-/* old frame */
+/* old frame - Bronze/Gold Glass */
 .tree-node--old .tree-node__frame {
-  border: 3px solid #7a5c30;
-  box-shadow: 0 0 0 1px rgba(122,92,48,0.5), inset 0 0 8px rgba(0,0,0,0.4), 0 6px 24px rgba(0,0,0,0.5);
-  background: #3a2510;
+  border: 1px solid rgba(200, 168, 75, 0.22);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+    0 8px 32px rgba(0, 0, 0, 0.45);
+  background: rgba(30, 20, 10, 0.45);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
 }
-/* young frame */
+/* young frame - Ice/Silver Glass */
 .tree-node--young .tree-node__frame {
-  border: 2px solid rgba(245,240,232,0.65);
-  box-shadow: 0 0 0 1px rgba(245,240,232,0.2), 0 4px 18px rgba(0,0,0,0.35), inset 0 0 5px rgba(255,255,255,0.05);
-  background: #f0ead8;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    0 6px 24px rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
 }
 .tree-node:hover .tree-node__frame {
   transform: translateY(-5px) scale(1.04);
-  box-shadow: 0 18px 48px rgba(0,0,0,0.6), 0 0 0 2px var(--clan-color, rgba(200,168,75,0.35));
+  box-shadow: 
+    0 18px 48px rgba(0,0,0,0.6), 
+    0 0 0 1.5px var(--clan-color, rgba(200,168,75,0.35));
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .tree-node__photo {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
+  border-radius: 8px;
+  position: relative;
+  z-index: 2;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
 }
-.tree-node--old .tree-node__photo   { background: #d4b483; }
-.tree-node--young .tree-node__photo { background: #f5f0e8; }
+.tree-node--old .tree-node__photo   { background: rgba(212, 180, 131, 0.2); }
+.tree-node--young .tree-node__photo { background: rgba(245, 240, 232, 0.15); }
 
 .tree-node__avatar {
   width: 44px; height: 44px;
@@ -386,6 +406,17 @@ body.tree-page { overflow-x: hidden; }
   stroke: var(--gold-light) !important;
   stroke-width: 2.2 !important;
   filter: drop-shadow(0 0 5px rgba(226,201,126,0.7));
+  animation: pulseActiveThread 2.5s infinite ease-in-out;
+}
+@keyframes pulseActiveThread {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px rgba(226,201,126,0.4));
+    opacity: 0.85;
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(226,201,126,0.95));
+    opacity: 1.0;
+  }
 }
 .thread-path--dim { opacity: 0.08; }
 .thread-path--clan-dim { opacity: 0.06; }
@@ -2520,3 +2551,78 @@ body.tree-page { overflow-x: hidden; }
     filter: none !important;
   }
 }
+
+/* ── MOBILE ADAPTATION FOR THE FAMILY TREE ── */
+@media (max-width: 768px) {
+  .tree-hero {
+    padding: calc(var(--nav-h) + 24px) 16px 15px;
+  }
+  .clan-legend-wrap {
+    padding: 0 16px 16px;
+  }
+  .clan-legend__hint {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .clan-legend {
+    gap: 8px;
+  }
+  .clan-legend__item {
+    padding: 8px 14px;
+    gap: 8px;
+    border-radius: 6px;
+  }
+  .clan-legend__badge {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+  .clan-legend__text strong {
+    font-size: 13px;
+  }
+  .clan-legend__text span {
+    font-size: 10px;
+  }
+  
+  .tree-generations {
+    gap: 45px;
+  }
+  .gen-row {
+    gap: 20px;
+  }
+  .tree-node__frame {
+    width: 80px;
+    height: 105px;
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tree-node__frame::before {
+    top: -1px; left: 8px; right: 8px;
+    height: 2px;
+    border-radius: 2px;
+  }
+  .tree-node__clan-badge {
+    width: 16px;
+    height: 16px;
+    font-size: 8px;
+    top: -5px;
+    right: -5px;
+  }
+  .tree-node__photo {
+    border-radius: 5px;
+  }
+  .tree-node__avatar svg {
+    width: 18px;
+    height: 18px;
+  }
+  .tree-node__name {
+    font-size: 10px;
+  }
+  .tree-node__years {
+    font-size: 8px;
+  }
+  .tree-node__clan-name {
+    font-size: 7px;
+  }
+}
+
