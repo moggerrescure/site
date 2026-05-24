@@ -14,21 +14,33 @@
 
   const photoMap = {};
   let showHistory = true;
+  let dbNodes = [];
+  let dbCustomEvents = [];
 
-  /* ── RUSSIA / USSR HISTORICAL EVENTS ── */
+  /* ── БЕЛОРУССКИЕ И СОВЕТСКИЕ ИСТОРИЧЕСКИЕ СОБЫТИЯ ── */
   const HISTORY = [
-    { year: 1905, title: 'Первая русская революция',    desc: 'Волнения по всей стране',                 icon: '🏛' },
-    { year: 1914, title: 'Первая мировая война',         desc: 'Россия вступает в войну',                 icon: '⚔' },
-    { year: 1917, title: 'Революция 1917 года',          desc: 'Смена власти, рождение СССР',             icon: '🔴' },
-    { year: 1922, title: 'Образование СССР',             desc: 'Новое государство',                       icon: '⭐' },
-    { year: 1941, title: 'Великая Отечественная война',  desc: 'Вся страна встала на защиту Родины',      icon: '🎖' },
-    { year: 1945, title: 'День Победы',                  desc: '9 мая — конец войны',                     icon: '🕊' },
-    { year: 1957, title: 'Спутник',                      desc: 'СССР запускает первый спутник Земли',     icon: '🛰' },
-    { year: 1961, title: 'Полёт Гагарина',               desc: 'Человек впервые вышел в космос',          icon: '🚀' },
-    { year: 1986, title: 'Авария на ЧАЭС',               desc: 'Чернобыль меняет эпоху',                  icon: '☢' },
-    { year: 1991, title: 'Распад СССР',                  desc: 'Страна меняется навсегда',                icon: '📌' },
-    { year: 1998, title: 'Экономический кризис',         desc: 'Дефолт, цены взлетели',                   icon: '📉' },
-    { year: 2000, title: 'Новое тысячелетие',            desc: 'Россия входит в XXI век',                 icon: '🌅' },
+    { year: 1905, title: 'Первая русская революция',    desc: 'Волнения по всей стране',                                 icon: '🏛' },
+    { year: 1914, title: 'Первая мировая война',         desc: 'Начало боевых действий в Европе, затронувших белорусские земли', icon: '⚔' },
+    { year: 1917, title: 'Революция 1917 года',          desc: 'Смена власти, падение империи, рождение новой эпохи',     icon: '🔴' },
+    { year: 1919, title: 'Образование БССР',             desc: 'Провозглашение Белорусской Советской Социалистической Республики', icon: '⭐' },
+    { year: 1921, title: 'Основание БГУ',                desc: 'Открытие Белорусского государственного университета в Минске',   icon: '📚' },
+    { year: 1922, title: 'Образование СССР',             desc: 'Создание Союза Советских Социалистических Республик',      icon: '🚩' },
+    { year: 1941, title: 'Начало Великой Отечественной войны', desc: 'Вторжение врага, оборона Брестской крепости',         icon: '🛡' },
+    { year: 1944, title: 'Освобождение Минска',          desc: 'Победоносная операция «Багратион», изгнание оккупационных войск', icon: '🎖' },
+    { year: 1945, title: 'Победа в Великой Отечественной войне', desc: '9 мая — окончание войны, БССР входит в число основателей ООН', icon: '🕊' },
+    { year: 1946, title: 'Строительство МТЗ',            desc: 'Начало возведения Минского тракторного завода',             icon: '🚜' },
+    { year: 1947, title: 'Первые грузовики МАЗ',         desc: 'Выпуск первых белорусских тяжелых автомобилей МАЗ-205',      icon: '🚚' },
+    { year: 1957, title: 'Запуск Спутника',              desc: 'СССР выводит на орбиту первый искусственный спутник Земли', icon: '🛰' },
+    { year: 1958, title: 'Первый БелАЗ',                 desc: 'Выпуск первого карьерного самосвала на заводе в Жодино',     icon: '🚛' },
+    { year: 1961, title: 'Полёт Юрия Гагарина',          desc: 'Первый полет человека в космос',                           icon: '🚀' },
+    { year: 1971, title: 'Мемориал «Брестская крепость»', desc: 'Торжественное открытие мемориального комплекса',            icon: '🕯' },
+    { year: 1984, title: 'Открытие Минского метро',       desc: 'Запуск первой линии метрополитена от станции «Институт культуры» до «Московской»', icon: '🚇' },
+    { year: 1986, title: 'Катастрофа на ЧАЭС',           desc: 'Авария на Чернобыльской АЭС, затронувшая значительную часть территории Беларуси', icon: '☢' },
+    { year: 1990, title: 'Суверенитет БССР',             desc: 'Принятие Декларации о государственном суверенитете',       icon: '📄' },
+    { year: 1991, title: 'Создание Республики Беларусь',  desc: 'Распад СССР, обретение независимости Республикой Беларусь', icon: '📌' },
+    { year: 1994, title: 'Конституция Беларуси',         desc: 'Принятие Основного Закона и выборы первого Президента страны', icon: '📜' },
+    { year: 2005, title: 'Основание ПВТ',                desc: 'Создание Парка высоких технологий для ИТ-сектора в Беларуси', icon: '💻' },
+    { year: 2006, title: 'Новое здание Нацбиблиотеки',    desc: 'Открытие уникального здания Национальной библиотеки («алмаза знаний»)', icon: '💎' },
   ];
 
   /* ── PARSE YEAR ── */
@@ -157,7 +169,7 @@
 
     /* From ACTIVE tree only (not all trees) */
     const treeMeta  = getActivTreeMeta();
-    const treeNodes = loadActiveTreeNodes();
+    const treeNodes = dbNodes.length ? dbNodes : loadActiveTreeNodes();
     treeNodesToEvents(treeNodes, treeMeta).forEach(e => events.push(e));
 
     /* Historical */
@@ -170,7 +182,8 @@
     }));
 
     /* Custom (non-tree) */
-    loadCustom().filter(c => !c._fromTree).forEach(c => events.push({ ...c, type: c.type || 'custom' }));
+    const customEvents = dbCustomEvents.length ? dbCustomEvents : loadCustom();
+    customEvents.filter(c => !c._fromTree).forEach(c => events.push({ ...c, type: c.type || 'custom' }));
 
     events.sort((a, b) => a.year - b.year);
     return events;
@@ -184,6 +197,50 @@
     custom:  '★',
     era:     '❧',
   };
+
+  /* ── GET PEOPLE ALIVE IN YEAR ── */
+  function getPeopleAliveInYear(year) {
+    const list = [];
+    const seenIds = new Set();
+
+    // 1. From static PEOPLE data
+    const staticPeople = typeof PEOPLE !== 'undefined' ? PEOPLE : [];
+    staticPeople.forEach(p => {
+      const by = parseYear(p.born);
+      const dy = parseYear(p.died) || new Date().getFullYear();
+      if (by && by <= year && dy >= year) {
+        if (!seenIds.has(p.id)) {
+          seenIds.add(p.id);
+          list.push({ id: p.id, name: p.name, years: `${p.born}–${p.died || '...'}` });
+        }
+      }
+    });
+
+    // 2. From active tree nodes
+    const treeNodes = dbNodes.length ? dbNodes : loadActiveTreeNodes();
+    treeNodes.forEach(node => {
+      const name = node.full_name || node.fullName || node.name || '';
+      const years = node.years || '';
+      if (!years) return;
+      
+      const mBoth = years.match(/(\d{4})[^\d]+(\d{4})/);
+      const mBorn = years.match(/^(\d{4})/);
+      const mDied = years.match(/(\d{4})\s*$/);
+
+      const born = mBoth ? parseInt(mBoth[1]) : (mBorn ? parseInt(mBorn[1]) : null);
+      const died = mBoth ? parseInt(mBoth[2]) : (born && mDied && parseInt(mDied[1]) !== born ? parseInt(mDied[1]) : new Date().getFullYear());
+      
+      const pId = node.linked_profile_id || node.id || node.personId;
+      if (born && born <= year && died >= year) {
+        if (pId && !seenIds.has(pId)) {
+          seenIds.add(pId);
+          list.push({ id: pId, name: name, years: years });
+        }
+      }
+    });
+
+    return list;
+  }
 
   /* ── RENDER ONE EVENT ── */
   function buildEventHTML(e, i) {
@@ -212,7 +269,7 @@
     let headerHtml = '';
     if (e.type === 'birth' || e.type === 'death') {
       const avatar = photo
-        ? `<img class="timeline__avatar" src="${photo}" alt="${e.subtitle || ''}" />`
+        ? `<img class="timeline__avatar" src="${API.resolveUrl(photo)}" alt="${e.subtitle || ''}" onerror="this.outerHTML='<div class=\'timeline__avatar--empty\'><svg viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\' style=\'width:24px;height:24px;fill:currentColor;\'><circle cx=\'12\' cy=\'7\' r=\'4\'/><path d=\'M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8\'/></svg></div>'"/>`
         : `<div class="timeline__avatar--empty"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;fill:currentColor;"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`;
       
       headerHtml = `
@@ -243,6 +300,23 @@
         </div>`;
     }
 
+    let relativesHtml = '';
+    if (e.type === 'history') {
+      const alivePeople = getPeopleAliveInYear(e.year);
+      if (alivePeople.length > 0) {
+        relativesHtml = `
+          <div class="timeline__relatives" style="margin-top:12px;border-top:1px dashed rgba(200,168,75,0.15);padding-top:8px;">
+            <div style="font-family:var(--font-ui);font-size:10px;color:var(--gold-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;text-align:left;">Свидетели эпохи из семьи:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;">
+              ${alivePeople.map(p => `
+                <a href="person.html?id=${encodeURIComponent(p.id)}" class="timeline__relative-link" style="font-family:var(--font-body);font-size:12px;color:var(--cream-dim);text-decoration:none;background:rgba(200,168,75,0.06);padding:3px 8px;border-radius:12px;border:1px solid rgba(200,168,75,0.15);transition:all 0.3s;display:inline-block;">
+                  ${p.name} <span style="font-size:10px;opacity:0.6;">(${p.years})</span>
+                </a>`).join('')}
+            </div>
+          </div>`;
+      }
+    }
+
     return `
       <article class="timeline__item timeline__item--${side} timeline__item--${e.type}"
                data-type="${e.type}" data-year="${e.year}">
@@ -253,6 +327,7 @@
           ${customDel}
           ${headerHtml}
           <p class="timeline__subtitle">${e.subtitle}</p>
+          ${relativesHtml}
           <div class="timeline__meta">
             ${cityHtml}
             ${ageTag}
@@ -565,6 +640,19 @@
       btn.addEventListener('click', e => {
         e.stopPropagation();
         const id = btn.dataset.id;
+
+        if (dbCustomEvents.some(ev => ev.id === id) && typeof API !== 'undefined') {
+          API.del(`/api/timeline-events/${encodeURIComponent(id)}`)
+            .then(res => {
+              if (res && res.ok) {
+                loadDbData();
+              }
+            })
+            .catch(err => {
+              console.error('Failed to delete timeline event from DB:', err);
+            });
+        }
+
         const arr = loadCustom().filter(ev => ev.id !== id);
         saveCustom(arr);
         render();
@@ -645,6 +733,25 @@
       arr.push(ev);
       saveCustom(arr);
 
+      if (typeof API !== 'undefined') {
+        const treeId = getActiveTreeId() || 'default';
+        API.post('/api/timeline-events', {
+          treeId,
+          year: ev.year,
+          type: ev.type,
+          title: ev.title,
+          subtitle: ev.subtitle,
+          city: ev.city,
+          icon: ev.icon,
+        }).then(res => {
+          if (res && res.ok) {
+            loadDbData();
+          }
+        }).catch(err => {
+          console.error('Failed to save timeline event to DB:', err);
+        });
+      }
+
       e.target.reset();
       const status = document.getElementById('tl-status');
       status.style.display = 'block';
@@ -683,7 +790,30 @@
     }
   }
 
+  async function loadDbData() {
+    const treeId = getActiveTreeId() || 'default';
+    try {
+      if (typeof API !== 'undefined') {
+        const [nodesRes, eventsRes] = await Promise.all([
+          API.get(`/api/family-nodes?treeId=${encodeURIComponent(treeId)}`).catch(() => null),
+          API.get(`/api/timeline-events?treeId=${encodeURIComponent(treeId)}`).catch(() => null)
+        ]);
+
+        if (nodesRes && nodesRes.ok && Array.isArray(nodesRes.data)) {
+          dbNodes = nodesRes.data;
+        }
+        if (eventsRes && eventsRes.ok && Array.isArray(eventsRes.data)) {
+          dbCustomEvents = eventsRes.data.filter(e => e.type !== 'birth' && e.type !== 'death' && e.type !== 'history');
+        }
+        render();
+      }
+    } catch (e) {
+      console.warn('Failed to load database events for timeline:', e);
+    }
+  }
+
   loadPhotos();
+  loadDbData();
   render();
   buildForm();
 })();

@@ -31,6 +31,17 @@
   }
 
   const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  const resolveUrl = path => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+    if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
+      return BASE + path;
+    }
+    if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
+      return BASE + '/' + path;
+    }
+    return path;
+  };
   let isEditMode = false;
   let allNodes   = [];
   let clansCache = {};
@@ -733,6 +744,28 @@
     });
   })();
 
+  /* ── КНОПКА «УБРАТЬ СВЯЗЬ» ── */
+  (function initDisconnectBtn() {
+    const btn = document.getElementById('tree-disconnect-btn');
+    if (!btn) return;
+    const fresh = btn.cloneNode(true);
+    btn.replaceWith(fresh);
+
+    fresh.addEventListener('click', () => {
+      if (connectionMode === 'disconnect') {
+        cancelConnectionMode();
+        return;
+      }
+      cancelConnectionMode();
+      connectionMode  = 'disconnect';
+      connectionStep  = 0;
+      connectionNodeA = null;
+      fresh.style.background = 'rgba(239,68,68,0.18)';
+      fresh.style.boxShadow  = '0 0 0 2px rgba(239,68,68,0.6)';
+      showConnectionToast('disconnect');
+    });
+  })();
+
   /* ════════════════════════════════════════════
      МОДАЛКА «СОЗДАТЬ ДЕРЕВО»
      ════════════════════════════════════════════ */
@@ -1107,17 +1140,36 @@
       el.style.background = ''; el.style.boxShadow = ''; delete el.dataset.activeConn;
     });
     document.querySelectorAll('.tree-node--conn-selected').forEach(el => el.classList.remove('tree-node--conn-selected'));
+    document.querySelectorAll('.tree-node--disconn-selected').forEach(el => el.classList.remove('tree-node--disconn-selected'));
     document.getElementById('conn-toast')?.remove();
+    const disBtn = document.getElementById('tree-disconnect-btn');
+    if (disBtn) { disBtn.style.background = ''; disBtn.style.boxShadow = ''; }
   }
 
   function showConnectionToast(type) {
     document.getElementById('conn-toast')?.remove();
-    const labels = { marriage: 'Брачный союз 💍', parent: 'Родство 🧬', line: 'Прямая линия →' };
+    const labels = { marriage: 'Брачный союз 💍', parent: 'Родство 🧬', line: 'Прямая линия →', disconnect: 'Удаление связи 🔓' };
     const t = document.createElement('div');
     t.id = 'conn-toast';
     t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,0.95);border:1px solid rgba(200,168,75,0.5);border-radius:30px;padding:12px 24px;font-family:var(--font-body);font-size:14px;color:var(--gold-light);z-index:9999;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,0.7);animation:toastIn 0.3s ease;pointer-events:auto;';
-    t.innerHTML = `<span id="conn-toast-msg">${labels[type]} — кликните на первую карточку</span><button onclick="document.getElementById('conn-toast')?.remove()" style="background:none;border:none;color:var(--cream-dim);font-size:18px;cursor:pointer;margin-left:8px;line-height:1;">×</button>`;
+    if (type === 'disconnect') {
+      t.style.borderColor = 'rgba(239,68,68,0.5)';
+      t.style.color = '#ff9e9e';
+      t.innerHTML = `<span id="conn-toast-msg">${labels[type]} — кликните на первую карточку</span><button onclick="document.getElementById('conn-toast')?.remove()" style="background:none;border:none;color:#ffcccc;font-size:18px;cursor:pointer;margin-left:8px;line-height:1;">×</button>`;
+    } else {
+      t.innerHTML = `<span id="conn-toast-msg">${labels[type]} — кликните на первую карточку</span><button onclick="document.getElementById('conn-toast')?.remove()" style="background:none;border:none;color:var(--cream-dim);font-size:18px;cursor:pointer;margin-left:8px;line-height:1;">×</button>`;
+    }
     document.body.appendChild(t);
+  }
+
+  function showSuccessToast(msg) {
+    document.getElementById('conn-toast')?.remove();
+    const t = document.createElement('div');
+    t.id = 'conn-toast';
+    t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(8,8,8,0.95);border:1px solid #7ec8b4;border-radius:30px;padding:12px 24px;font-family:var(--font-body);font-size:14px;color:#7ec8b4;z-index:9999;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,0.7);animation:toastIn 0.3s ease;pointer-events:auto;';
+    t.innerHTML = `<span>✓ ${msg}</span><button onclick="document.getElementById('conn-toast')?.remove()" style="background:none;border:none;color:#ccffee;font-size:18px;cursor:pointer;margin-left:8px;line-height:1;">×</button>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
   }
 
   function showErrorToast(msg) {
@@ -1134,12 +1186,40 @@
   function updateConnectionToast(step) {
     const msg = document.getElementById('conn-toast-msg');
     if (!msg) return;
-    msg.textContent = step === 1 ? 'Теперь кликните на вторую карточку' : '✓ Соединение установлено!';
+    if (connectionMode === 'disconnect') {
+      msg.textContent = step === 1 ? 'Теперь кликните на вторую карточку для удаления связи' : '✓ Связь удалена!';
+    } else {
+      msg.textContent = step === 1 ? 'Теперь кликните на вторую карточку' : '✓ Соединение установлено!';
+    }
   }
 
-  /* ── Клик по карточке для соединения ── */
+  /* ── Клик по карточке для соединения / разъединения ── */
   function handleNodeConnectionClick(nodeEl, nodeId) {
     if (!connectionMode) return false;
+    
+    if (connectionMode === 'disconnect') {
+      if (connectionStep === 0) {
+        connectionNodeA = nodeId; connectionStep = 1;
+        nodeEl.classList.add('tree-node--disconn-selected');
+        updateConnectionToast(1);
+        return true;
+      }
+      if (connectionStep === 1) {
+        if (nodeId === connectionNodeA) {
+          nodeEl.classList.remove('tree-node--disconn-selected');
+          connectionNodeA = null; connectionStep = 0;
+          const msg = document.getElementById('conn-toast-msg');
+          if (msg) msg.textContent = 'Удаление связи 🔓 — кликните на первую карточку';
+          return true;
+        }
+        nodeEl.classList.add('tree-node--disconn-selected');
+        updateConnectionToast(2);
+        disconnectNodes(connectionNodeA, nodeId);
+        setTimeout(() => cancelConnectionMode(), 1400);
+        return true;
+      }
+    }
+
     if (connectionStep === 0) {
       connectionNodeA = nodeId; connectionStep = 1;
       nodeEl.classList.add('tree-node--conn-selected');
@@ -1220,6 +1300,125 @@
     syncTimelineAndStats();
   }
 
+  /* ── Helpers для чтения/записи родственных отношений узлов ── */
+  function getParentIds(node) {
+    let pids = [];
+    try {
+      if (node.parent_ids) pids = typeof node.parent_ids === 'string' ? JSON.parse(node.parent_ids) : node.parent_ids;
+      else if (node.parentIds) pids = typeof node.parentIds === 'string' ? JSON.parse(node.parentIds) : node.parentIds;
+    } catch (_) {}
+    return Array.isArray(pids) ? pids : [];
+  }
+
+  function setParentIds(node, array) {
+    if (node.hasOwnProperty('parent_ids') || node.parent_ids === undefined) {
+      node.parent_ids = array;
+    }
+    if (node.hasOwnProperty('parentIds') || node.parentIds === undefined) {
+      node.parentIds = array;
+    }
+  }
+
+  async function saveNodeUpdates(node) {
+    const isLocal = node.id && node.id.toString().startsWith('local-');
+    const data = {
+      fullName: node.full_name || node.fullName || '',
+      years: node.years || '',
+      clanId: node.clan_id || node.clanId || '',
+      ageClass: node.age_class || node.ageClass || 'young',
+      generation: node.generation ?? 3,
+      spouseId: node.spouse_id || node.spouseId || null,
+      parentIds: node.parent_ids || node.parentIds || [],
+      linkedProfileId: node.linked_profile_id || node.linkedProfileId || null,
+      photoUrl: node.photo_url || node.photoUrl || '',
+      description: node.description || ''
+    };
+
+    const arr = getLocalNodes();
+    const idx = arr.findIndex(n => n.id === node.id);
+    if (idx !== -1) {
+      arr[idx] = { ...arr[idx], ...data };
+      saveLocalNodes(arr);
+    }
+    const ai = allNodes.findIndex(n => n.id === node.id);
+    if (ai !== -1) {
+      allNodes[ai] = { ...allNodes[ai], ...data };
+    }
+
+    if (!isLocal) {
+      try {
+        await fetch(`${BASE}/api/family-nodes/${node.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (_) {}
+    }
+  }
+
+  /* ── Разорвать и удалить соединение ── */
+  async function disconnectNodes(idA, idB) {
+    let disconnected = false;
+
+    // 1. Сначала ищем и удаляем кастомное соединение в базе/localStorage
+    const conns = getLocalConnections();
+    const foundConnIndex = conns.findIndex(c => (c.a === idA && c.b === idB) || (c.a === idB && c.b === idA));
+    if (foundConnIndex !== -1) {
+      const conn = conns[foundConnIndex];
+      conns.splice(foundConnIndex, 1);
+      saveLocalConnections(conns);
+      
+      // Удаление на сервере
+      fetch(`${BASE}/api/family-connections/${conn.id}`, {
+        method: 'DELETE'
+      }).catch(() => {});
+      
+      disconnected = true;
+    }
+
+    // 2. Ищем и сбрасываем супружескую связь (spouse_id)
+    const nodeA = allNodes.find(n => n.id === idA);
+    const nodeB = allNodes.find(n => n.id === idB);
+    
+    if (nodeA && nodeB) {
+      const spouseIdA = nodeA.spouse_id || nodeA.spouseId;
+      const spouseIdB = nodeB.spouse_id || nodeB.spouseId;
+      if (spouseIdA === idB || spouseIdB === idA) {
+        nodeA.spouse_id = null;
+        nodeA.spouseId = null;
+        nodeB.spouse_id = null;
+        nodeB.spouseId = null;
+        
+        await saveNodeUpdates(nodeA);
+        await saveNodeUpdates(nodeB);
+        disconnected = true;
+      }
+
+      // Ищем и сбрасываем детско-родительскую связь (parent_ids)
+      const pidsA = getParentIds(nodeA);
+      const pidsB = getParentIds(nodeB);
+
+      if (pidsA.includes(idB)) {
+        setParentIds(nodeA, pidsA.filter(pid => pid !== idB));
+        await saveNodeUpdates(nodeA);
+        disconnected = true;
+      }
+      if (pidsB.includes(idA)) {
+        setParentIds(nodeB, pidsB.filter(pid => pid !== idA));
+        await saveNodeUpdates(nodeB);
+        disconnected = true;
+      }
+    }
+
+    if (disconnected) {
+      // Полный перерендер дерева для очистки связей
+      reloadTreeInPlace();
+      showSuccessToast('Связь успешно удалена');
+    } else {
+      showErrorToast('Связь между выбранными карточками не найдена');
+    }
+  }
+
   /* ════════════════════════════════════════════
      ПЕРЕКЛЮЧАТЕЛЬ ДЕРЕВЬЕВ (dropdown)
      ════════════════════════════════════════════ */
@@ -1229,18 +1428,46 @@
     try {
       const r = await fetch(`${BASE}/api/family-trees`);
       const j = await r.json();
-      if (j.ok && Array.isArray(j.data)) trees = j.data;
+      if (j.ok && Array.isArray(j.data)) {
+        trees = j.data.map(item => {
+          if (typeof item === 'string') {
+            return { id: item, name: item === 'default' ? 'Основное' : item };
+          }
+          return item;
+        });
+      }
     } catch (_) {}
     /* Дополняем из localStorage */
     const localTrees = getAllTrees();
-    localTrees.forEach(t => { if (!trees.includes(t)) trees.push(t); });
+    localTrees.forEach(t => {
+      const tid = typeof t === 'string' ? t : t.id;
+      if (!trees.some(x => x.id === tid)) {
+        trees.push({ id: tid, name: tid === 'default' ? 'Основное' : tid });
+      }
+    });
+
     if (trees.length <= 1) return;
+
+    // Deduplicate and filter out redundant default tree if user has rootTreeId
+    const user = typeof API !== 'undefined' ? API.getUser() : null;
+    if (user && user.rootTreeId && user.rootTreeId !== 'default') {
+      trees = trees.filter(t => t.id !== 'default');
+    }
 
     const sw = document.createElement('div');
     sw.className = 'tree-switcher';
+    
+    const optionsHtml = trees.map(t => {
+      let displayName = t.name || t.id;
+      if (t.id === 'default' || t.id.endsWith('-default')) {
+        displayName = 'Основное древо';
+      }
+      return `<option value="${t.id}" ${t.id === currentTreeId ? 'selected' : ''}>${displayName}</option>`;
+    }).join('');
+
     sw.innerHTML = `<label class="tree-switcher__label">Дерево:</label>
       <select class="tree-switcher__select" id="tree-switcher-select">
-        ${trees.map(t => `<option value="${t}" ${t === currentTreeId ? 'selected' : ''}>${t === 'default' ? 'Основное' : t}</option>`).join('')}
+        ${optionsHtml}
       </select>`;
     document.querySelector('.clan-legend-wrap')?.insertBefore(sw, document.querySelector('.clan-legend-wrap').firstChild);
 
@@ -1344,6 +1571,13 @@
     if (!legend) return;
     try {
       const r = await fetch(`${BASE}/api/family-clans?treeId=${encodeURIComponent(currentTreeId)}`);
+      if (r.status === 403) {
+        const user = typeof API !== 'undefined' ? API.getUser() : null;
+        if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
+          window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          return;
+        }
+      }
       const j = await r.json();
       if (!j.ok) return;
       clansCache = {};
@@ -1481,13 +1715,14 @@
         html += `
           <div class="tree-node tree-node--young${branch}${activeDynamicClan && activeDynamicClan !== clanId ? ' tree-node--clan-dim' : ''}" data-id="${node.id}" data-clan="${clanId || ''}">
             ${isEditMode ? `<div class="tree-node-controls">
-              <button class="tree-node-ctrl" data-action="edit" data-id="${node.id}" title="Редактировать">✏️</button>
-              <button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${node.id}" title="Удалить">🗑</button>
+              <button class="tree-node-ctrl" data-action="edit" data-id="${node.id}" title="Редактировать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+              <button class="tree-node-ctrl tree-node-ctrl--events" data-action="events" data-id="${node.id}" title="События жизни"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+              <button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${node.id}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
             </div>` : ''}
             <div class="tree-node__frame" style="--clan-color:${color}; --clan-dim:${colorDim}">
               ${clan ? `<span class="tree-node__clan-badge" title="${clan.name}">${clan.icon}</span>` : ''}
               <div class="tree-node__photo">
-                ${photo ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;"/>` : `<div class="tree-node__avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`}
+                ${photo ? `<img src="${resolveUrl(photo)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div class=\'tree-node__avatar\'><svg viewBox=\'0 0 24 24\'><circle cx=\'12\' cy=\'7\' r=\'4\'/><path d=\'M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8\'/></svg></div>'"/>` : `<div class="tree-node__avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`}
               </div>
             </div>
             <div class="tree-node__info">
@@ -1520,7 +1755,15 @@
       container.querySelectorAll('.tree-node-ctrl').forEach(b =>
         b.addEventListener('click', e => {
           e.stopPropagation();
-          b.dataset.action === 'edit' ? openNodeModal(b.dataset.id, 'edit') : deleteNode(b.dataset.id);
+          const action = b.dataset.action;
+          const id = b.dataset.id;
+          if (action === 'edit') {
+            openNodeModal(id, 'edit');
+          } else if (action === 'events') {
+            window.openRelativePopup(id);
+          } else if (action === 'delete') {
+            deleteNode(id);
+          }
         })
       );
     }
@@ -1582,8 +1825,65 @@
 
   /* ── SVG нити — линии идут ОТ НИЗА карточек ── */
   function drawCustomConnections(container, connections) {
-    if (!connections || !connections.length) return;
+    const list = Array.isArray(connections) ? [...connections] : [];
+
+    // Auto-generate lines for custom trees to connect cards based on nodes' DB relations
+    const autoConns = [];
+    if (currentTreeId !== 'default' && Array.isArray(allNodes)) {
+      allNodes.forEach(node => {
+        // 1. Marriage (spouse_id)
+        const spouseId = node.spouse_id || node.spouseId;
+        if (spouseId) {
+          if (node.id < spouseId) { // process each pair only once
+            const exists = list.some(c =>
+              c.type === 'marriage' &&
+              ((c.a === node.id && c.b === spouseId) || (c.a === spouseId && c.b === node.id))
+            );
+            if (!exists) {
+              autoConns.push({
+                id: `auto-m-${node.id}-${spouseId}`,
+                a: node.id,
+                b: spouseId,
+                type: 'marriage'
+              });
+            }
+          }
+        }
+
+        // 2. Kinship (parent_ids)
+        let pids = [];
+        try {
+          if (node.parent_ids) pids = typeof node.parent_ids === 'string' ? JSON.parse(node.parent_ids) : node.parent_ids;
+          else if (node.parentIds) pids = typeof node.parentIds === 'string' ? JSON.parse(node.parentIds) : node.parentIds;
+        } catch (e) {}
+        if (Array.isArray(pids)) {
+          pids.forEach(pid => {
+            if (!pid) return;
+            const exists = list.some(c =>
+              c.type === 'kinship' &&
+              ((c.a === pid && c.b === node.id) || (c.a === node.id && c.b === pid))
+            );
+            if (!exists) {
+              autoConns.push({
+                id: `auto-k-${pid}-${node.id}`,
+                a: pid,
+                b: node.id,
+                type: 'kinship'
+              });
+            }
+          });
+        }
+      });
+    }
+
+    const combined = [...list, ...autoConns];
+
     let svg = container.querySelector('.tree-dynamic-svg');
+    if (!combined.length) {
+      if (svg) svg.innerHTML = '';
+      return;
+    }
+
     if (!svg) {
       svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.className = 'tree-dynamic-svg';
@@ -1593,6 +1893,8 @@
     }
     svg.innerHTML = '';
     const cr = container.getBoundingClientRect();
+    const scaleX = cr.width / container.offsetWidth || 1;
+    const scaleY = cr.height / container.offsetHeight || 1;
 
     const getClanColorOfNode = (node) => {
       if (!node) return '#c8a84b';
@@ -1605,7 +1907,7 @@
       return clan ? clan.color : '#c8a84b';
     };
 
-    connections.forEach(conn => {
+    combined.forEach(conn => {
       const elA = container.querySelector(`[data-id="${conn.a}"]`);
       const elB = container.querySelector(`[data-id="${conn.b}"]`);
       if (!elA || !elB) return;
@@ -1614,21 +1916,48 @@
       const rA = frameA.getBoundingClientRect();
       const rB = frameB.getBoundingClientRect();
 
-      /* Точки соединения — низ центра каждой карточки */
-      const x1 = rA.left + rA.width / 2 - cr.left;
-      const y1 = rA.bottom - cr.top;
-      const x2 = rB.left + rB.width / 2 - cr.left;
-      const y2 = rB.bottom - cr.top;
-
-      /* Контрольные точки кривой Безье — "U-образный" спуск под карточки */
-      const drop = Math.min(Math.abs(y2 - y1) * 0.5 + 40, 120);
-      const cy1  = y1 + drop;
-      const cy2  = y2 + drop;
+      /* Точки соединения и контрольные точки Безье */
+      const x1 = (rA.left - cr.left) / scaleX + (rA.width / scaleX) / 2;
+      const x2 = (rB.left - cr.left) / scaleX + (rB.width / scaleX) / 2;
+      let y1, y2, cy1, cy2, drop = 0;
 
       const nodeA = allNodes.find(n => n.id === conn.a);
       const nodeB = allNodes.find(n => n.id === conn.b);
+      const genA = nodeA ? (nodeA.generation ?? 0) : 0;
+      const genB = nodeB ? (nodeB.generation ?? 0) : 0;
       const clanIdA = nodeA ? (nodeA.clan_id || nodeA.clanId) : '';
       const clanIdB = nodeB ? (nodeB.clan_id || nodeB.clanId) : '';
+
+      if (conn.type === 'marriage') {
+        y1 = (rA.bottom - cr.top) / scaleY;
+        y2 = (rB.bottom - cr.top) / scaleY;
+        drop = Math.min(Math.abs(y2 - y1) * 0.5 + 40, 120);
+        cy1 = y1 + drop;
+        cy2 = y2 + drop;
+      } else {
+        if (genA < genB) {
+          // A is parent (lower gen, larger Y), B is child (higher gen, smaller Y)
+          y1 = (rA.top - cr.top) / scaleY;
+          y2 = (rB.bottom - cr.top) / scaleY;
+          const dist = y1 - y2;
+          cy1 = y1 - dist * 0.4;
+          cy2 = y2 + dist * 0.4;
+        } else if (genA > genB) {
+          // B is parent (larger Y), A is child (smaller Y)
+          y1 = (rA.bottom - cr.top) / scaleY;
+          y2 = (rB.top - cr.top) / scaleY;
+          const dist = y2 - y1;
+          cy1 = y1 + dist * 0.4;
+          cy2 = y2 - dist * 0.4;
+        } else {
+          // same generation fallback
+          y1 = (rA.bottom - cr.top) / scaleY;
+          y2 = (rB.bottom - cr.top) / scaleY;
+          drop = Math.min(Math.abs(y2 - y1) * 0.5 + 40, 120);
+          cy1 = y1 + drop;
+          cy2 = y2 + drop;
+        }
+      }
 
       if (conn.type === 'marriage') {
         /* Плетёная нить из 3 полос */
@@ -1767,7 +2096,7 @@
         const nid = node.dataset.id || node.dataset.personId || '';
         if (!nid) return;
         const c = document.createElement('div'); c.className = 'tree-node-controls';
-        c.innerHTML = `<button class="tree-node-ctrl" data-action="edit" data-id="${nid}" title="Редактировать">✏️</button><button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${nid}" title="Удалить">🗑</button>`;
+        c.innerHTML = `<button class="tree-node-ctrl" data-action="edit" data-id="${nid}" title="Редактировать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button class="tree-node-ctrl tree-node-ctrl--events" data-action="events" data-id="${nid}" title="События жизни"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button><button class="tree-node-ctrl tree-node-ctrl--del" data-action="delete" data-id="${nid}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>`;
         node.appendChild(c);
         added++;
       });
@@ -1818,6 +2147,7 @@
     if (!btn) return;
     e.stopPropagation(); e.preventDefault();
     if (btn.dataset.action === 'edit')   openNodeModal(btn.dataset.id, 'edit');
+    if (btn.dataset.action === 'events') window.openRelativePopup(btn.dataset.id);
     if (btn.dataset.action === 'delete') deleteNode(btn.dataset.id);
   }
 
@@ -1870,11 +2200,17 @@
   async function loadNodes() {
     try {
       const r = await fetch(`${BASE}/api/family-nodes?treeId=${encodeURIComponent(currentTreeId)}`);
+      if (r.status === 403) {
+        const user = typeof API !== 'undefined' ? API.getUser() : null;
+        if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
+          window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          return [];
+        }
+      }
       const j = await r.json();
       if (j.ok) {
         allNodes = j.data;
-        const local = getLocalNodes().filter(ln => !allNodes.find(n => n.id === ln.id));
-        allNodes = [...allNodes, ...local];
+        saveLocalNodes(allNodes);
         return allNodes;
       }
     } catch (_) {}
@@ -2109,7 +2445,7 @@
     const overlay = document.createElement('div');
     overlay.className = 'tree-modal-overlay'; overlay.id = 'tree-node-modal';
     const list = profiles.length
-      ? profiles.map(p => `<button type="button" class="tree-profile-item" data-id="${p.id}"><div class="tree-profile-item__photo">${p.photo ? `<img src="${p.photo}"/>` : '<span>👤</span>'}</div><div class="tree-profile-item__info"><div class="tree-profile-item__name">${p.name}</div><div class="tree-profile-item__dates">${p.born||''} ${p.died?'— '+p.died:''}</div></div></button>`).join('')
+      ? profiles.map(p => `<button type="button" class="tree-profile-item" data-id="${p.id}"><div class="tree-profile-item__photo">${p.photo ? `<img src="${resolveUrl(p.photo)}" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'inline\';"/><span style="display:none;">👤</span>` : '<span>👤</span>'}</div><div class="tree-profile-item__info"><div class="tree-profile-item__name">${p.name}</div><div class="tree-profile-item__dates">${p.born||''} ${p.died?'— '+p.died:''}</div></div></button>`).join('')
       : '<p style="color:var(--cream-dim);text-align:center;padding:20px;">Нет страниц памяти</p>';
 
     overlay.innerHTML = `<div class="tree-modal"><button class="tree-modal__close" id="tpl-close">×</button><h2 class="tree-modal__title">Выбрать страницу памяти</h2><div class="tree-profile-list">${list}</div><button type="button" class="tree-add-btn tree-add-btn--linked" id="tpl-create" style="width:100%;margin-top:16px;">+ Создать новую страницу</button></div>`;
@@ -2220,6 +2556,8 @@
       .tree-edit-btn--create:hover { background:rgba(200,168,75,0.22); border-color:var(--gold); }
       .tree-node--conn-selected .tree-node__frame { box-shadow:0 0 0 3px rgba(200,168,75,0.95),0 0 24px rgba(200,168,75,0.55)!important; transform:translateY(-4px) scale(1.07)!important; }
       .tree-node--conn-selected .tree-node__name { color:var(--gold-light)!important; }
+      .tree-node--disconn-selected .tree-node__frame { box-shadow:0 0 0 3px rgba(239,68,68,0.95),0 0 24px rgba(239,68,68,0.55)!important; transform:translateY(-4px) scale(1.07)!important; }
+      .tree-node--disconn-selected .tree-node__name { color:#ff9e9e!important; }
       .tree-node--branch-root .tree-node__frame::after { content:'🌿'; position:absolute; bottom:4px; right:4px; font-size:14px; z-index:5; }
 
       /* ── Легенда — активная подсветка при клике «Соединить» ── */
@@ -2360,15 +2698,15 @@
     overlay.id = 'relative-popup';
 
     const eventsHTML = events.length
-      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${e.year}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}">🗑</button></div>`).join('')
-      : '<p style="color:var(--cream-dim);font-size:13px;text-align:center;">Нет событий</p>';
+      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${e.year}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div>`).join('')
+      : `<div class="rp-no-events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span>Нет записанных событий</span></div>`;
 
     overlay.innerHTML = `
       <div class="tree-modal" style="max-width:520px;">
         <button class="tree-modal__close" id="rp-close">×</button>
         <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;">
           <div style="width:80px;height:80px;border-radius:8px;overflow:hidden;background:rgba(200,168,75,0.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-            ${photo ? `<img src="${photo}" style="width:100%;height:100%;object-fit:cover;"/>` : '<span style="font-size:32px;">👤</span>'}
+            ${photo ? `<img src="${resolveUrl(photo)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<span style=\'font-size:32px;\'>👤</span>'"/>` : '<span style="font-size:32px;">👤</span>'}
           </div>
           <div>
             <h2 class="tree-modal__title" style="margin-bottom:4px;">${name}</h2>
@@ -2380,21 +2718,43 @@
         <div class="rp-section-title">События жизни</div>
         <div class="rp-events" id="rp-events">${eventsHTML}</div>
 
-        <div class="rp-add-event" id="rp-add-event" style="display:none;">
-          <input type="number" id="rp-ev-year" placeholder="Год" min="1800" max="2030" style="width:70px;"/>
-          <input type="text" id="rp-ev-title" placeholder="Событие (свадьба, переезд...)" style="flex:1;"/>
-          <input type="text" id="rp-ev-city" placeholder="Город" style="width:100px;"/>
-          <button class="rp-ev-save" id="rp-ev-save">✓</button>
+        <div class="rp-add-event" id="rp-add-event" style="display:none; flex-direction:column; gap:12px;">
+          <div class="rp-templates" style="display:flex; flex-wrap:wrap; gap:6px; width:100%;">
+            <button type="button" class="rp-tpl-btn" data-val="Свадьба">💍 Свадьба</button>
+            <button type="button" class="rp-tpl-btn" data-val="Рождение ребёнка">👶 Рождение</button>
+            <button type="button" class="rp-tpl-btn" data-val="Окончание учёбы">🎓 Выпускной</button>
+            <button type="button" class="rp-tpl-btn" data-val="Начало работы">🛠 Работа</button>
+            <button type="button" class="rp-tpl-btn" data-val="Военная служба">⚔ Служба</button>
+            <button type="button" class="rp-tpl-btn" data-val="Переезд">✈️ Переезд</button>
+          </div>
+          <div style="display:flex; gap:8px; width:100%; align-items:center;">
+            <input type="number" id="rp-ev-year" placeholder="Год" min="1800" max="2030" style="width:70px;"/>
+            <input type="text" id="rp-ev-title" placeholder="Событие (свадьба, переезд...)" style="flex:1;"/>
+            <input type="text" id="rp-ev-city" placeholder="Город" style="width:100px;"/>
+            <button class="rp-ev-save" id="rp-ev-save" title="Сохранить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+          </div>
         </div>
-        <button class="tree-tool" id="rp-add-btn" style="width:100%;margin-top:12px;">+ Добавить событие</button>
+        <button class="rp-add-btn" id="rp-add-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>Добавить событие</button>
 
         <div style="display:flex;gap:10px;margin-top:20px;">
-          ${isEditMode ? `<button class="tree-tool" id="rp-edit-btn">✏️ Редактировать</button>` : ''}
+          ${isEditMode ? `<button class="rp-edit-btn" id="rp-edit-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;stroke:currentColor;fill:none;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Редактировать</button>` : ''}
           <button class="tree-modal__btn tree-modal__btn--cancel" id="rp-close2" style="flex:1;">Закрыть</button>
         </div>
       </div>`;
 
     document.body.appendChild(overlay);
+
+    // Template buttons listeners
+    overlay.querySelectorAll('.rp-tpl-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.val;
+        const titleInput = document.getElementById('rp-ev-title');
+        if (titleInput) {
+          titleInput.value = val;
+          titleInput.focus();
+        }
+      });
+    });
 
     // Закрытие
     const close = () => overlay.remove();
@@ -2438,5 +2798,21 @@
       });
     });
   };
+
+  window.addEventListener('resize', () => {
+    if (currentTreeId !== 'default') {
+      const dc = document.getElementById('tree-dynamic');
+      if (dc) {
+        const conns = getLocalConnections();
+        drawCustomConnections(dc, conns);
+      }
+    } else {
+      const tw = document.getElementById('tree-wrapper');
+      if (tw && isEditMode) {
+        const conns = getLocalConnections();
+        drawCustomConnections(tw, conns);
+      }
+    }
+  });
 
 })();

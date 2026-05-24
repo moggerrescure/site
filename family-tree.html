@@ -66,6 +66,7 @@
     <button class="tree-tool" id="tree-new-btn" title="Добавить ветвь">🌿 Ветвь</button>
     <button class="tree-tool" id="tree-create-btn" title="Создать новое дерево">🌳 Новое дерево</button>
     <button class="tree-tool" id="tree-connect-btn" title="Соединить карточки">🔗 Связать</button>
+    <button class="tree-tool" id="tree-disconnect-btn" title="Убрать связь">🔓 Убрать связь</button>
     <button class="tree-tool tree-tool--exit" id="tree-edit-exit" title="Выйти">✕ Выйти</button>
   </div>
 
@@ -116,7 +117,8 @@
 
   <script>
     /* Если переходим к новому дереву — анимация появления */
-    if (new URLSearchParams(location.search).get('tree')) {
+    const treeParam = new URLSearchParams(location.search).get('tree');
+    if (treeParam) {
       document.body.classList.add('tree-page--entering');
       setTimeout(() => document.body.classList.remove('tree-page--entering'), 800);
     }
