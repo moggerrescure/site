@@ -11,7 +11,7 @@
   <meta property="og:locale"      content="ru_RU"/>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/responsive.css" />
 </head>
@@ -38,13 +38,10 @@
   <section class="hero">
     <div class="hero--split">
       <div class="hero__inner">
-        <p class="hero__eyebrow">Цифровой мемориал нового времени</p>
-        <h1 class="hero__title">
-          Живая память<br />
-          в одном <em>QR-коде</em>
-        </h1>
+        <p class="hero__eyebrow">Пронесём историю вашей семьи сквозь века</p>
+        <h1 class="hero__title">Сохраните память в одном <em>QR-коде</em></h1>
         <p class="hero__subtitle">
-          Создайте интерактивную страницу памяти с биографией, семейным древом и хронологией. Свяжите её с физическим памятником с помощью долговечной металлической QR-таблички.
+          Создайте интерактивную страницу памяти с биографией, семейным древом и хронологией.
         </p>
         <div class="hero__actions">
           <a href="memory.html"    class="btn btn--primary">Создать страницу</a>
@@ -66,10 +63,7 @@
     <div class="hero__orb hero__orb--3"></div>
   </section>
 
-  <!-- FEATURED PERSON — живая карточка с цитатой -->
-  <section class="featured-person" id="featured-person">
-    <!-- injected by home.js -->
-  </section>
+
 
   <!-- STATS -->
   <section class="stats">
@@ -96,49 +90,12 @@
     </div>
   </section>
 
-  <!-- QR MONUMENTS STEPS -->
-  <section class="qr-steps" id="qr-monuments">
-    <div class="qr-steps__inner">
-      <h2 class="section-title">Как работает живая память</h2>
-      
-      <div class="qr-steps__grid">
-        <!-- Step 1 -->
-        <div class="step-card">
-          <span class="step-card__num">01</span>
-          <span class="step-card__icon">📝</span>
-          <h3 class="step-card__title">Создайте страницу</h3>
-          <p class="step-card__text">
-            Наполните интерактивную страницу памяти: расскажите историю жизни, загрузите фотографии, составьте генеалогическое древо близкого и соберите хронологию дат.
-          </p>
-        </div>
-        
-        <!-- Step 2 -->
-        <div class="step-card">
-          <span class="step-card__num">02</span>
-          <span class="step-card__icon">🛠️</span>
-          <h3 class="step-card__title">Закажите QR-код</h3>
-          <p class="step-card__text">
-            Мы изготовим долговечную металлическую табличку с лазерной гравировкой уникального QR-кода. Она устойчива к перепадам температур, дождю, снегу и УФ-лучам.
-          </p>
-        </div>
-        
-        <!-- Step 3 -->
-        <div class="step-card">
-          <span class="step-card__num">03</span>
-          <span class="step-card__icon">🕊️</span>
-          <h3 class="step-card__title">Закрепите на мемориале</h3>
-          <p class="step-card__text">
-            Установите табличку на памятнике. Любой посетитель сможет отсканировать код смартфоном, зажечь виртуальную свечу памяти и прикоснуться к истории жизни человека.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
+
 
   <!-- FEATURES PRESENTATION SHOWCASE -->
   <section class="showcase" id="features-showcase">
     <div class="showcase__inner">
-      <h2 class="section-title">Презентация функционала <em>платформы</em></h2>
+      <h2 class="section-title">Всё для сохранения семейной <em>истории</em></h2>
       
       <!-- Feature 1: Family Tree -->
       <div class="showcase__item">
@@ -198,7 +155,7 @@
       </div>
       
       <!-- Feature 4: QR Plaque Integration -->
-      <div class="showcase__item showcase__item--reverse">
+      <div class="showcase__item showcase__item--reverse" id="qr-monuments">
         <div class="showcase__text">
           <span class="showcase__tag">04 · QR-таблички</span>
           <h3 class="showcase__name">Физическое воплощение на мемориалах</h3>
@@ -219,26 +176,9 @@
     </div>
   </section>
 
-  <!-- 3D CONSTRUCTOR -->
-  <section class="constructor-3d" id="plaque-constructor">
-    <div class="constructor-3d__inner">
-
-      <div class="constructor-3d__grid">
-        <!-- 3D Canvas Column -->
-        <div class="constructor-3d__visual-col">
-          <div id="canvas-container" class="constructor-3d__canvas-container">
-            <div id="canvas-loader" class="constructor-3d__canvas-loader">
-              <div class="spinner"></div>
-              <span>Отливка металла...</span>
-            </div>
-            <div class="constructor-3d__hint-overlay">
-              <span class="constructor-3d__hint-text">Потяните пластину, чтобы рассмотреть грани</span>
-            </div>
-          </div>
-        </div>
-        
-      </div>
-    </div>
+  <!-- FEATURED PERSON — живая карточка с цитатой -->
+  <section class="featured-person" id="featured-person">
+    <!-- injected by home.js -->
   </section>
 
   <!-- CANDLE -->
@@ -330,12 +270,11 @@
     </div>
   </footer>
 
-  <!-- 3D Constructor & Hero Scripts -->
+  <!-- 3D Hero Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
   <script src="js/hero-3d.js"></script>
-  <script src="js/constructor-3d.js"></script>
 
   <script src="js/particles.js"></script>
   <script src="js/favicon.js"></script>
