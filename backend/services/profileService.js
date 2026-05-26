@@ -226,6 +226,7 @@ async function listProfiles(opts = {}) {
         diedYearTo:   diedToRaw   = null,
         gender:       genderRaw      = '',
         visibility:   visibilityRaw  = '',
+        mine = false,
         actor = null,
     } = opts;
 
@@ -284,6 +285,7 @@ async function listProfiles(opts = {}) {
             andClauses.push({ deathDate: f });
         }
         if (gender) andClauses.push({ gender });
+        if (mine && actor) andClauses.push({ ownerId: actor.id });
 
         const where = andClauses.length ? { AND: [baseWhere, ...andClauses] } : baseWhere;
 
@@ -302,6 +304,7 @@ async function listProfiles(opts = {}) {
 
     /* FTS PATH — всегда дополнительно фильтруем deletedAt IS NULL */
     const aliveSql = Prisma.sql`AND p."deletedAt" IS NULL`;
+    const mineSql  = (mine && actor) ? Prisma.sql`AND p."ownerId" = ${actor.id}` : Prisma.empty;
     const visFilter = (() => {
         if (visibilityHardFilterSql) return visibilityHardFilterSql;
         if (actor && actor.role === 'ADMIN') return Prisma.empty;
@@ -334,6 +337,7 @@ async function listProfiles(opts = {}) {
           ${diedFromFilter}
           ${diedToFilter}
           ${genderFilter}
+          ${mineSql}
           ${visFilter}
         ORDER BY rank DESC, p."fullName" ASC
         LIMIT ${limit} OFFSET ${offset}
@@ -349,6 +353,7 @@ async function listProfiles(opts = {}) {
           ${diedFromFilter}
           ${diedToFilter}
           ${genderFilter}
+          ${mineSql}
           ${visFilter}
     `;
     const items = rows.map((r) => serializeForList({

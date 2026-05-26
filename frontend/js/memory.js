@@ -1,231 +1,255 @@
+'use strict';
+
 /* ═══════════════════════════════════════════════
-   MEMORY PAGE — поиск + API с fallback на data.js
-   Uses PERSON_SVG + calcAge from data.js
+   MEMORY PAGE — серверные фильтры + пагинация
+   GET /api/profiles?q=&bornYearFrom=&bornYearTo=&mine=1&page=N&limit=9
    ═══════════════════════════════════════════════ */
 
 (function () {
   const PER_PAGE = 9;
-  let currentPage = 1;
-  let totalPages  = 1;
-  let allPeople   = [];
-  let filtered    = [];
-  let searchQuery = '';
-
   const grid = document.getElementById('memory-grid');
   const pag  = document.getElementById('pagination');
   if (!grid || !pag) return;
 
-  /* ── INJECT SEARCH BAR ── */
-  const section = document.querySelector('.memory-section__inner');
-  if (section) {
-    const searchWrap = document.createElement('div');
-    searchWrap.className = 'memory-search';
-    searchWrap.innerHTML = `
-      <div class="memory-search__inner">
-        <span class="memory-search__icon">⌕</span>
-        <input type="search" id="memory-search-input" class="memory-search__input"
-               placeholder="Поиск по имени или городу…" autocomplete="off"/>
-        <button class="memory-search__clear" id="memory-search-clear" aria-label="Очистить" style="display:none">×</button>
-      </div>
-      <button class="memory-create-btn" id="memory-create-btn">+ Создать страницу</button>`;
-    section.insertBefore(searchWrap, section.firstChild);
+  const STATE = {
+    q: '', bornFrom: '', bornTo: '', diedFrom: '', diedTo: '',
+    mine: false, page: 1, total: 0, rows: [], loading: false,
+  };
 
-    const input    = document.getElementById('memory-search-input');
-    const clearBtn = document.getElementById('memory-search-clear');
+  function $ (sel) { return document.querySelector(sel); }
+  function esc (s) {
+    return String(s ?? '').replace(/[&<>"']/g, m => (
+      { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]
+    ));
+  }
 
-    input.addEventListener('input', () => {
-      searchQuery = input.value.trim().toLowerCase();
-      clearBtn.style.display = searchQuery ? 'flex' : 'none';
-      applyFilter();
+  function readUrl () {
+    const p = new URLSearchParams(location.search);
+    STATE.q        = p.get('q') || '';
+    STATE.bornFrom = p.get('bornYearFrom') || '';
+    STATE.bornTo   = p.get('bornYearTo')   || '';
+    STATE.diedFrom = p.get('diedYearFrom') || '';
+    STATE.diedTo   = p.get('diedYearTo')   || '';
+    STATE.mine     = p.get('mine') === '1';
+    STATE.page     = Math.max(1, parseInt(p.get('page') || '1', 10));
+  }
+  function writeUrl () {
+    const p = new URLSearchParams();
+    if (STATE.q)        p.set('q', STATE.q);
+    if (STATE.bornFrom) p.set('bornYearFrom', STATE.bornFrom);
+    if (STATE.bornTo)   p.set('bornYearTo',   STATE.bornTo);
+    if (STATE.diedFrom) p.set('diedYearFrom', STATE.diedFrom);
+    if (STATE.diedTo)   p.set('diedYearTo',   STATE.diedTo);
+    if (STATE.mine)     p.set('mine', '1');
+    if (STATE.page > 1) p.set('page', STATE.page);
+    const qs = p.toString();
+    history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+  }
+
+  function injectFilters () {
+    const section = document.querySelector('.memory-section__inner');
+    if (!section) return;
+
+    const isAuth = (typeof API !== 'undefined') && API.isLoggedIn && API.isLoggedIn();
+    const wrap = document.createElement('div');
+    wrap.className = 'memory-filters';
+    wrap.innerHTML =
+      '<div class="memory-filters__row">' +
+        '<div class="memory-filters__search">' +
+          '<span class="memory-filters__icon">⌕</span>' +
+          '<input type="search" id="mf-q" class="memory-filters__input" ' +
+                 'placeholder="Поиск по имени, городу, биографии…" autocomplete="off" value="' + esc(STATE.q) + '"/>' +
+          '<button class="memory-filters__clear" id="mf-q-clear" aria-label="Очистить" style="display:' + (STATE.q ? 'flex' : 'none') + '">×</button>' +
+        '</div>' +
+        '<button class="memory-create-btn" id="memory-create-btn">+ Создать страницу</button>' +
+      '</div>' +
+      '<div class="memory-filters__row memory-filters__row--secondary">' +
+        '<div class="memory-filters__group">' +
+          '<label class="memory-filters__label">Годы жизни:</label>' +
+          '<input type="number" id="mf-born-from" class="memory-filters__year" placeholder="от" min="1" max="2999" value="' + esc(STATE.bornFrom) + '"/>' +
+          '<span class="memory-filters__dash">—</span>' +
+          '<input type="number" id="mf-born-to" class="memory-filters__year" placeholder="до" min="1" max="2999" value="' + esc(STATE.bornTo) + '"/>' +
+        '</div>' +
+        (isAuth ?
+          '<label class="memory-filters__checkbox">' +
+            '<input type="checkbox" id="mf-mine"' + (STATE.mine ? ' checked' : '') + '/>' +
+            '<span>Только мои</span>' +
+          '</label>' : '') +
+        '<button class="memory-filters__reset" id="mf-reset" type="button">Сбросить</button>' +
+      '</div>';
+    section.insertBefore(wrap, section.firstChild);
+
+    const qInput   = $('#mf-q');
+    const qClear   = $('#mf-q-clear');
+    const bFrom    = $('#mf-born-from');
+    const bTo      = $('#mf-born-to');
+    const mineEl   = $('#mf-mine');
+    const resetEl  = $('#mf-reset');
+    const createBtn= $('#memory-create-btn');
+
+    let debounce = null;
+    function schedule () {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => { STATE.page = 1; load(); }, 350);
+    }
+
+    qInput.addEventListener('input', () => {
+      STATE.q = qInput.value.trim();
+      qClear.style.display = STATE.q ? 'flex' : 'none';
+      schedule();
     });
-    clearBtn.addEventListener('click', () => {
-      input.value = ''; searchQuery = '';
-      clearBtn.style.display = 'none';
-      input.focus(); applyFilter();
+    qClear.addEventListener('click', () => {
+      qInput.value = ''; STATE.q = '';
+      qClear.style.display = 'none';
+      qInput.focus(); STATE.page = 1; load();
+    });
+    bFrom.addEventListener('input', () => { STATE.bornFrom = bFrom.value.trim(); schedule(); });
+    bTo.addEventListener('input',   () => { STATE.bornTo   = bTo.value.trim();   schedule(); });
+    if (mineEl) mineEl.addEventListener('change', () => { STATE.mine = mineEl.checked; STATE.page = 1; load(); });
+    resetEl.addEventListener('click', () => {
+      STATE.q = STATE.bornFrom = STATE.bornTo = STATE.diedFrom = STATE.diedTo = '';
+      STATE.mine = false; STATE.page = 1;
+      qInput.value = ''; qClear.style.display = 'none';
+      bFrom.value = ''; bTo.value = '';
+      if (mineEl) mineEl.checked = false;
+      load();
     });
 
-    // Кнопка "Создать страницу" — создаёт пустой профиль и открывает редактор
-    document.getElementById('memory-create-btn').addEventListener('click', async () => {
-      const btn = document.getElementById('memory-create-btn');
-      btn.disabled = true;
-      btn.textContent = '⏳ Создаю...';
-
+    createBtn.addEventListener('click', async () => {
+      createBtn.disabled = true;
+      const originalText = createBtn.textContent;
+      createBtn.textContent = '⏳ Создаю...';
       try {
-        const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
-        const res = await fetch(`${base}/api/profiles`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            full_name: '',
-            dates: '',
-            main_text: '',
-          }),
-        });
-        const json = await res.json();
-
-        if (json.ok && json.data?.id) {
-          window.location.href = `person.html?id=${json.data.id}&edit=1`;
+        const r = await API.post('/api/profiles', { fullName: '' });
+        const idOrSlug = r?.data?.slug || r?.data?.id || r?.slug || r?.id;
+        if (idOrSlug) {
+          window.location.href = 'person.html?id=' + encodeURIComponent(idOrSlug) + '&edit=1';
         } else {
-          alert('Ошибка: ' + (json.error || 'Не удалось создать'));
-          btn.disabled = false;
-          btn.textContent = '+ Создать страницу';
+          alert('Не удалось создать страницу');
+          createBtn.disabled = false;
+          createBtn.textContent = originalText;
         }
-      } catch (err) {
-        alert('Сервер недоступен: ' + err.message);
-        btn.disabled = false;
-        btn.textContent = '+ Создать страницу';
+      } catch (e) {
+        const msg = String(e?.message || '');
+        if (msg.includes('401') || msg.toLowerCase().includes('auth')) {
+          alert('Войдите в аккаунт, чтобы создать страницу.');
+        } else {
+          alert('Ошибка: ' + (msg || 'неизвестная'));
+        }
+        createBtn.disabled = false;
+        createBtn.textContent = originalText;
       }
     });
   }
 
-  function applyFilter() {
-    filtered = searchQuery
-      ? allPeople.filter(p =>
-          p.name.toLowerCase().includes(searchQuery) ||
-          (p.city || '').toLowerCase().includes(searchQuery))
-      : [...allPeople];
-    renderSlice(1);  /* always reset to page 1 on filter change */
+  function photoEl (p) {
+    if (p.photo) return '<img src="' + API.resolveUrl(p.photo) + '" alt="' + esc(p.name) + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy" data-mem-avatar="1"/>';
+    return '<div class="person-card__photo-inner">' + (typeof PERSON_SVG !== 'undefined' ? PERSON_SVG : '') + '</div>';
   }
-
-  function photoEl(p) {
-    if (p.photo) return `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" data-mem-avatar="1"/>`;
-    return `<div class="person-card__photo-inner">${PERSON_SVG}</div>`;
-  }
-
-  function buildCard(p) {
+  function buildCard (p) {
     const age = typeof calcAge === 'function' ? calcAge(p.born, p.died) : null;
-    return `
-      <a class="person-card" href="person.html?id=${encodeURIComponent(p.id)}">
-        <div class="person-card__photo">${photoEl(p)}</div>
-        <div class="person-card__body">
-          <h3 class="person-card__name">${p.name}</h3>
-          <p class="person-card__dates">${p.born} — ${p.died || '...'}${age ? ` <span class="person-card__age">${age} л.</span>` : ''}</p>
-          ${p.city ? `<p class="person-card__city">${p.city}</p>` : ''}
-        </div>
-      </a>`;
+    const href = 'person.html?id=' + encodeURIComponent(p.slug || p.id);
+    const datesText = p.years || ((p.born || '') + ' — ' + (p.died || '...'));
+    return '<a class="person-card" href="' + href + '">' +
+      '<div class="person-card__photo">' + photoEl(p) + '</div>' +
+      '<div class="person-card__body">' +
+        '<h3 class="person-card__name">' + esc(p.name || 'Без имени') + '</h3>' +
+        '<p class="person-card__dates">' + esc(datesText) +
+          (age ? ' <span class="person-card__age">' + age + ' л.</span>' : '') +
+        '</p>' +
+        (p.city ? '<p class="person-card__city">' + esc(p.city) + '</p>' : '') +
+      '</div>' +
+    '</a>';
   }
-
-  function showSkeleton() {
-    grid.innerHTML = Array(PER_PAGE).fill(`
-      <div class="person-card person-card--skeleton">
-        <div class="person-card__photo skel-block"></div>
-        <div class="person-card__body">
-          <div class="skel-line skel-line--lg"></div>
-          <div class="skel-line"></div>
-          <div class="skel-line skel-line--sm"></div>
-        </div>
-      </div>`).join('');
+  function showSkeleton () {
+    grid.innerHTML = Array(PER_PAGE).fill(
+      '<div class="person-card person-card--skeleton">' +
+        '<div class="person-card__photo skel-block"></div>' +
+        '<div class="person-card__body">' +
+          '<div class="skel-line skel-line--lg"></div>' +
+          '<div class="skel-line"></div>' +
+          '<div class="skel-line skel-line--sm"></div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
   }
-
-  function showEmpty(msg) {
-    grid.innerHTML = `
-      <div class="memory-empty">
-        <span class="memory-empty__icon">✦</span>
-        <p class="memory-empty__text">${msg}</p>
-      </div>`;
+  function showEmpty (msg) {
+    grid.innerHTML = '<div class="memory-empty"><span class="memory-empty__icon">✦</span><p class="memory-empty__text">' + esc(msg) + '</p></div>';
   }
-
-  function renderSlice(page) {
-    currentPage = page;
-    totalPages  = Math.ceil(filtered.length / PER_PAGE);
-    const slice = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-
+  function renderRows () {
     grid.style.opacity = '0'; grid.style.transform = 'translateY(12px)';
     setTimeout(() => {
-      grid.innerHTML = slice.length ? slice.map(buildCard).join('') : '';
-      if (!slice.length) showEmpty(searchQuery ? `Никого не нашли по запросу «${searchQuery}»` : 'Страниц памяти пока нет.');
+      grid.innerHTML = STATE.rows.length ? STATE.rows.map(buildCard).join('') : '';
+      if (!STATE.rows.length) {
+        const hasFilter = STATE.q || STATE.bornFrom || STATE.bornTo || STATE.mine;
+        showEmpty(hasFilter ? 'Никого не нашли. Попробуйте изменить фильтры.' : 'Страниц памяти пока нет.');
+      }
       grid.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-      grid.style.opacity    = '1';
-      grid.style.transform  = 'translateY(0)';
-    }, 150);
-
-    renderPagination();
-    /* Only scroll when user explicitly changes page, not on filter */
-    if (page > 1) window.scrollTo({ top: 0, behavior: 'smooth' });
+      grid.style.opacity   = '1';
+      grid.style.transform = 'translateY(0)';
+    }, 100);
   }
-
-  function renderPagination() {
+  function renderPagination () {
+    const totalPages = Math.max(1, Math.ceil(STATE.total / PER_PAGE));
     if (totalPages <= 1) { pag.innerHTML = ''; return; }
-    let html = `<button class="pagination__btn" id="pag-prev" ${currentPage===1?'disabled':''}>‹</button>`;
+    const cur = STATE.page;
+    let html = '<button class="pagination__btn" data-nav="prev"' + (cur===1?' disabled':'') + '>‹</button>';
     for (let i = 1; i <= totalPages; i++) {
-      if (i===1 || i===totalPages || (i>=currentPage-1 && i<=currentPage+1))
-        html += `<button class="pagination__btn ${i===currentPage?'pagination__btn--active':''}" data-page="${i}">${i}</button>`;
-      else if (i===currentPage-2 || i===currentPage+2)
-        html += `<span class="pagination__dots">···</span>`;
+      if (i===1 || i===totalPages || (i>=cur-1 && i<=cur+1))
+        html += '<button class="pagination__btn ' + (i===cur?'pagination__btn--active':'') + '" data-page="' + i + '">' + i + '</button>';
+      else if (i===cur-2 || i===cur+2)
+        html += '<span class="pagination__dots">···</span>';
     }
-    html += `<button class="pagination__btn" id="pag-next" ${currentPage===totalPages?'disabled':''}>›</button>`;
+    html += '<button class="pagination__btn" data-nav="next"' + (cur===totalPages?' disabled':'') + '>›</button>';
     pag.innerHTML = html;
-    pag.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => renderSlice(+btn.dataset.page)));
-    pag.querySelector('#pag-prev')?.addEventListener('click', () => { if (currentPage>1) renderSlice(currentPage-1); });
-    pag.querySelector('#pag-next')?.addEventListener('click', () => { if (currentPage<totalPages) renderSlice(currentPage+1); });
+    pag.querySelectorAll('[data-page]').forEach(btn => btn.addEventListener('click', () => goto(+btn.dataset.page)));
+    pag.querySelector('[data-nav="prev"]')?.addEventListener('click', () => { if (STATE.page > 1) goto(STATE.page - 1); });
+    pag.querySelector('[data-nav="next"]')?.addEventListener('click', () => { if (STATE.page < totalPages) goto(STATE.page + 1); });
   }
+  function goto (page) { STATE.page = page; load(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-  async function init() {
+  async function load () {
+    if (STATE.loading) return;
+    STATE.loading = true;
     showSkeleton();
+    writeUrl();
 
-    let people = [];
-    let botProfiles = [];
+    const qs = new URLSearchParams();
+    qs.set('page',  String(STATE.page));
+    qs.set('limit', String(PER_PAGE));
+    if (STATE.q)        qs.set('q', STATE.q);
+    if (STATE.bornFrom) qs.set('bornYearFrom', STATE.bornFrom);
+    if (STATE.bornTo)   qs.set('bornYearTo',   STATE.bornTo);
+    if (STATE.diedFrom) qs.set('diedYearFrom', STATE.diedFrom);
+    if (STATE.diedTo)   qs.set('diedYearTo',   STATE.diedTo);
+    if (STATE.mine)     qs.set('mine', '1');
 
-    // Загружаем профили из бот-БД
     try {
-      if (typeof API !== 'undefined') {
-        const profilesRes = await API.get('/api/profiles');
-        if (profilesRes?.data?.length) {
-          // Фильтруем пустые/незаполненные профили
-          botProfiles = profilesRes.data.filter(p => p.name && p.name !== 'Новая страница');
-        }
-      }
-    } catch (_) {}
-
-    // Загружаем людей из основной БД
-    try {
-      if (typeof API !== 'undefined') {
-        const data = await API.get('/api/people?page=1&limit=100');
-        if (data?.data?.length) {
-          people = data.data;
-        }
-      }
-    } catch (_) {}
-
-    // Если есть профили из бота — они замещают заглушки из основной БД
-    if (botProfiles.length) {
-      const botIds = new Set(botProfiles.map(p => p.id));
-      const remaining = people.filter(p => !botIds.has(p.id));
-      allPeople = [...botProfiles, ...remaining];
-    } else if (people.length) {
-      allPeople = people;
-    } else if (typeof PEOPLE !== 'undefined' && PEOPLE.length) {
-      allPeople = PEOPLE;
-    }
-
-    // Перемешиваем случайным образом
-    for (let i = allPeople.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [allPeople[i], allPeople[j]] = [allPeople[j], allPeople[i]];
-    }
-
-    if (allPeople.length) {
-      filtered = [...allPeople];
-      renderSlice(1);
-    } else {
-      showEmpty('Страниц памяти пока нет.');
+      const r = await API.get('/api/profiles?' + qs.toString());
+      const payload = r?.data || r || {};
+      const items = payload.items || [];
+      const total = (typeof payload.total === 'number') ? payload.total : items.length;
+      STATE.rows  = items;
+      STATE.total = total;
+      renderRows();
+      renderPagination();
+    } catch (e) {
+      console.error('[memory] load error:', e);
+      showEmpty('Не удалось загрузить: ' + (e.message || 'ошибка сети'));
+      pag.innerHTML = '';
+    } finally {
+      STATE.loading = false;
     }
   }
 
-  init();
+  readUrl();
+  injectFilters();
+  load();
 })();
 
-
-/* ═══════════════════════════════════════════════
-   Fallback для img с data-mem-avatar — заменяем на placeholder
-   ═══════════════════════════════════════════════ */
 document.addEventListener('error', function (ev) {
   const t = ev.target;
   if (!t || !t.matches) return;
   if (!t.matches('img[data-mem-avatar]')) return;
-  // Подбираем класс placeholder по родителю
-  const cls = t.className || '';
-  let placeholderClass = 'memory-card__photo--empty';
-  if (cls.includes('person')) placeholderClass = 'person__photo--empty';
-  t.outerHTML = '<div class="' + placeholderClass + '"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;fill:currentColor;opacity:0.3"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>';
+  t.outerHTML = '<div class="memory-card__photo--empty"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;fill:currentColor;opacity:0.3"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>';
 }, true);

@@ -227,11 +227,12 @@ async function listHandler(req, res) {
     const diedYearTo   = req.query.diedYearTo;
     const gender       = (req.query.gender     || '').toString().trim();
     const visibility   = (req.query.visibility || '').toString().trim();
+    const mine         = req.query.mine === '1' || req.query.mine === 'true';
 
     const { items, total } = await profileService.listProfiles({
         page, limit, q, city,
         bornYearFrom, bornYearTo, diedYearFrom, diedYearTo,
-        gender, visibility,
+        gender, visibility, mine,
         actor: req.user || null,
     });
     return ok(res, {
