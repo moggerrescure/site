@@ -72,3 +72,26 @@
   .memory-create-btn { flex: 1; }
   .memory-filters__reset { margin-left: 0; }
 }
+
+
+/* Select для gender / visibility */
+.memory-filters__select {
+	background: rgba(0, 0, 0, 0.35);
+	border: 1px solid rgba(196, 168, 100, 0.22);
+	border-radius: 8px;
+	padding: 0.45rem 0.6rem;
+	color: #f0e9d6;
+	font-family: inherit;
+	font-size: 0.9rem;
+	cursor: pointer;
+	outline: none;
+	transition: border-color 0.2s;
+}
+.memory-filters__select:hover,
+.memory-filters__select:focus {
+	border-color: rgba(196, 168, 100, 0.55);
+}
+.memory-filters__select option {
+	background: #1a1410;
+	color: #f0e9d6;
+}

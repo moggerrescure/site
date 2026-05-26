@@ -286,6 +286,9 @@ async function listProfiles(opts = {}) {
         }
         if (gender) andClauses.push({ gender });
         if (mine && actor) andClauses.push({ ownerId: actor.id });
+        // Скрыть пустые "Новая страница" заглушки из публичного списка
+        if (!mine) andClauses.push({ NOT: { fullName: 'Новая страница' } });
+        
 
         const where = andClauses.length ? { AND: [baseWhere, ...andClauses] } : baseWhere;
 
@@ -304,6 +307,7 @@ async function listProfiles(opts = {}) {
 
     /* FTS PATH — всегда дополнительно фильтруем deletedAt IS NULL */
     const aliveSql = Prisma.sql`AND p."deletedAt" IS NULL`;
+	const notPlaceholderSql = (!mine) ? Prisma.sql`AND p."fullName" != 'Новая страница'` : Prisma.empty;
     const mineSql  = (mine && actor) ? Prisma.sql`AND p."ownerId" = ${actor.id}` : Prisma.empty;
     const visFilter = (() => {
         if (visibilityHardFilterSql) return visibilityHardFilterSql;
@@ -330,7 +334,7 @@ async function listProfiles(opts = {}) {
         FROM "Profile" p
         LEFT JOIN "Media" m ON m.id = p."coverPhotoId"
         WHERE p."searchVector" @@ ${tsq}
-          ${aliveSql}
+          ${aliveSql} ${notPlaceholderSql}
           ${cityFilter}
           ${bornFromFilter}
           ${bornToFilter}
@@ -346,7 +350,7 @@ async function listProfiles(opts = {}) {
         SELECT COUNT(*)::int AS total
         FROM "Profile" p
         WHERE p."searchVector" @@ ${tsq}
-          ${aliveSql}
+          ${aliveSql} ${notPlaceholderSql}
           ${cityFilter}
           ${bornFromFilter}
           ${bornToFilter}

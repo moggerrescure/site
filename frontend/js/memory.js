@@ -30,6 +30,8 @@
     STATE.bornTo   = p.get('bornYearTo')   || '';
     STATE.diedFrom = p.get('diedYearFrom') || '';
     STATE.diedTo   = p.get('diedYearTo')   || '';
+    STATE.gender     = p.get('gender')     || '';
+    STATE.visibility = p.get('visibility') || '';
     STATE.mine     = p.get('mine') === '1';
     STATE.page     = Math.max(1, parseInt(p.get('page') || '1', 10));
   }
@@ -40,6 +42,8 @@
     if (STATE.bornTo)   p.set('bornYearTo',   STATE.bornTo);
     if (STATE.diedFrom) p.set('diedYearFrom', STATE.diedFrom);
     if (STATE.diedTo)   p.set('diedYearTo',   STATE.diedTo);
+    if (STATE.gender)     p.set('gender',     STATE.gender);
+    if (STATE.visibility) p.set('visibility', STATE.visibility);
     if (STATE.mine)     p.set('mine', '1');
     if (STATE.page > 1) p.set('page', STATE.page);
     const qs = p.toString();
@@ -70,6 +74,32 @@
           '<span class="memory-filters__dash">—</span>' +
           '<input type="number" id="mf-born-to" class="memory-filters__year" placeholder="до" min="1" max="2999" value="' + esc(STATE.bornTo) + '"/>' +
         '</div>' +
+        '<div class="memory-filters__group">' +
+          '<label class="memory-filters__label">Годы смерти:</label>' +
+          '<input type="number" id="mf-died-from" class="memory-filters__year" placeholder="от" min="1" max="2999" value="' + esc(STATE.diedFrom) + '"/>' +
+          '<span class="memory-filters__dash">—</span>' +
+          '<input type="number" id="mf-died-to" class="memory-filters__year" placeholder="до" min="1" max="2999" value="' + esc(STATE.diedTo) + '"/>' +
+        '</div>' +
+        '<div class="memory-filters__group">' +
+          '<label class="memory-filters__label">Пол:</label>' +
+          '<select id="mf-gender" class="memory-filters__select">' +
+            '<option value=""'        + (STATE.gender === ''        ? ' selected' : '') + '>любой</option>' +
+            '<option value="MALE"'    + (STATE.gender === 'MALE'    ? ' selected' : '') + '>мужской</option>' +
+            '<option value="FEMALE"'  + (STATE.gender === 'FEMALE'  ? ' selected' : '') + '>женский</option>' +
+            '<option value="UNKNOWN"' + (STATE.gender === 'UNKNOWN' ? ' selected' : '') + '>не указан</option>' +
+          '</select>' +
+        '</div>' +
+        (isAuth ?
+          '<div class="memory-filters__group">' +
+            '<label class="memory-filters__label">Видимость:</label>' +
+            '<select id="mf-visibility" class="memory-filters__select">' +
+              '<option value=""'         + (STATE.visibility === ''         ? ' selected' : '') + '>любая</option>' +
+              '<option value="PUBLIC"'   + (STATE.visibility === 'PUBLIC'   ? ' selected' : '') + '>публичные</option>' +
+              '<option value="UNLISTED"' + (STATE.visibility === 'UNLISTED' ? ' selected' : '') + '>по ссылке</option>' +
+              '<option value="PRIVATE"'  + (STATE.visibility === 'PRIVATE'  ? ' selected' : '') + '>приватные</option>' +
+              '<option value="PASSWORD"' + (STATE.visibility === 'PASSWORD' ? ' selected' : '') + '>с паролем</option>' +
+            '</select>' +
+          '</div>' : '') +
         (isAuth ?
           '<label class="memory-filters__checkbox">' +
             '<input type="checkbox" id="mf-mine"' + (STATE.mine ? ' checked' : '') + '/>' +
@@ -83,6 +113,10 @@
     const qClear   = $('#mf-q-clear');
     const bFrom    = $('#mf-born-from');
     const bTo      = $('#mf-born-to');
+    const dFrom    = $('#mf-died-from');
+    const dTo      = $('#mf-died-to');
+    const genderEl = $('#mf-gender');
+    const visEl    = $('#mf-visibility');
     const mineEl   = $('#mf-mine');
     const resetEl  = $('#mf-reset');
     const createBtn= $('#memory-create-btn');
@@ -105,12 +139,20 @@
     });
     bFrom.addEventListener('input', () => { STATE.bornFrom = bFrom.value.trim(); schedule(); });
     bTo.addEventListener('input',   () => { STATE.bornTo   = bTo.value.trim();   schedule(); });
+    dFrom.addEventListener('input', () => { STATE.diedFrom = dFrom.value.trim(); schedule(); });
+    dTo.addEventListener('input',   () => { STATE.diedTo   = dTo.value.trim();   schedule(); });
+    genderEl.addEventListener('change', () => { STATE.gender = genderEl.value; STATE.page = 1; load(); });
+    if (visEl) visEl.addEventListener('change', () => { STATE.visibility = visEl.value; STATE.page = 1; load(); });
     if (mineEl) mineEl.addEventListener('change', () => { STATE.mine = mineEl.checked; STATE.page = 1; load(); });
     resetEl.addEventListener('click', () => {
       STATE.q = STATE.bornFrom = STATE.bornTo = STATE.diedFrom = STATE.diedTo = '';
+      STATE.gender = STATE.visibility = '';
       STATE.mine = false; STATE.page = 1;
       qInput.value = ''; qClear.style.display = 'none';
       bFrom.value = ''; bTo.value = '';
+      dFrom.value = ''; dTo.value = '';
+      genderEl.value = '';
+      if (visEl) visEl.value = '';
       if (mineEl) mineEl.checked = false;
       load();
     });
@@ -222,6 +264,8 @@
     if (STATE.bornTo)   qs.set('bornYearTo',   STATE.bornTo);
     if (STATE.diedFrom) qs.set('diedYearFrom', STATE.diedFrom);
     if (STATE.diedTo)   qs.set('diedYearTo',   STATE.diedTo);
+    if (STATE.gender)     qs.set('gender',     STATE.gender);
+    if (STATE.visibility) qs.set('visibility', STATE.visibility);
     if (STATE.mine)     qs.set('mine', '1');
 
     try {
