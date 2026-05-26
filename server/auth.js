@@ -5,6 +5,7 @@
 
 const crypto = require("node:crypto");
 const prisma = require("./lib/prisma");
+const { ApiError } = require("./middleware/errors");
 
 /* ── Конфиг ───────────────────────────────────────────────── */
 const JWT_SECRET =
@@ -80,7 +81,7 @@ function verifyJWT(token) {
 */
 function hashPassword(password) {
   if (typeof password !== "string" || password.length < 6) {
-    throw new Error("Пароль должен быть не короче 6 символов");
+    throw ApiError.badRequest("Пароль должен быть не короче 6 символов");
   }
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto
@@ -119,7 +120,7 @@ function needsRehash(stored) {
 /* ═══════════════ Короткие коды доступа (PIN) ═══════════════ */
 function hashAccessCode(code) {
   if (typeof code !== "string" || code.length < 4) {
-    throw new Error("Код доступа должен быть не короче 4 символов");
+    throw ApiError.badRequest("Код доступа должен быть не короче 4 символов");
   }
   const salt = crypto.randomBytes(12).toString("hex");
   const hash = crypto
@@ -305,13 +306,13 @@ function requireProfileAccess(permission = "view") {
 /* ═══════════════ Сервисы регистрации / логина ═══════════════ */
 
 async function registerUser({ email, password, displayName }) {
-  if (!email || !password) throw new Error("Email и пароль обязательны");
+  if (!email || !password) throw ApiError.badRequest("Email и пароль обязательны");
   const normalizedEmail = String(email).trim().toLowerCase();
 
   const exists = await prisma.user.findUnique({
     where: { email: normalizedEmail },
   });
-  if (exists) throw new Error("Email уже зарегистрирован");
+  if (exists) throw ApiError.conflict("Email уже зарегистрирован");
 
   const user = await prisma.user.create({
     data: {
@@ -328,7 +329,7 @@ async function registerUser({ email, password, displayName }) {
 }
 
 async function loginUser({ email, password }) {
-  if (!email || !password) throw new Error("Email и пароль обязательны");
+  if (!email || !password) throw ApiError.badRequest("Email и пароль обязательны");
   const normalizedEmail = String(email).trim().toLowerCase();
 
   const user = await prisma.user.findUnique({
@@ -341,9 +342,9 @@ async function loginUser({ email, password }) {
       passwordHash: true,
     },
   });
-  if (!user) throw new Error("Неверный email или пароль");
+  if (!user) throw ApiError.unauthorized("Неверный email или пароль");
   if (!verifyPassword(password, user.passwordHash))
-    throw new Error("Неверный email или пароль");
+    throw ApiError.unauthorized("Неверный email или пароль");
 
   if (needsRehash(user.passwordHash)) {
     await prisma.user.update({
@@ -367,7 +368,7 @@ async function loginUser({ email, password }) {
 /** Telegram Login Widget. Создаёт юзера при первом входе.
  *  Note: telegramId в схеме — BigInt, поэтому BigInt(tgData.id). */
 async function loginByTelegram(tgData) {
-  if (!verifyTelegramAuth(tgData)) throw new Error("Неверная подпись Telegram");
+  if (!verifyTelegramAuth(tgData)) throw ApiError.unauthorized("Неверная подпись Telegram");
 
   const telegramId = BigInt(tgData.id);
   const displayName =

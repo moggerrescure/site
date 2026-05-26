@@ -10,12 +10,14 @@ const cors = require('cors');
 const prisma = require('./lib/prisma');
 const router = require('./router');
 const { errorHandler, notFoundHandler } = require('./middleware/errors');
+const { buildSitemap, buildRobotsTxt } = require('./lib/sitemap');
 
 const app = express();
 
 /* ─── Config ─────────────────────────────────────────── */
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
+const SITE_URL = process.env.SITE_URL || `http://localhost:${PORT}`;
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
@@ -54,6 +56,31 @@ app.get('/health', async (req, res) => {
 	} catch (err) {
 		res.status(503).json({ ok: false, error: 'db_down' });
 	}
+});
+
+/* ─── SEO: sitemap.xml + robots.txt ───────────────────── */
+
+app.get('/sitemap.xml', async (req, res, next) => {
+    try {
+        const profiles = await prisma.profile.findMany({
+            where: { visibility: 'PUBLIC', deletedAt: null },
+            select: { slug: true, updatedAt: true, createdAt: true },
+            orderBy: { updatedAt: 'desc' },
+            take: 50000,
+        });
+        const xml = buildSitemap({ baseUrl: SITE_URL, profiles });
+        res.set('Content-Type', 'application/xml; charset=utf-8');
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(xml);
+    } catch (err) {
+        next(err);
+    }
+});
+
+app.get('/robots.txt', (req, res) => {
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(buildRobotsTxt(SITE_URL));
 });
 
 /* ─── API ─────────────────────────────────────────────── */

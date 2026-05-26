@@ -17,9 +17,9 @@ datasource db {
 // ============================================================
 
 enum UserRole {
-  USER       // обычный пользователь сайта
-  EDITOR     // может редактировать назначенные профили
-  ADMIN      // полный доступ
+  USER // обычный пользователь сайта
+  EDITOR // может редактировать назначенные профили
+  ADMIN // полный доступ
 }
 
 enum Gender {
@@ -29,22 +29,22 @@ enum Gender {
 }
 
 enum Visibility {
-  PUBLIC          // виден всем
-  UNLISTED        // только по прямой ссылке
-  PASSWORD        // требует пин-код / пароль
-  PRIVATE         // только владелец / разрешённые
+  PUBLIC // виден всем
+  UNLISTED // только по прямой ссылке
+  PASSWORD // требует пин-код / пароль
+  PRIVATE // только владелец / разрешённые
 }
 
 // Типизация 6 дефолтных блоков биографии (п. 1.4)
 enum BlockType {
-  HERO       // hero-блок (фото + имя + даты) — генерируется из Profile, опционально
+  HERO // hero-блок (фото + имя + даты) — генерируется из Profile, опционально
   CHILDHOOD
   EDUCATION
   CAREER
   FAMILY
   HOBBIES
   LEGACY
-  CUSTOM     // пользовательский блок
+  CUSTOM // пользовательский блок
 }
 
 enum MemoryType {
@@ -55,10 +55,10 @@ enum MemoryType {
 }
 
 enum RelationType {
-  PARENT     // node -> child (родитель → ребёнок)
-  SPOUSE     // супружество (двунаправленное, см. ниже)
-  ADOPTIVE   // приёмный родитель
-  STEP       // отчим / мачеха
+  PARENT // node -> child (родитель → ребёнок)
+  SPOUSE // супружество (двунаправленное, см. ниже)
+  ADOPTIVE // приёмный родитель
+  STEP // отчим / мачеха
 }
 
 enum TimelineCategory {
@@ -69,7 +69,7 @@ enum TimelineCategory {
   CAREER
   RELOCATION
   AWARD
-  HISTORICAL  // событие страны/мира (без привязки к FamilyNode)
+  HISTORICAL // событие страны/мира (без привязки к FamilyNode)
   CUSTOM
 }
 
@@ -85,23 +85,23 @@ enum MediaKind {
 // ============================================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   // PBKDF2-SHA512: хранится строкой формата "iterations:saltHex:hashHex"
-  passwordHash  String
-  displayName   String?
-  role          UserRole  @default(USER)
-  telegramId    BigInt?   @unique   // привязка к боту (объединение bot.db)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  passwordHash String
+  displayName  String?
+  role         UserRole @default(USER)
+  telegramId   BigInt?  @unique // привязка к боту (объединение bot.db)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Что человек создал/чем владеет
-  ownedProfiles    Profile[]        @relation("ProfileOwner")
-  guestMemories    GuestMemory[]    // если оставил воспоминание авторизованным
-  candleLights     CandleLight[]
-  accessGrants     ProfileAccess[]
-  editorOf         ProfileAccess[]  @relation("EditorGrants")
-  uploadedMedia    Media[]
+  ownedProfiles Profile[]       @relation("ProfileOwner")
+  guestMemories GuestMemory[] // если оставил воспоминание авторизованным
+  candleLights  CandleLight[]
+  accessGrants  ProfileAccess[]
+  editorOf      ProfileAccess[] @relation("EditorGrants")
+  uploadedMedia Media[]
 
   @@index([role])
 }
@@ -111,33 +111,33 @@ model User {
 // ============================================================
 
 model Profile {
-  id            String     @id @default(cuid())
-  slug          String     @unique          // для красивых URL: /p/ivan-petrov
-  fullName      String
-  birthDate     DateTime?
-  deathDate     DateTime?
-  birthPlace    String?
-  deathPlace    String?
-  burialPlace   String?
-  burialLat     Float?
-  burialLng     Float?
-  bio           String?    @db.Text         // короткое intro (hero subtitle)
-  coverPhotoId  String?    @unique
-  coverPhoto    Media?     @relation("ProfileCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
-  gender        Gender     @default(UNKNOWN)
+  id           String    @id @default(cuid())
+  slug         String    @unique // для красивых URL: /p/ivan-petrov
+  fullName     String
+  birthDate    DateTime?
+  deathDate    DateTime?
+  birthPlace   String?
+  deathPlace   String?
+  burialPlace  String?
+  burialLat    Float?
+  burialLng    Float?
+  bio          String?   @db.Text // короткое intro (hero subtitle)
+  coverPhotoId String?   @unique
+  coverPhoto   Media?    @relation("ProfileCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
+  gender       Gender    @default(UNKNOWN)
 
   // Видимость и защита
-  visibility    Visibility @default(PUBLIC)
+  visibility Visibility @default(PUBLIC)
   // Пароль страницы: PBKDF2 в том же формате "iterations:saltHex:hashHex".
   // NULL если visibility != PASSWORD
-  accessHash    String?
+  accessHash String?
 
-  ownerId       String
-  owner         User       @relation("ProfileOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  ownerId String
+  owner   User   @relation("ProfileOwner", fields: [ownerId], references: [id], onDelete: Restrict)
 
   // Привязка к узлу в семейном дереве (1:1, опционально)
-  familyNodeId  String?    @unique
-  familyNode    FamilyNode? @relation(fields: [familyNodeId], references: [id], onDelete: SetNull)
+  familyNodeId String?     @unique
+  familyNode   FamilyNode? @relation(fields: [familyNodeId], references: [id], onDelete: SetNull)
 
   // Связи
   blocks         ContentBlock[]
@@ -145,29 +145,32 @@ model Profile {
   guestMemories  GuestMemory[]
   candleLights   CandleLight[]
   accessGrants   ProfileAccess[]
-  timelineEvents TimelineEvent[]   // личные события, не привязанные к FamilyNode
+  timelineEvents TimelineEvent[] // личные события, не привязанные к FamilyNode
   qrPlaques      QrPlaque[]
 
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  deletedAt    DateTime?
+  searchVector Unsupported("tsvector")?
+  accessCodes  ProfileAccessCode[]
 
   @@index([ownerId])
   @@index([visibility])
   @@index([fullName])
-  searchVector  Unsupported("tsvector")?
+  @@index([deletedAt])
 }
 
 // Расширенный доступ: editor / viewer на конкретный профиль (RBAC уровня сущности)
 model ProfileAccess {
-  id         String   @id @default(cuid())
-  profileId  String
-  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  grantedBy  String
-  grantor    User     @relation("EditorGrants", fields: [grantedBy], references: [id], onDelete: Restrict)
-  canEdit    Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy String
+  grantor   User     @relation("EditorGrants", fields: [grantedBy], references: [id], onDelete: Restrict)
+  canEdit   Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@unique([profileId, userId])
   @@index([userId])
@@ -178,22 +181,22 @@ model ProfileAccess {
 // ============================================================
 
 model ContentBlock {
-  id         String     @id @default(cuid())
-  profileId  String
-  profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  type       BlockType                       // жёстко типизирован enum
-  title      String?                          // кастомный заголовок (для CUSTOM)
-  body       String     @db.Text              // основной текст
+  type    BlockType // жёстко типизирован enum
+  title   String? // кастомный заголовок (для CUSTOM)
+  body    String    @db.Text // основной текст
   // Опциональное иллюстративное фото (одно — в зебра-вёрстке слева/справа)
-  photoId    String?
-  photo      Media?     @relation("BlockPhoto", fields: [photoId], references: [id], onDelete: SetNull)
+  photoId String?
+  photo   Media?    @relation("BlockPhoto", fields: [photoId], references: [id], onDelete: SetNull)
 
-  order      Int                              // порядок сортировки
-  isHidden   Boolean    @default(false)
+  order    Int // порядок сортировки
+  isHidden Boolean @default(false)
 
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Уникальность по (profileId, type) — для дефолтных блоков (1 CHILDHOOD на профиль).
   // CUSTOM-блоков может быть много; для них создаём отдельный частичный индекс в SQL миграции
@@ -207,14 +210,14 @@ model ContentBlock {
 // ============================================================
 
 model GalleryItem {
-  id         String   @id @default(cuid())
-  profileId  String
-  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  mediaId    String
-  media      Media    @relation("GalleryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
-  caption    String?
-  order      Int
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media    @relation("GalleryMedia", fields: [mediaId], references: [id], onDelete: Cascade)
+  caption   String?
+  order     Int
+  createdAt DateTime @default(now())
 
   @@unique([profileId, order])
   @@index([profileId])
@@ -225,25 +228,25 @@ model GalleryItem {
 // ============================================================
 
 model GuestMemory {
-  id          String      @id @default(cuid())
-  profileId   String
-  profile     Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  authorUserId String?                          // если оставил авторизованный
-  authorUser   User?      @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
-  authorName   String                            // имя, отображаемое на карточке (может отличаться)
+  authorUserId String? // если оставил авторизованный
+  authorUser   User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  authorName   String // имя, отображаемое на карточке (может отличаться)
 
-  type         MemoryType @default(TEXT)
-  text         String?    @db.Text
-  mediaId      String?
-  media        Media?     @relation("MemoryMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+  type    MemoryType @default(TEXT)
+  text    String?    @db.Text
+  mediaId String?
+  media   Media?     @relation("MemoryMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
-  isApproved   Boolean    @default(false)        // модерация
+  isApproved   Boolean   @default(false) // модерация
   approvedAt   DateTime?
   approvedById String?
 
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([profileId, isApproved])
   @@index([authorUserId])
@@ -254,20 +257,19 @@ model GuestMemory {
 // ============================================================
 
 model CandleLight {
-  id         String   @id @default(cuid())
+  id        String   @id @default(cuid())
   // Свеча может быть зажжена:
   //  - на главной (profileId = NULL) — общая «свеча памяти»
   //  - на конкретной странице памяти
-  profileId  String?
-  profile    Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
+  profileId String?
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
   // Анонимный fingerprint (IP+UA hash) для антифрод и rate-limit
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   fingerprint String?
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([profileId, createdAt])
   @@index([userId])
@@ -279,21 +281,22 @@ model CandleLight {
 // ============================================================
 
 model FamilyTree {
-  id          String       @id @default(cuid())
-  name        String                              // «Род Петровых»
-  description String?      @db.Text
+  id          String     @id @default(cuid())
+  name        String // «Род Петровых»
+  description String?    @db.Text
   ownerId     String
-  visibility  Visibility   @default(UNLISTED)
+  visibility  Visibility @default(UNLISTED)
   accessHash  String?
 
-  nodes       FamilyNode[]
-  clans       FamilyClan[]
+  nodes FamilyNode[]
+  clans FamilyClan[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([ownerId])
 }
+
 // ============================================================
 //  FAMILY CLAN — род (для цветной подсветки линий в дереве)
 // ============================================================
@@ -302,9 +305,9 @@ model FamilyClan {
   id          String       @id @default(cuid())
   treeId      String
   tree        FamilyTree   @relation(fields: [treeId], references: [id], onDelete: Cascade)
-  name        String                              // «Род Ивановых»
-  color       String       @default("#c8a84b")    // hex для отрисовки нитей
-  icon        String       @default("✦")          // короткий символ (1-4 char)
+  name        String // «Род Ивановых»
+  color       String       @default("#c8a84b") // hex для отрисовки нитей
+  icon        String       @default("✦") // короткий символ (1-4 char)
   description String?      @db.Text
   nodes       FamilyNode[]
   createdAt   DateTime     @default(now())
@@ -315,42 +318,42 @@ model FamilyClan {
 
 // Узел дерева. Может (но не обязан) ссылаться на Profile (страницу памяти).
 model FamilyNode {
-  id           String       @id @default(cuid())
-  treeId       String
-  tree         FamilyTree   @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  id     String     @id @default(cuid())
+  treeId String
+  tree   FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
 
   // Имя и даты дублируются здесь, чтобы можно было строить дерево
   // без обязательной полноценной страницы памяти.
-  firstName    String
-  lastName     String?
-  maidenName   String?
-  birthDate    DateTime?
-  deathDate    DateTime?
-  gender       Gender       @default(UNKNOWN)
-  photoId      String?
-  photo        Media?       @relation("NodePhoto", fields: [photoId], references: [id], onDelete: SetNull)
+  firstName  String
+  lastName   String?
+  maidenName String?
+  birthDate  DateTime?
+  deathDate  DateTime?
+  gender     Gender    @default(UNKNOWN)
+  photoId    String?
+  photo      Media?    @relation("NodePhoto", fields: [photoId], references: [id], onDelete: SetNull)
 
-  clanId       String?
-  clan         FamilyClan?  @relation(fields: [clanId], references: [id], onDelete: SetNull)
-  notes        String?      @db.Text
+  clanId String?
+  clan   FamilyClan? @relation(fields: [clanId], references: [id], onDelete: SetNull)
+  notes  String?     @db.Text
 
   // 1:1 со страницей памяти, если она есть (зеркало Profile.familyNodeId)
-  profile      Profile?
+  profile Profile?
 
   // Реляционные связи (п. 1.2) — JSON parent_ids больше не нужен
-  parentLinks  FamilyConnection[] @relation("Child")
-  childLinks   FamilyConnection[] @relation("Parent")
+  parentLinks FamilyConnection[] @relation("Child")
+  childLinks  FamilyConnection[] @relation("Parent")
 
   // События жизни (п. 1.3) — напрямую связаны с узлом
   timelineEvents TimelineEvent[]
 
   // Позиция в схеме (для редактора дерева; опционально)
-  posX         Float?
-  posY         Float?
-  generation   Int?
+  posX       Float?
+  posY       Float?
+  generation Int?
 
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([treeId, generation])
   @@index([lastName, firstName])
@@ -360,19 +363,19 @@ model FamilyNode {
 // PARENT: fromNode = родитель, toNode = ребёнок (направленно).
 // SPOUSE: записываем ОДНУ строку (fromNode < toNode по id) — приложение интерпретирует как двунаправленную.
 model FamilyConnection {
-  id          String       @id @default(cuid())
-  fromNodeId  String
-  fromNode    FamilyNode   @relation("Parent", fields: [fromNodeId], references: [id], onDelete: Cascade)
-  toNodeId    String
-  toNode      FamilyNode   @relation("Child",  fields: [toNodeId],   references: [id], onDelete: Cascade)
+  id         String     @id @default(cuid())
+  fromNodeId String
+  fromNode   FamilyNode @relation("Parent", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNodeId   String
+  toNode     FamilyNode @relation("Child", fields: [toNodeId], references: [id], onDelete: Cascade)
 
-  type        RelationType
+  type      RelationType
   // Для SPOUSE: даты брака/развода
-  startDate   DateTime?
-  endDate     DateTime?
-  notes       String?
+  startDate DateTime?
+  endDate   DateTime?
+  notes     String?
 
-  createdAt   DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   // Никаких дубликатов: одна связь определённого типа между двумя узлами
   @@unique([fromNodeId, toNodeId, type])
@@ -385,26 +388,26 @@ model FamilyConnection {
 // ============================================================
 
 model TimelineEvent {
-  id           String           @id @default(cuid())
+  id String @id @default(cuid())
 
   // Событие может относиться к:
   //   - конкретному родственнику (FamilyNode)   ← п. 1.3
   //   - конкретной странице (Profile)
   //   - быть «историческим» (оба NULL + category=HISTORICAL)
   familyNodeId String?
-  familyNode   FamilyNode?      @relation(fields: [familyNodeId], references: [id], onDelete: Cascade)
+  familyNode   FamilyNode? @relation(fields: [familyNodeId], references: [id], onDelete: Cascade)
   profileId    String?
-  profile      Profile?         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile      Profile?    @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   category     TimelineCategory
   title        String
   description  String?          @db.Text
-  date         DateTime                              // точная дата
-  dateAccuracy String?                               // "year" | "month" | "day"
+  date         DateTime // точная дата
+  dateAccuracy String? // "year" | "month" | "day"
   place        String?
 
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([familyNodeId, date])
   @@index([profileId, date])
@@ -416,27 +419,27 @@ model TimelineEvent {
 // ============================================================
 
 model Media {
-  id           String     @id @default(cuid())
+  id           String    @id @default(cuid())
   kind         MediaKind
-  url          String                       // путь относительно /uploads/
+  url          String // путь относительно /uploads/
   originalName String?
   mimeType     String
   sizeBytes    Int
   width        Int?
   height       Int?
-  durationSec  Int?                          // для audio/video
+  durationSec  Int? // для audio/video
 
   uploadedById String?
-  uploadedBy   User?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
-  createdAt    DateTime   @default(now())
+  createdAt DateTime @default(now())
 
   // Обратные связи (для каскадного удаления и анализа)
-  profileCover     Profile?       @relation("ProfileCover")
-  galleryItems     GalleryItem[]  @relation("GalleryMedia")
-  blockPhotos      ContentBlock[] @relation("BlockPhoto")
-  nodePhotos       FamilyNode[]   @relation("NodePhoto")
-  memoryAttachments GuestMemory[] @relation("MemoryMedia")
+  profileCover      Profile?       @relation("ProfileCover")
+  galleryItems      GalleryItem[]  @relation("GalleryMedia")
+  blockPhotos       ContentBlock[] @relation("BlockPhoto")
+  nodePhotos        FamilyNode[]   @relation("NodePhoto")
+  memoryAttachments GuestMemory[]  @relation("MemoryMedia")
 
   @@index([uploadedById])
   @@index([kind])
@@ -447,13 +450,13 @@ model Media {
 // ============================================================
 
 model QrPlaque {
-  id         String   @id @default(cuid())
-  profileId  String
-  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  code       String   @unique                  // короткий код для /qr/:code
-  isActive   Boolean  @default(true)
-  orderedAt  DateTime @default(now())
-  shippedAt  DateTime?
+  id        String    @id @default(cuid())
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  code      String    @unique // короткий код для /qr/:code
+  isActive  Boolean   @default(true)
+  orderedAt DateTime  @default(now())
+  shippedAt DateTime?
 
   @@index([profileId])
 }
@@ -464,14 +467,15 @@ model QrPlaque {
 // ============================================================
 
 model ProfileAccessCode {
-  id         String   @id @default(cuid())
-  profileId  String
+  id        String    @id @default(cuid())
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   // Не храним plaintext: PBKDF2 в формате "iterations:saltHex:hashHex"
-  codeHash   String
-  label      String?                           // «Для семьи», «Для коллег»
-  expiresAt  DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime @default(now())
+  codeHash  String
+  label     String? // «Для семьи», «Для коллег»
+  expiresAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([profileId])
 }
