@@ -8,8 +8,8 @@
   const id = params.get('id');
   const autoEdit = params.get('edit') === '1';
 
-  // Только для UUID-страниц (из бота)
-  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return;
+  // Edit-режим работает для любого id/slug — бэк сам резолвит через OR:[{id},{slug}]
+  if (!id) return;
 
   let isEditing = false;
   let originalData = null; // сохраняем данные для отката

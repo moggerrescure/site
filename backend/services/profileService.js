@@ -430,9 +430,14 @@ async function getProfileDetail(idOrSlug, actor = null, options = {}) {
         }
     }
 
-    return serializeForDetail(profile);
-}
+    const detail = serializeForDetail(profile);
 
+    detail.canManageAccess = isOwner || isAdmin;
+
+    detail.isOwner = isOwner;
+
+    return detail;
+}
 async function createProfile(input, actor, options = {}) {
     if (!actor) {
         const err = new Error('auth_required'); err.status = 401; throw err;
