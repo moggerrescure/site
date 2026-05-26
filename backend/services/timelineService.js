@@ -33,10 +33,12 @@ function mapCategory(raw) {
   return CATEGORIES.includes(upper) ? upper : 'CUSTOM';
 }
 
-function serializeEvent(e) {
+function serializeEvent(e, extra = {}) {
   if (!e) return null;
   return {
     id: e.id,
+    iconKey: e.iconKey || null,
+    witnesses: extra.witnesses || undefined,
     familyNodeId: e.familyNodeId,
     profileId: e.profileId,
     category: String(e.category).toLowerCase(),
@@ -126,8 +128,8 @@ async function listEvents(query, actor) {
 
     let dbEvents = [];
     if (orClauses.length) {
-      dbEvents = await prisma.timelineEvent.findMany({
-        where: { OR: orClauses },
+    dbEvents = await prisma.timelineEvent.findMany({
+  where: { AND: [{ deletedAt: null }, { OR: orClauses }] },
         include: {
           familyNode: { select: { id: true, firstName: true, lastName: true } },
           profile: { select: { id: true, slug: true, fullName: true } },
@@ -160,8 +162,8 @@ async function listEvents(query, actor) {
   const orClauses = [{ profileId }];
   if (profile.familyNodeId) orClauses.push({ familyNodeId: profile.familyNodeId });
 
-  const dbEvents = await prisma.timelineEvent.findMany({
-    where: { OR: orClauses },
+const dbEvents = await prisma.timelineEvent.findMany({
+  where: { AND: [{ deletedAt: null }, { OR: orClauses }] },
     include: {
       familyNode: { select: { id: true, firstName: true, lastName: true } },
       profile: { select: { id: true, slug: true, fullName: true } },
@@ -228,7 +230,7 @@ async function listAllEvents({ includeHistorical = true, includeAuto = true }, a
   let dbEvents = [];
   if (orClauses.length) {
     dbEvents = await prisma.timelineEvent.findMany({
-      where: { OR: orClauses },
+  where: { AND: [{ deletedAt: null }, { OR: orClauses }] },
       include: {
         familyNode: { select: { id: true, firstName: true, lastName: true } },
         profile: { select: { id: true, slug: true, fullName: true } },
@@ -240,10 +242,34 @@ async function listAllEvents({ includeHistorical = true, includeAuto = true }, a
   // 4. Авто-события BIRTH/DEATH
   const autoEvents = includeAuto ? buildAutoEvents(nodesWithDates) : [];
 
+  // 5. Witnesses для HISTORICAL — кто из публичных профилей застал событие
+  const witnessesByEventId = await computeWitnesses(dbEvents.filter(e => e.category === 'HISTORICAL'));
+
   return [
-    ...dbEvents.map(serializeEvent),
+    ...dbEvents.map(e => serializeEvent(e, { witnesses: witnessesByEventId[e.id] })),
     ...autoEvents,
   ].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+
+// Помощник: для списка исторических событий вернуть {eventId: [{id, slug, fullName}, ...]}
+async function computeWitnesses(historicalEvents) {
+  if (!historicalEvents || historicalEvents.length === 0) return {};
+  const profiles = await prisma.profile.findMany({
+    where: { visibility: 'PUBLIC', deletedAt: null, birthDate: { not: null } },
+    select: { id: true, slug: true, fullName: true, birthDate: true, deathDate: true },
+  });
+  const result = {};
+  for (const ev of historicalEvents) {
+    const year = ev.date.getFullYear();
+    result[ev.id] = profiles
+      .filter(p => {
+        const born = p.birthDate.getFullYear();
+        const died = p.deathDate ? p.deathDate.getFullYear() : 9999;
+        return born <= year && year <= died;
+      })
+      .map(p => ({ id: p.id, slug: p.slug, fullName: p.fullName }));
+  }
+  return result;
 }
 
 /* ── CRUD ── */
@@ -276,8 +302,8 @@ async function _checkEventAccess(input, actor, mode = 'edit') {
   }
 }
 
-async function createEvent(input, actor) {
-  const { familyNodeId, profileId, category, title, description, date, place } = input || {};
+async function createEvent(input, actor) 
+{const { familyNodeId, profileId, category, title, description, date, place, iconKey } = input || {};
   if (!title || !String(title).trim()) throw ApiError.badRequest('Укажите название события');
   if (!date) throw ApiError.badRequest('Укажите дату события');
 
@@ -296,6 +322,8 @@ async function createEvent(input, actor) {
       date: parsed.date,
       dateAccuracy: parsed.accuracy || 'day',
       place: place ? String(place).trim() : null,
+      iconKey: iconKey ? String(iconKey).trim() : null,
+      createdById: actor?.id || null,
     },
     include: {
       familyNode: { select: { id: true, firstName: true, lastName: true } },
@@ -320,6 +348,7 @@ async function updateEvent(eventId, input, actor) {
   if (input.description !== undefined) data.description = input.description ? String(input.description).trim() : null;
   if (input.category !== undefined) data.category = mapCategory(input.category);
   if (input.place !== undefined) data.place = input.place ? String(input.place).trim() : null;
+  if (input.iconKey !== undefined) data.iconKey = input.iconKey ? String(input.iconKey).trim() : null;
   if (input.date !== undefined) {
     const parsed = parseDate(input.date);
     if (!parsed.date) throw ApiError.badRequest('Не удалось распознать дату');
@@ -346,7 +375,10 @@ async function deleteEvent(eventId, actor) {
   const event = await prisma.timelineEvent.findUnique({ where: { id: eventId } });
   if (!event) throw ApiError.notFound('Событие не найдено');
   await _checkEventAccess(event, actor, 'edit');
-  await prisma.timelineEvent.delete({ where: { id: eventId } });
+ await prisma.timelineEvent.update({
+  where: { id: eventId },
+  data: { deletedAt: new Date() },
+});
   return { id: eventId };
 }
 
