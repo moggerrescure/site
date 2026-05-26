@@ -120,7 +120,7 @@
       const originalText = createBtn.textContent;
       createBtn.textContent = '⏳ Создаю...';
       try {
-        const r = await API.post('/api/profiles', { fullName: '' });
+        const r = await API.post('/api/profiles', { fullName: 'Новая страница' });
         const idOrSlug = r?.data?.slug || r?.data?.id || r?.slug || r?.id;
         if (idOrSlug) {
           window.location.href = 'person.html?id=' + encodeURIComponent(idOrSlug) + '&edit=1';
@@ -226,9 +226,14 @@
 
     try {
       const r = await API.get('/api/profiles?' + qs.toString());
-      const payload = r?.data || r || {};
-      const items = payload.items || [];
-      const total = (typeof payload.total === 'number') ? payload.total : items.length;
+      // listHandler: ok(res, { data: items, total, page, ... })  → spread в корень
+      // ⇒ r.data это МАССИВ items, r.total отдельно
+      const items = Array.isArray(r?.data) ? r.data
+                  : (Array.isArray(r?.data?.items) ? r.data.items
+                  : (Array.isArray(r?.items) ? r.items : []));
+      const total = (typeof r?.total === 'number') ? r.total
+                  : (typeof r?.data?.total === 'number') ? r.data.total
+                  : items.length;
       STATE.rows  = items;
       STATE.total = total;
       renderRows();
