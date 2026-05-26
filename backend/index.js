@@ -123,6 +123,10 @@ app.use(errorHandler);
 /* ─── Start ───────────────────────────────────────────── */
 const server = app.listen(PORT, () => {
   console.log(`✅ Server listening on :${PORT}`);
+
+/* ─── Cron jobs (cleanup) ─────────────────────────── */
+require('./jobs').startCronJobs();
+
   console.log(`   API:     /api`);
   console.log(`   Uploads: /uploads`);
   console.log(`   Health:  /health, /api/health`);
