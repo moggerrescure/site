@@ -8,6 +8,7 @@ const { blockWizard } = require('./handlers/block-wizard');
 const { myPages, handleEdit, handleDelete, confirmDelete } = require('./handlers/my-pages');
 const setPassword = require('./handlers/set-password');
 const trash = require('./handlers/trash');
+const access = require('./handlers/access');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -70,6 +71,7 @@ bot.hears('🕯 Создать страницу памяти', (ctx) => createPr
 bot.hears('🔑 Пароль', (ctx) => setPassword.start(ctx));
 bot.hears('🗑 Корзина', (ctx) => trash.showTrash(ctx));
 bot.command('trash', (ctx) => trash.showTrash(ctx));
+bot.command('access', (ctx) => access.start(ctx));
 
 bot.on('text', (ctx) => {
   const state = ctx.session?.wizard;
@@ -81,6 +83,7 @@ bot.on('text', (ctx) => {
     case 'blockText':       return blockWizard.handleBlockText(ctx);
     case 'quoteAfterBlock': return blockWizard.handleQuoteAfterBlock(ctx);
 		case 'setpw_input':     return setPassword.handleInput(ctx);
+		case 'access_email':    return access.handleEmail(ctx);
     default: return;
   }
 });
@@ -111,6 +114,17 @@ bot.on('callback_query', async (ctx) => {
 	if (data.startsWith('trash_restore_')) return trash.handleRestore(ctx, data.replace('trash_restore_', ''));
 	if (data.startsWith('trash_hard_'))    return trash.handleHardDelete(ctx, data.replace('trash_hard_', ''));
 	if (data.startsWith('trash_confirm_')) return trash.confirmHardDelete(ctx, data.replace('trash_confirm_', ''));
+	if (data === 'access_back')           return access.back(ctx);
+	if (data === 'access_level_view')     return access.finishGrant(ctx, false);
+	if (data === 'access_level_edit')     return access.finishGrant(ctx, true);
+	if (data.startsWith('access_pick_'))   return access.pickProfile(ctx, data.replace('access_pick_', ''));
+	if (data.startsWith('access_list_'))   return access.listGrants(ctx, data.replace('access_list_', ''));
+	if (data.startsWith('access_add_'))    return access.startAdd(ctx, data.replace('access_add_', ''));
+	if (data.startsWith('access_revoke_')) {
+		const rest = data.replace('access_revoke_', '');
+		const sep = rest.indexOf('_');
+		return access.revokeGrant(ctx, rest.slice(0, sep), rest.slice(sep + 1));
+	}
   if (data === 'cancel_delete')          { ctx.answerCbQuery('Отменено'); return; }
 
   if (data.startsWith('confirm_delete_')) {
@@ -124,6 +138,14 @@ bot.on('callback_query', async (ctx) => {
 });
 
 const { startScheduler } = require('./scheduler');
+
+// Регистрируем команды в "/" меню Telegram (видны в UI bot-чата)
+bot.telegram.setMyCommands([
+	{ command: 'start',   description: '🚀 Главное меню и приветствие' },
+	{ command: 'menu',    description: '📋 Обновить клавиатуру меню' },
+	{ command: 'access',  description: '🤝 Управление доступом к страницам' },
+	{ command: 'trash',   description: '🗑 Корзина удалённых страниц' },
+]).catch((e) => console.error('[setMyCommands] failed:', e));
 
 bot.launch()
   .then(() => {
