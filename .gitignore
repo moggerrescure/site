@@ -39,3 +39,8 @@ project_dump.txt
 project_structure.txt
 copy-ts.sh
 /tmp/
+
+# uploads (только .gitkeep и тестовые webp коммитим)
+backend/uploads/*
+!backend/uploads/.gitkeep
+!backend/uploads/*.webp

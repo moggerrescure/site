@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
-
+const morgan = require('morgan');
 const prisma = require('./lib/prisma');
 const router = require('./router');
 const { errorHandler, notFoundHandler } = require('./middleware/errors');
@@ -26,7 +26,23 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 /* ─── Trust proxy (Caddy впереди) ─────────────────────── */
 // Чтобы req.ip и rate limit видели реальный клиентский IP из X-Forwarded-For
 app.set('trust proxy', 1);
+/* ─── HTTP access log ─────────────────────────────────── */
+// Кастомный токен — реальный IP клиента (через X-Forwarded-For)
+morgan.token('real-ip', (req) => req.ip);
+// Не логируем шумные эндпоинты (health, статика) — иначе логи забьются
+const skipNoise = (req) =>
+  req.path === '/health' ||
+  req.path === '/api/health' ||
+  req.path.startsWith('/uploads/');
 
+app.use(
+  morgan(
+    process.env.NODE_ENV === 'production'
+      ? ':real-ip :method :url :status :res[content-length] - :response-time ms'
+      : 'dev',
+    { skip: skipNoise }
+  )
+);
 /* ─── CORS allowlist ──────────────────────────────────── */
 // В Docker фронт ходит same-origin через Caddy → CORS не нужен.
 // Список нужен для dev-режима, когда фронт открыт через Live Server / прямой :3000.
