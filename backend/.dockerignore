@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+.env
+.env.*
+!.env.example
+uploads/*
+!uploads/.gitkeep
+data/
+*.db
+*.db-*
+*.log
+.DS_Store
+*.bak
+*.bak-*
+prisma/migrations/dev.db*

@@ -8,6 +8,7 @@
     "dev": "node --watch index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio --port 5557",
     "migrate:from-sqlite": "node scripts/migrate-from-sqlite.js",
     "restore:clans": "node scripts/restore-clans.js"
@@ -28,4 +29,6 @@
   "engines": {
     "node": ">=22"
   }
+  
+  
 }
