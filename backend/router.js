@@ -12,6 +12,7 @@ const familyService   = require('./services/familyService');
 const timelineService = require('./services/timelineService');
 const accessService   = require('./services/accessService');
 const accessCodeService = require('./services/accessCodeService');
+const auditService    = require('./services/auditService');
 const prisma          = require('./lib/prisma');
 const pkg             = require('./package.json');
 
@@ -92,8 +93,23 @@ router.post('/auth/register', registerLimiter, wrap(async (req, res) => {
 router.post('/auth/login', loginLimiter, wrap(async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) return err(res, 400, 'email and password required');
-    const result = await auth.loginUser({ email, password });
-    return ok(res, result);
+    try {
+        const result = await auth.loginUser({ email, password });
+        await auditService.logAction({
+            action: 'LOGIN',
+            userId: result.user?.id || null,
+            metadata: { email },
+            req,
+        });
+        return ok(res, result);
+    } catch (e) {
+        await auditService.logAction({
+            action: 'LOGIN_FAILED',
+            metadata: { email, reason: e.message },
+            req,
+        });
+        throw e;
+    }
 }));
 
 router.get('/auth/me', authGeneralLimiter, requireAuth, wrap(async (req, res) => {
@@ -116,7 +132,23 @@ router.get('/stats', wrap(async (req, res) => {
     ]);
     return ok(res, { data: { people, reviews, candles, cities: citiesAgg.length } });
 }));
-
+// ========== AUDIT LOGS (ADMIN only) ==========
+router.get('/admin/audit-logs', requireAuth, wrap(async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return err(res, 403, 'Доступ только для администраторов');
+    }
+    const result = await auditService.queryLogs({
+        userId: req.query.userId,
+        action: req.query.action,
+        entityType: req.query.entityType,
+        entityId: req.query.entityId,
+        fromDate: req.query.fromDate,
+        toDate: req.query.toDate,
+        page: parseInt(req.query.page || '1', 10),
+        limit: parseInt(req.query.limit || '50', 10),
+    });
+    return ok(res, result);
+}));
 /* ═══════════════════════════════════════════════════════ */
 /*  PROFILES / PEOPLE (alias)                              */
 /* ═══════════════════════════════════════════════════════ */
@@ -132,6 +164,14 @@ router.get('/profiles/trash', requireAuth, wrap(async (req, res) => {
 
 router.post('/profiles/:idOrSlug/restore', requireAuth, wrap(async (req, res) => {
     const data = await profileService.restoreProfile(req.params.idOrSlug, req.user);
+    await auditService.logAction({
+        action: 'PROFILE_RESTORE',
+        userId: req.user.id,
+        entityType: 'Profile',
+        entityId: data?.id || req.params.idOrSlug,
+        metadata: { idOrSlug: req.params.idOrSlug },
+        req,
+    });
     return ok(res, { data });
 }));
 
@@ -188,7 +228,21 @@ async function updateHandler(req, res) {
 }
 
 async function deleteHandler(req, res) {
-    await profileService.deleteProfile(req.params.id, req.user, { hard: req.query.hard === 'true' });
+    const hard = req.query.hard === 'true';
+    let snapshot = null;
+    try {
+        const p = await profileService.resolveProfile(req.params.id);
+        if (p) snapshot = { id: p.id, slug: p.slug, fullName: p.fullName, visibility: p.visibility };
+    } catch (_) {}
+    await profileService.deleteProfile(req.params.id, req.user, { hard });
+    await auditService.logAction({
+        action: hard ? 'PROFILE_HARD_DELETE' : 'PROFILE_SOFT_DELETE',
+        userId: req.user.id,
+        entityType: 'Profile',
+        entityId: snapshot?.id || req.params.id,
+        oldValue: snapshot,
+        req,
+    });
     return ok(res, {});
 }
 
@@ -340,6 +394,13 @@ router.put('/family-trees/:id', requireAuth, wrap(async (req, res) => {
 
 router.delete('/family-trees/:id', requireAuth, wrap(async (req, res) => {
     await familyService.deleteTree(req.params.id, req.user);
+    await auditService.logAction({
+        action: 'TREE_DELETE',
+        userId: req.user.id,
+        entityType: 'FamilyTree',
+        entityId: req.params.id,
+        req,
+    });
     return ok(res, {});
 }));
 
@@ -410,6 +471,30 @@ router.delete('/family-connections/:id', requireAuth, wrap(async (req, res) => {
 /* ═══════════════════════════════════════════════════════ */
 /*  TIMELINE EVENTS                                        */
 /* ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════ */
+/*  HISTORICAL TIMELINE (общая летопись страны)            */
+/* ═══════════════════════════════════════════════════════ */
+
+router.get('/timeline/historical', wrap(async (req, res) => {
+    const data = await timelineService.listHistoricalEvents();
+    return ok(res, { data });
+}));
+
+router.post('/timeline/historical', requireAuth, wrap(async (req, res) => {
+    const data = await timelineService.createHistoricalEvent(req.body || {}, req.user);
+    return ok(res, { data }, 201);
+}));
+
+router.put('/timeline/historical/:id', requireAuth, wrap(async (req, res) => {
+    const data = await timelineService.updateHistoricalEvent(req.params.id, req.body || {}, req.user);
+    return ok(res, { data });
+}));
+
+router.delete('/timeline/historical/:id', requireAuth, wrap(async (req, res) => {
+    await timelineService.softDeleteHistoricalEvent(req.params.id, req.user);
+    return ok(res, {});
+}));
+
 router.get('/timeline-events', optionalAuth, wrap(async (req, res) => {
     const data = await timelineService.listEvents({
         treeId:    req.query.treeId    || null,

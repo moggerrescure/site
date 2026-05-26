@@ -102,6 +102,7 @@ model User {
   accessGrants           ProfileAccess[]
   editorOf               ProfileAccess[]   @relation("EditorGrants")
   uploadedMedia          Media[]
+  auditLogs              AuditLog[]
   // 👇 НОВОЕ: автор исторических/timeline-событий (аудит)
   createdTimelineEvents  TimelineEvent[]   @relation("TimelineEventAuthor")
 
@@ -491,4 +492,40 @@ model ProfileAccessCode {
   createdAt DateTime  @default(now())
 
   @@index([profileId])
+}
+
+enum AuditAction {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  PROFILE_CREATE
+  PROFILE_UPDATE
+  PROFILE_SOFT_DELETE
+  PROFILE_RESTORE
+  PROFILE_HARD_DELETE
+  TREE_CREATE
+  TREE_DELETE
+  USER_ROLE_CHANGE
+  ACCESS_CODE_GENERATE
+  ACCESS_CODE_REDEEM
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  userId      String?     // кто (null для LOGIN_FAILED по неизвестному email)
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entityType  String?     // 'Profile' | 'FamilyTree' | 'User' | 'AccessCode' | null
+  entityId    String?     // ID того, на что подействовали
+  oldValue    Json?       // прежнее состояние полей
+  newValue    Json?       // новое состояние полей
+  metadata    Json?       // { email, ip, userAgent, ... } — свободная форма
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
+  @@index([createdAt])
 }
