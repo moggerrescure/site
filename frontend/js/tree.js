@@ -587,7 +587,7 @@
         const nameParts = person.name.split('\n');
         const clanIcon  = clan.icon;
         const photoHtml = person.photoUrl
-          ? `<img src="${resolveUrl(person.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<div class=\'tree-node__avatar\'>' + PERSON_SVG + '</div>'">`
+          ? `<img src="${resolveUrl(person.photoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" data-tr-fb="tree-node">`
           : `<div class="tree-node__avatar">${personSVG}</div>`;
 
         node.innerHTML = `
@@ -1769,4 +1769,29 @@
   dataLoadPromise.then(() => {
     initPanZoom();
   });
+})();
+
+
+/* ═══════════════════════════════════════════════
+   Image error fallback delegation (заменяет inline onerror)
+   ═══════════════════════════════════════════════ */
+(function () {
+  function getSvg () {
+    try { if (typeof PERSON_SVG !== 'undefined') return PERSON_SVG; } catch (e) {}
+    return '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;fill:currentColor;opacity:0.3"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg>';
+  }
+  document.addEventListener('error', function (ev) {
+    const t = ev.target;
+    if (!t || !t.matches) return;
+    if (!t.matches('img[data-tr-fb]')) return;
+    const kind = t.getAttribute('data-tr-fb');
+    const svg = getSvg();
+    if (kind === 'tree-node')            { t.outerHTML = '<div class="tree-node__avatar">' + svg + '</div>'; }
+    else if (kind === 'person-card')     { t.outerHTML = '<div class="person-card__photo-inner">' + svg + '</div>'; }
+    else if (kind === 'person-header')   { t.outerHTML = '<div class="person-header__photo-inner">' + svg + '</div>'; }
+    else if (kind === 'featured-person') { t.outerHTML = '<div class="featured-person__avatar">' + svg + '</div>'; }
+    else if (kind === 'emoji-32')        { t.outerHTML = '<span style="font-size:32px;">👤</span>'; }
+    else if (kind === 'hide-show-next')  { t.style.display = 'none'; const n = t.nextElementSibling; if (n) n.style.display = 'inline'; }
+    else                                 { t.outerHTML = '<div>' + svg + '</div>'; }
+  }, true);
 })();

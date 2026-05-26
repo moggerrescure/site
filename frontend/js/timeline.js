@@ -303,7 +303,7 @@ function iconForHistorical(ev) {
     let headerHtml = '';
     if (e.type === 'birth' || e.type === 'death') {
       const avatar = photo
-        ? `<img class="timeline__avatar" src="${API.resolveUrl(photo)}" alt="${e.subtitle || ''}" onerror="this.outerHTML='<div class=\'timeline__avatar--empty\'><svg viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\' style=\'width:24px;height:24px;fill:currentColor;\'><circle cx=\'12\' cy=\'7\' r=\'4\'/><path d=\'M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8\'/></svg></div>'"/>`
+        ? `<img class="timeline__avatar" src="${API.resolveUrl(photo)}" alt="${e.subtitle || ''}" data-tl-avatar="1"/>`
         : `<div class="timeline__avatar--empty"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;fill:currentColor;"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>`;
       
       headerHtml = `
@@ -873,3 +873,13 @@ if (e.type === 'history') {
   render();
   buildForm();
 })();
+
+/* ═══════════════════════════════════════════════
+   Fallback для img.timeline__avatar — SVG placeholder при error
+   ═══════════════════════════════════════════════ */
+document.addEventListener('error', function (ev) {
+  const t = ev.target;
+  if (!t || !t.matches) return;
+  if (!t.matches('img.timeline__avatar[data-tl-avatar]')) return;
+  t.outerHTML = '<div class="timeline__avatar--empty"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:24px;height:24px;fill:currentColor;"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>';
+}, true);

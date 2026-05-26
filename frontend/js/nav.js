@@ -110,3 +110,33 @@
   scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
 })();
+
+/* ═══════════════════════════════════════════════
+   AUTH-GATED nav link: Корзина (видна только залогиненным)
+   ═══════════════════════════════════════════════ */
+(function injectTrashLink () {
+  function tryInject () {
+    if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
+    const list = document.querySelector('.nav .nav__links');
+    if (!list) return;
+    if (list.querySelector('a[href="trash.html"]')) return;
+    const li = document.createElement('li');
+    const a  = document.createElement('a');
+    a.href = 'trash.html';
+    a.className = 'nav__link';
+    if (location.pathname.endsWith('/trash.html')) {
+      a.classList.add('nav__link--active');
+    }
+    a.textContent = 'Корзина';
+    li.appendChild(a);
+    list.appendChild(li);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInject, { once: true });
+  } else {
+    tryInject();
+  }
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'memory_jwt') tryInject();
+  });
+})();

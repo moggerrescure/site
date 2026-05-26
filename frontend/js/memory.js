@@ -88,7 +88,7 @@
   }
 
   function photoEl(p) {
-    if (p.photo) return `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.outerHTML='<div class=\'person-card__photo-inner\'>' + PERSON_SVG + '</div>'"/>`;
+    if (p.photo) return `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" data-mem-avatar="1"/>`;
     return `<div class="person-card__photo-inner">${PERSON_SVG}</div>`;
   }
 
@@ -214,3 +214,18 @@
 
   init();
 })();
+
+
+/* ═══════════════════════════════════════════════
+   Fallback для img с data-mem-avatar — заменяем на placeholder
+   ═══════════════════════════════════════════════ */
+document.addEventListener('error', function (ev) {
+  const t = ev.target;
+  if (!t || !t.matches) return;
+  if (!t.matches('img[data-mem-avatar]')) return;
+  // Подбираем класс placeholder по родителю
+  const cls = t.className || '';
+  let placeholderClass = 'memory-card__photo--empty';
+  if (cls.includes('person')) placeholderClass = 'person__photo--empty';
+  t.outerHTML = '<div class="' + placeholderClass + '"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:48px;height:48px;fill:currentColor;opacity:0.3"><circle cx="12" cy="7" r="4"/><path d="M4 20c0-4.418 3.582-8 8-8s8 3.582 8 8"/></svg></div>';
+}, true);
