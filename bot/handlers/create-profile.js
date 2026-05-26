@@ -150,7 +150,7 @@ const createProfile = {
       }
 
       // 2. Slug
-      const slug = await generateUniqueSlug(data.fullName);
+      const slug = await generateUniqueSlug(data.fullName, prisma);
 
       // 3. Транзакция: Profile + 6 ContentBlock'ов (всегда) + цитаты (опционально)
       const profile = await prisma.$transaction(async (tx) => {
