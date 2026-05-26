@@ -96,12 +96,14 @@ model User {
   updatedAt    DateTime @updatedAt
 
   // Что человек создал/чем владеет
-  ownedProfiles Profile[]       @relation("ProfileOwner")
-  guestMemories GuestMemory[] // если оставил воспоминание авторизованным
-  candleLights  CandleLight[]
-  accessGrants  ProfileAccess[]
-  editorOf      ProfileAccess[] @relation("EditorGrants")
-  uploadedMedia Media[]
+  ownedProfiles          Profile[]         @relation("ProfileOwner")
+  guestMemories          GuestMemory[] // если оставил воспоминание авторизованным
+  candleLights           CandleLight[]
+  accessGrants           ProfileAccess[]
+  editorOf               ProfileAccess[]   @relation("EditorGrants")
+  uploadedMedia          Media[]
+  // 👇 НОВОЕ: автор исторических/timeline-событий (аудит)
+  createdTimelineEvents  TimelineEvent[]   @relation("TimelineEventAuthor")
 
   @@index([role])
 }
@@ -382,7 +384,6 @@ model FamilyConnection {
   @@index([toNodeId, type])
   @@index([fromNodeId, type])
 }
-
 // ============================================================
 //  TIMELINE / ЛЕТОПИСЬ
 // ============================================================
@@ -406,12 +407,24 @@ model TimelineEvent {
   dateAccuracy String? // "year" | "month" | "day"
   place        String?
 
+  // 👇 НОВОЕ: ключ иконки для UI (star, book, war, flag, etc.)
+  iconKey      String?
+
+  // 👇 НОВОЕ: автор события (для HISTORICAL — кто из ADMIN добавил)
+  createdById  String?
+  createdBy    User?    @relation("TimelineEventAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // 👇 НОВОЕ: soft delete (пригодится для отката исторических событий)
+  deletedAt    DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([familyNodeId, date])
   @@index([profileId, date])
   @@index([category, date])
+  @@index([createdById])
+  @@index([deletedAt])
 }
 
 // ============================================================
