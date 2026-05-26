@@ -101,7 +101,7 @@
     qs.set('page', String(state.page));
     qs.set('limit', String(state.limit));
     try {
-      const resp = await API.get('/admin/audit-logs?' + qs.toString());
+      const resp = await API.get('/api/admin/audit-logs?' + qs.toString());
       state.rows = resp.rows || (resp.data && resp.data.rows) || [];
       state.total = resp.total || (resp.data && resp.data.total) || 0;
       state.hasMore = !!(resp.hasMore || (resp.data && resp.data.hasMore));

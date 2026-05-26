@@ -108,10 +108,10 @@
   function updateAuthBtn() {
     if (API.isLoggedIn()) {
       authBtn.textContent = 'Выйти';
-      authBtn.onclick = () => { API.logout(); location.reload(); };
+      authBtn.onclick = async () => { await API.logout(); location.reload(); };
       if (mobileAuthBtn) {
         mobileAuthBtn.textContent = 'Выйти';
-        mobileAuthBtn.onclick = () => { API.logout(); location.reload(); };
+        mobileAuthBtn.onclick = async () => { await API.logout(); location.reload(); };
       }
     } else {
       authBtn.textContent = 'Войти';

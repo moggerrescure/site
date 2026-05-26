@@ -167,7 +167,15 @@ const API = (() => {
       if (r.user) localStorage.setItem('memory_user', JSON.stringify(r.user));
       return r;
     },
-    logout() {
+    async logout() {
+      // Best-effort: записать LOGOUT в AuditLog. Не блокируем выход при ошибке.
+      try {
+        if (getToken()) {
+          await this.post('/api/auth/logout', {});
+        }
+      } catch (e) {
+        console.warn('[logout] backend call failed:', e.message);
+      }
       setToken(null);
       localStorage.removeItem('memory_user');
     },
