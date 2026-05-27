@@ -591,6 +591,8 @@ if (e.type === 'history') {
   /* ── MAIN RENDER ── */
   let activeType   = 'all';
   let activeDecade = 'all';
+  let yearFrom = '';
+  let yearTo = '';
 
   function render() {
     const allEvents = buildEvents();
@@ -630,7 +632,20 @@ if (e.type === 'history') {
             </button>`).join('')}
         </div>
         <div class="tl-filters__group">
-          <span class="tl-filters__label">Период</span>
+          <span class="tl-filters__label">Эпоха</span>
+          <button class="tl-filter-btn" data-epoch="all">Все</button>
+          <button class="tl-filter-btn" data-epoch="pre1914">До 1914</button>
+          <button class="tl-filter-btn" data-epoch="ww1-ww2">1914–1945</button>
+          <button class="tl-filter-btn" data-epoch="ussr">1946–1991</button>
+          <button class="tl-filter-btn" data-epoch="post1991">1992–н.в.</button>
+          <div class="tl-range" style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span class="tl-filters__label" style="margin:0;">Годы</span>
+            <input class="tl-input" id="tl-year-from" type="number" placeholder="от" min="1600" max="2100" value="${yearFrom}" style="width:90px;"/>
+            <input class="tl-input" id="tl-year-to" type="number" placeholder="до" min="1600" max="2100" value="${yearTo}" style="width:90px;"/>
+            <button class="tl-filter-btn" id="tl-year-clear" type="button">Сброс</button>
+          </div>
+
+          <span class="tl-filters__label" style="margin-top:10px;">Декада</span>
           <button class="tl-filter-btn ${activeDecade==='all'?'tl-filter-btn--active':''}" data-fdecade="all">Все годы</button>
           ${decades.map(d => `
             <button class="tl-filter-btn ${activeDecade==d?'tl-filter-btn--active':''}" data-fdecade="${d}">
@@ -649,6 +664,30 @@ if (e.type === 'history') {
     filtersEl.querySelectorAll('[data-ftype]').forEach(btn => {
       btn.addEventListener('click', () => { activeType = btn.dataset.ftype; render(); });
     });
+    filtersEl.querySelectorAll('[data-epoch]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ep = btn.dataset.epoch;
+        if (ep === 'all') { yearFrom=''; yearTo=''; }
+        if (ep === 'pre1914') { yearFrom=''; yearTo='1913'; }
+        if (ep === 'ww1-ww2') { yearFrom='1914'; yearTo='1945'; }
+        if (ep === 'ussr') { yearFrom='1946'; yearTo='1991'; }
+        if (ep === 'post1991') { yearFrom='1992'; yearTo=''; }
+        render();
+      });
+    });
+
+    const yf = filtersEl.querySelector('#tl-year-from');
+    const yt = filtersEl.querySelector('#tl-year-to');
+    const yc = filtersEl.querySelector('#tl-year-clear');
+    const onRange = () => {
+      yearFrom = (yf && yf.value) ? String(yf.value).trim() : '';
+      yearTo   = (yt && yt.value) ? String(yt.value).trim() : '';
+      render();
+    };
+    if (yf) yf.addEventListener('input', onRange);
+    if (yt) yt.addEventListener('input', onRange);
+    if (yc) yc.addEventListener('click', () => { yearFrom=''; yearTo=''; render(); });
+
     filtersEl.querySelectorAll('[data-fdecade]').forEach(btn => {
       btn.addEventListener('click', () => { activeDecade = btn.dataset.fdecade === 'all' ? 'all' : parseInt(btn.dataset.fdecade); render(); });
     });
@@ -663,10 +702,14 @@ if (e.type === 'history') {
 
     /* Filter events */
     const filtered = allEvents.filter(e => {
+      const yf = yearFrom ? parseInt(yearFrom, 10) : null;
+      const yt = yearTo   ? parseInt(yearTo, 10)   : null;
+      const yearOk = (!yf || e.year >= yf) && (!yt || e.year <= yt);
+
       const typeOk   = activeType === 'all' || e.type === activeType;
       const decadeOk = activeDecade === 'all' || Math.floor(e.year / 10) * 10 === activeDecade;
       const historyOk = showHistory || e.type !== 'history';
-      return typeOk && decadeOk && historyOk;
+      return yearOk && typeOk && decadeOk && historyOk;
     });
 
     /* Clear and rebuild timeline items */
