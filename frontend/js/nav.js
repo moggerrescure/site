@@ -201,3 +201,32 @@
     if (e.key === 'memory_jwt') tryInject();
   });
 })();
+
+
+/* ═══════════════════════════════════════════════
+   ROLE-GATED nav link: Админ (видна только ADMIN)
+   ═══════════════════════════════════════════════ */
+(function injectAdminLink () {
+  function tryInject () {
+    if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
+    const user = API.getUser ? API.getUser() : null;
+    if (!user || user.role !== 'ADMIN') return;
+    const list = document.querySelector('.nav .nav__links');
+    if (!list) return;
+    if (list.querySelector('a[href="admin.html"]')) return;
+    const li = document.createElement('li');
+    const a  = document.createElement('a');
+    a.href = 'admin.html';
+    a.className = 'nav__link';
+    if (location.pathname.endsWith('/admin.html')) a.classList.add('nav__link--active');
+    a.textContent = 'Админ';
+    li.appendChild(a);
+    list.appendChild(li);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInject, { once: true });
+  } else { tryInject(); }
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'memory_jwt' || e.key === 'memory_user') tryInject();
+  });
+})();
