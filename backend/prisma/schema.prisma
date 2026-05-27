@@ -100,6 +100,7 @@ model User {
   guestMemories          GuestMemory[] // если оставил воспоминание авторизованным
   candleLights           CandleLight[]
   accessGrants           ProfileAccess[]
+  tgLoginTokens          TgLoginToken[]
   editorOf               ProfileAccess[]   @relation("EditorGrants")
   uploadedMedia          Media[]
   auditLogs              AuditLog[]
@@ -798,4 +799,28 @@ model LegacyClaim {
   @@index([claimantId])
   @@index([status])
   @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Telegram deep-link login (Phase 3) — без widget/домена
+// ─────────────────────────────────────────────────────────────
+enum TgLoginStatus {
+  PENDING       // создан, ждёт подтверждения через бота
+  READY         // бот подтвердил, ждёт poll'а от фронта
+  CONSUMED      // фронт забрал JWT, токен использован
+  EXPIRED       // не подтверждён в TTL (5 минут)
+}
+
+model TgLoginToken {
+  id           String        @id @default(cuid())
+  token        String        @unique
+  status       TgLoginStatus @default(PENDING)
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  expiresAt    DateTime
+  confirmedAt  DateTime?
+  consumedAt   DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([status, expiresAt])
 }

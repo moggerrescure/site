@@ -31,6 +31,18 @@ async function purgeOldAuditLogs() {
     return result.count;
 }
 
+
+const TG_LOGIN_TOKEN_RETENTION_HOURS = parseInt(process.env.TG_LOGIN_TOKEN_RETENTION_HOURS || '24', 10);
+
+async function purgeOldTgLoginTokens() {
+    const cutoff = new Date(Date.now() - TG_LOGIN_TOKEN_RETENTION_HOURS * 3600 * 1000);
+    const result = await prisma.tgLoginToken.deleteMany({
+        where: { createdAt: { lt: cutoff } },
+    });
+    console.log(`[cleanup] purged ${result.count} tg-login tokens older than ${TG_LOGIN_TOKEN_RETENTION_HOURS}h`);
+    return result.count;
+}
+
 async function runAllCleanupTasks() {
     const startedAt = Date.now();
     console.log('[cleanup] starting daily cleanup tasks...');
@@ -45,7 +57,14 @@ async function runAllCleanupTasks() {
     } catch (e) {
         console.error('[cleanup] purgeOldAuditLogs error:', e.message);
     }
-    console.log(`[cleanup] done in ${Date.now() - startedAt}ms (profiles=${profiles}, audits=${audits})`);
+
+    let tgTokens = 0;
+    try {
+        tgTokens = await purgeOldTgLoginTokens();
+    } catch (e) {
+        console.error('[cleanup] purgeOldTgLoginTokens error:', e.message);
+    }
+    console.log(`[cleanup] done in ${Date.now() - startedAt}ms (profiles=${profiles}, audits=${audits}, tgTokens=${tgTokens})`);
 }
 
 module.exports = {

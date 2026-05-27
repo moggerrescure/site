@@ -2976,3 +2976,37 @@ select option:hover {
 
 
 
+
+/* ── Telegram deep-link login button (Phase 3) ── */
+.auth-modal__divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 16px 0;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+}
+.auth-modal__divider::before,
+.auth-modal__divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+.auth-modal__divider span { padding: 0 12px; }
+.auth-modal__tg-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background: #229ED9;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-modal__tg-btn:hover:not(:disabled) { background: #1e89bd; }
+.auth-modal__tg-btn:disabled { opacity: 0.6; cursor: not-allowed; }

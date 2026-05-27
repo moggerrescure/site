@@ -18,6 +18,7 @@ const accessService   = require('./services/accessService');
 const accessCodeService = require('./services/accessCodeService');
 const auditService    = require('./services/auditService');
 const legacyContactService = require('./services/legacyContactService');
+const tgLoginService  = require('./services/tgLoginService');
 const prisma          = require('./lib/prisma');
 const pkg             = require('./package.json');
 
@@ -1350,6 +1351,35 @@ router.post('/admin/legacy/trigger-check', requireAuth, requireAdmin, wrap(async
 router.post('/admin/legacy/expire-claims', requireAuth, requireAdmin, wrap(async (req, res) => {
     const data = await legacyContactService.expireOldClaims();
     return ok(res, { data });
+}));
+
+
+/* ═══════════════════════════════════════════════════════ */
+/*  TELEGRAM DEEP-LINK LOGIN (Phase 3)                     */
+/*  Without TG Widget — works on localhost / any origin    */
+/* ═══════════════════════════════════════════════════════ */
+router.post('/auth/telegram/init', authGeneralLimiter, wrap(async (req, res) => {
+    const data = await tgLoginService.createToken();
+    return ok(res, { data });
+}));
+
+router.get('/auth/telegram/poll', authGeneralLimiter, wrap(async (req, res) => {
+    const token = (req.query.token || '').toString();
+    if (!token) return err(res, 400, 'token required');
+    const result = await tgLoginService.pollToken(token);
+    if (result.status === 'READY' && result.user) {
+        try {
+            await auditService.logAction({
+                action: 'LOGIN',
+                userId: result.user.id,
+                metadata: { method: 'telegram_deep_link' },
+                req,
+            });
+        } catch (e) {
+            console.error('[tg-login] audit failed:', e.message);
+        }
+    }
+    return ok(res, result);
 }));
 
 module.exports = router;
