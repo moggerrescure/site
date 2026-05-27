@@ -13,6 +13,12 @@ const { errorHandler, notFoundHandler } = require('./middleware/errors');
 const { buildSitemap, buildRobotsTxt } = require('./lib/sitemap');
 
 const app = express();
+// __HELMET_MOUNT__
+app.use(require("./lib/security-headers"));
+
+
+
+
 
 /* ─── Config ─────────────────────────────────────────── */
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -104,6 +110,9 @@ app.get('/robots.txt', (req, res) => {
 });
 
 /* ─── API ─────────────────────────────────────────────── */
+
+// __PASSWORD_RESET_MOUNT__
+app.use("/api/auth", require("./routes/password-reset"));
 app.use('/api', router);
 
 /* ─── Static: uploads ─────────────────────────────────── */
@@ -116,6 +125,37 @@ app.use('/uploads', express.static(UPLOADS_DIR, {
   fallthrough: true,
 }));
 
+
+/* ─── Public Open Graph entrypoint /p/:slug ───────────── */
+// Серверный рендер мета-тегов для шеринга в мессенджерах/соцсетях.
+// Для PRIVATE/PASSWORD/удалённых профилей — дефолтные мета-теги без утечки.
+const profileServiceForOg = require('./services/profileService');
+const { renderPersonHtml } = require('./lib/ogRenderer');
+
+app.get('/p/:slug', async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || '').trim();
+    if (!slug || slug.length > 200) return res.redirect(302, '/memory.html');
+
+    const proto = (req.headers['x-forwarded-proto'] || req.protocol).toString().split(',')[0].trim();
+    const host  = (req.headers['x-forwarded-host']  || req.get('host')).toString().split(',')[0].trim();
+    const canonicalUrl = `${proto}://${host}/p/${encodeURIComponent(slug)}`;
+
+    let profile = null;
+    try {
+      profile = await profileServiceForOg.getProfileDetail(slug, null, {});
+    } catch (_) {
+      profile = null; // 404 / PRIVATE / soft-deleted → дефолтные мета
+    }
+
+    const html = await renderPersonHtml(profile, canonicalUrl);
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=300');
+    return res.send(html);
+  } catch (err) {
+    return next(err);
+  }
+});
 /* ─── 404 + error handler ─────────────────────────────── */
 app.use(notFoundHandler);
 app.use(errorHandler);

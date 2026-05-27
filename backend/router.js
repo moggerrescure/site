@@ -1,6 +1,8 @@
 'use strict';
 
-const express = require('express');
+const express = require('express')
+const QRCode = require('qrcode')
+const PDFDocument = require('pdfkit');
 const multer = require('multer');
 
 const profileService  = require('./services/profileService');
@@ -28,6 +30,21 @@ const upload = multer({
     limits: { fileSize: 200 * 1024 * 1024 },
 });
 
+/**
+ * Гибкий upload: принимает файл под ЛЮБЫМ именем multipart-поля
+ * и кладёт его в req.file (совместимо с upload.single()).
+ * Нужен чтобы фронт мог слать audio под полем 'audio', video под 'video' и т.д.
+ */
+const uploadAnyAsSingle = (req, res, next) => {
+    upload.any()(req, res, (uploadErr) => {
+        if (uploadErr) return next(uploadErr);
+        if (Array.isArray(req.files) && req.files.length > 0) {
+            req.file = req.files[0];
+        }
+        next();
+    });
+};
+
 /* ─── Small helpers ───────────────────────────────────── */
 const ok  = (res, data, code = 200) => res.status(code).json({ ok: true, ...data });
 const err = (res, status, message)  => res.status(status).json({ ok: false, error: message });
@@ -44,6 +61,40 @@ function requireAdmin(req, res, next) {
   if (!req.user) return err(res, 401, 'Unauthorized');
   if (req.user.role !== 'ADMIN') return err(res, 403, 'Доступ только для администраторов');
   return next();
+}
+
+function auditWrap({ action, entityType, getEntityId, getOldValue, getNewValue, getMetadata }) {
+  return (handler) =>
+    wrap(async (req, res) => {
+      const result = await handler(req, res);
+
+      // Логируем только если есть actor и запрос реально “успешный”
+      // (ok(...) уже отдал ответ 2xx; но мы не можем надёжно вытащить status из res после send,
+      // поэтому считаем успехом факт выполнения handler без throw)
+      try {
+        if (req.user && action) {
+          await auditService.logAction({
+            action,
+            userId: req.user.id,
+            entityType: entityType || null,
+            entityId: getEntityId ? (await getEntityId(req, result)) : null,
+            oldValue: getOldValue ? (await getOldValue(req, result)) : null,
+            newValue: getNewValue ? (await getNewValue(req, result)) : null,
+            metadata: {
+              method: req.method,
+              path: req.originalUrl,
+              ...(getMetadata ? (await getMetadata(req, result)) : {}),
+            },
+            req,
+          });
+        }
+      } catch (e) {
+        // audit never blocks business flow
+        console.error('[auditWrap] failed:', e.message);
+      }
+
+      return result;
+    });
 }
 
 /* ═══════════════════════════════════════════════════════ */
@@ -200,6 +251,8 @@ router.put('/admin/users/:id/role', requireAuth, wrap(async (req, res) => {
 /*  PROFILE TRASH / RESTORE (soft delete)                  */
 /* ═══════════════════════════════════════════════════════ */
 
+
+
 router.get('/profiles/trash', requireAuth, wrap(async (req, res) => {
     const page  = parseInt(req.query.page, 10)  || 1;
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
@@ -314,6 +367,86 @@ async function deleteHandler(req, res) {
     return ok(res, {});
 }
 
+/* ── QR for memorial plates ─────────────────────────────
+   GET /api/profiles/:idOrSlug/qr.png
+   GET /api/profiles/:idOrSlug/qr.pdf
+   QR points to: {origin}/person.html?id={slugOrId}
+──────────────────────────────────────────────────────── */
+router.get('/profiles/:idOrSlug/qr.png', requireAuth, wrap(async (req, res) => {
+  const idOrSlug = req.params.idOrSlug;
+  const r = await profileService.getProfileDetail(idOrSlug, req.user, req.headers);
+  if (!r || !r.data) return res.status(404).json({ ok: false, error: 'Not found' });
+
+  const slug = r.data.slug || r.data.id || idOrSlug;
+
+  const origin = (req.headers['x-forwarded-proto'] ? String(req.headers['x-forwarded-proto']) : req.protocol) +
+    '://' + (req.headers['x-forwarded-host'] ? String(req.headers['x-forwarded-host']) : req.get('host'));
+
+  const url = origin + '/person.html?id=' + encodeURIComponent(slug);
+
+  const png = await QRCode.toBuffer(url, {
+    type: 'png',
+    errorCorrectionLevel: 'M',
+    margin: 2,
+    scale: 8,
+  });
+
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(png);
+}));
+
+router.get('/profiles/:idOrSlug/qr.pdf', requireAuth, wrap(async (req, res) => {
+  const idOrSlug = req.params.idOrSlug;
+  const r = await profileService.getProfileDetail(idOrSlug, req.user, req.headers);
+  if (!r || !r.data) return res.status(404).json({ ok: false, error: 'Not found' });
+
+  const slug = r.data.slug || r.data.id || idOrSlug;
+
+  const origin = (req.headers['x-forwarded-proto'] ? String(req.headers['x-forwarded-proto']) : req.protocol) +
+    '://' + (req.headers['x-forwarded-host'] ? String(req.headers['x-forwarded-host']) : req.get('host'));
+
+  const url = origin + '/person.html?id=' + encodeURIComponent(slug);
+
+  const qrPng = await QRCode.toBuffer(url, {
+    type: 'png',
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    scale: 10,
+  });
+
+  // A4 portrait
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="qr-${slug}.pdf"`);
+
+  const doc = new PDFDocument({ size: 'A4', margin: 48 });
+  doc.pipe(res);
+
+  const title = (r.data.fullName || r.data.name || 'Страница памяти').toString();
+  const years = (r.data.years || '').toString();
+
+  doc.fontSize(22).text(title, { align: 'center' });
+  if (years) doc.moveDown(0.3).fontSize(14).fillColor('#444').text(years, { align: 'center' }).fillColor('#000');
+  doc.moveDown(1.2);
+
+  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const qrSize = 260;
+  const x = doc.page.margins.left + (pageWidth - qrSize) / 2;
+  const y = doc.y;
+
+  doc.image(qrPng, x, y, { width: qrSize, height: qrSize });
+  doc.moveDown(18);
+
+  doc.fontSize(12).fillColor('#333').text('Сканируйте QR-код камерой телефона, чтобы открыть страницу памяти.', {
+    align: 'center',
+  });
+
+  doc.moveDown(0.6);
+  doc.fontSize(10).fillColor('#666').text(url, { align: 'center' });
+
+  doc.end();
+}));
+
 for (const base of ['/people', '/profiles']) {
     router.get   (`${base}`,         optionalAuth, wrap(listHandler));
     router.post  (`${base}`,         requireAuth,  wrap(createHandler));
@@ -341,8 +474,22 @@ router.post('/people/:id/photo', requireAuth, upload.single('photo'), wrap(async
 }));
 
 router.post('/profiles/:id/photo', requireAuth, upload.single('photo'), wrap(async (req, res) => {
-    req.url = `/people/${req.params.id}/photo`;
-    return router.handle(req, res);
+    // Идентичная логика с /people/:id/photo
+    // (раньше был хрупкий router.handle hack — multer падал на повторном парсинге)
+    if (!req.file) return err(res, 400, 'photo file required');
+    const media = await mediaService.saveFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        { kind: 'image', userId: req.user.id },
+    );
+    const profile = await profileService.resolveProfile(req.params.id);
+    if (!profile) return err(res, 404, 'profile_not_found');
+    await prisma.profile.update({
+        where: { id: profile.id },
+        data:  { coverPhotoId: media.id },
+    });
+    return ok(res, { photo: media.url, url: media.url });
 }));
 
 /* ── Access code (per-profile password) ── */
@@ -434,8 +581,8 @@ function makeUploadHandler(kind) {
 }
 
 router.post('/upload-photo', optionalAuth, upload.single('photo'), wrap(makeUploadHandler('image')));
-router.post('/upload-audio', optionalAuth, upload.single('photo'), wrap(makeUploadHandler('audio')));
-router.post('/upload-video', optionalAuth, upload.single('photo'), wrap(makeUploadHandler('video')));
+router.post('/upload-audio', optionalAuth, uploadAnyAsSingle, wrap(makeUploadHandler('audio')));
+router.post('/upload-video', optionalAuth, uploadAnyAsSingle, wrap(makeUploadHandler('video')));
 
 /* ═══════════════════════════════════════════════════════ */
 /*  FAMILY TREES                                           */
@@ -583,39 +730,7 @@ router.post('/timeline/historical', requireAuth, requireAdmin,
     return payload;
   })
 );
-function auditWrap({ action, entityType, getEntityId, getOldValue, getNewValue, getMetadata }) {
-  return (handler) =>
-    wrap(async (req, res) => {
-      const result = await handler(req, res);
 
-      // Логируем только если есть actor и запрос реально “успешный”
-      // (ok(...) уже отдал ответ 2xx; но мы не можем надёжно вытащить status из res после send,
-      // поэтому считаем успехом факт выполнения handler без throw)
-      try {
-        if (req.user && action) {
-          await auditService.logAction({
-            action,
-            userId: req.user.id,
-            entityType: entityType || null,
-            entityId: getEntityId ? (await getEntityId(req, result)) : null,
-            oldValue: getOldValue ? (await getOldValue(req, result)) : null,
-            newValue: getNewValue ? (await getNewValue(req, result)) : null,
-            metadata: {
-              method: req.method,
-              path: req.originalUrl,
-              ...(getMetadata ? (await getMetadata(req, result)) : {}),
-            },
-            req,
-          });
-        }
-      } catch (e) {
-        // audit never blocks business flow
-        console.error('[auditWrap] failed:', e.message);
-      }
-
-      return result;
-    });
-}
 router.put('/timeline/historical/:id', requireAuth, requireAdmin,
   auditWrap({
     action: 'TIMELINE_EVENT_UPDATE',
@@ -705,6 +820,7 @@ router.delete('/timeline-events/:id', requireAuth,
 /* ═══════════════════════════════════════════════════════ */
 /*  PROFILE ACCESS GRANTS                                  */
 /* ═══════════════════════════════════════════════════════ */
+
 
 router.get('/profiles/:idOrSlug/access', requireAuth, wrap(async (req, res) => {
     const data = await accessService.listGrants(req.params.idOrSlug, req.user);

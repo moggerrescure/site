@@ -23,6 +23,11 @@
 		reverse_proxy backend:3000
 	}
 
+	# === OG-рендер страниц памяти → backend ===
+	handle /p/* {
+		reverse_proxy backend:3000
+	}
+
 	# === Статика фронта + fallback на .html ===
 	handle {
 		try_files {path} {path}.html /index.html

@@ -79,6 +79,22 @@
       transform: translateY(-2px);
       box-shadow: 0 15px 30px rgba(200, 168, 75, 0.35);
     }
+    .auth-modal__forgot {
+      text-align: right;
+      margin: -0.4rem 0 0.6rem;
+    }
+    .auth-modal__forgot a {
+      color: #c8a84b;
+      font-size: 0.85rem;
+      text-decoration: none;
+      cursor: pointer;
+      opacity: 0.85;
+      transition: opacity 0.2s ease;
+    }
+    .auth-modal__forgot a:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
   `;
   document.head.appendChild(styleEl);
 
@@ -149,6 +165,7 @@
           <div class="auth-modal__field">
             <input class="auth-modal__input" type="password" name="password" placeholder="Пароль" required minlength="6" autocomplete="current-password"/>
           </div>
+          ${mode === 'login' ? '<div class="auth-modal__forgot"><a href="/forgot-password.html">Забыли пароль?</a></div>' : ''}
           <button type="submit" class="auth-modal__submit">
             ${mode === 'login' ? 'Войти' : 'Создать аккаунт'}
           </button>

@@ -3,6 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>/* __OG_NORMALIZE_PATH__ */
+    (function(){
+      try {
+        if (location.pathname.indexOf("/p/") === 0) {
+          var slug = decodeURIComponent(location.pathname.slice(3).split("/")[0]);
+          if (slug) {
+            var s = location.search ? (location.search + "&id=" + encodeURIComponent(slug))
+                                    : ("?id=" + encodeURIComponent(slug));
+            history.replaceState(null, "", "/person.html" + s + (location.hash || ""));
+          }
+        }
+      } catch(e){}
+    })();
+  </script>
   <title>Страница памяти — Память</title>
   <meta name="description" content="Биография, воспоминания близких и место захоронения."/>
   <meta property="og:title"       content="Страница памяти — Память"/>
@@ -67,6 +81,7 @@
   <script src="js/data.js"></script>
   <script src="js/person-blocks.js"></script>
   <script src="js/person.js"></script>
+  <script src="js/review-moderation.js"></script>
   <script src="js/person-edit.js"></script>
   <script src="js/person-access.js"></script>
   <script src="js/person-codes.js"></script>
