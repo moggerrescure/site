@@ -141,6 +141,21 @@
   }
 
   /* ── BUILD EVENT LIST ── */
+  
+  function normalizeEvents(events) {
+    // keep only events with valid numeric year
+    const out = [];
+    for (const e of (events || [])) {
+      const y = (typeof e.year === 'number') ? e.year : parseInt(e.year, 10);
+      if (!Number.isFinite(y)) continue;
+      const age = (typeof e.age === 'number') ? e.age : (e.age ? parseInt(e.age, 10) : null);
+      out.push({ ...e, year: y, age: Number.isFinite(age) ? age : null });
+    }
+    // ensure stable sort
+    out.sort((a,b) => a.year - b.year);
+    return out;
+  }
+
   function buildEvents() {
     const events = [];
 
@@ -541,13 +556,13 @@ if (e.type === 'history') {
     const deaths   = events.filter(e => e.type === 'death').length;
     const custom   = events.filter(e => e.type === 'custom').length;
     const histEv   = events.filter(e => e.type === 'history').length;
-    const allAges  = events.filter(e => e.age).map(e => e.age);
+    const allAges  = events.filter(e => Number.isFinite(e.age)).map(e => e.age);
     const avgAge   = allAges.length
       ? Math.round(allAges.reduce((s,a) => s+a, 0) / allAges.length)
       : '—';
     const maxAge   = allAges.length ? Math.max(...allAges) : '—';
-    const span     = events.length
-      ? events[events.length-1].year - events[0].year
+    const span     = (events.length >= 2)
+      ? (events[events.length-1].year - events[0].year)
       : 0;
 
     /* Active tree label */
@@ -584,7 +599,7 @@ if (e.type === 'history') {
 
   /* ── DECADE LIST ── */
   function getDecades(events) {
-    const d = new Set(events.map(e => Math.floor(e.year / 10) * 10));
+    const d = new Set((events || []).filter(e => Number.isFinite(e.year)).map(e => Math.floor(e.year / 10) * 10));
     return [...d].sort((a,b) => a-b);
   }
 
@@ -595,7 +610,7 @@ if (e.type === 'history') {
   let yearTo = '';
 
   function render() {
-    const allEvents = buildEvents();
+    const allEvents = normalizeEvents(buildEvents());
 
     /* Insert stats */
     let statsEl = document.getElementById('tl-stats-bar');
