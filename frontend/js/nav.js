@@ -172,3 +172,32 @@
     if (e.key === 'memory_jwt' || e.key === 'memory_user') tryInject();
   });
 })();
+
+
+/* ═══════════════════════════════════════════════
+   AUTH-GATED nav link: Настройки (видна залогиненным)
+   ═══════════════════════════════════════════════ */
+(function injectSettingsLink () {
+  function tryInject () {
+    if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
+    const list = document.querySelector('.nav .nav__links');
+    if (!list) return;
+    if (list.querySelector('a[href="legacy-contact.html"]')) return;
+    const li = document.createElement('li');
+    const a  = document.createElement('a');
+    a.href = 'legacy-contact.html';
+    a.className = 'nav__link';
+    if (location.pathname.endsWith('/legacy-contact.html')) {
+      a.classList.add('nav__link--active');
+    }
+    a.textContent = 'Настройки';
+    li.appendChild(a);
+    list.appendChild(li);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInject, { once: true });
+  } else { tryInject(); }
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'memory_jwt') tryInject();
+  });
+})();
