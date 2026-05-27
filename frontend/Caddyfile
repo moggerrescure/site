@@ -1,0 +1,56 @@
+:80 {
+	root * /srv
+	encode gzip zstd
+
+	# === API → backend ===
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# === SEO на корне → backend ===
+	handle /sitemap.xml {
+		reverse_proxy backend:3000
+	}
+	handle /robots.txt {
+		reverse_proxy backend:3000
+	}
+	handle /health {
+		reverse_proxy backend:3000
+	}
+
+	# === Загруженные файлы профилей (proxy → backend express.static) ===
+	handle /uploads/* {
+		reverse_proxy backend:3000
+	}
+
+	# === OG-рендер страниц памяти → backend ===
+	handle /p/* {
+		reverse_proxy backend:3000
+	}
+
+	# === Статика фронта + fallback на .html ===
+	handle {
+		# __CACHE_CONTROL_V1__
+		@static path *.js *.css *.png *.jpg *.jpeg *.svg *.gif *.ico *.webp *.woff *.woff2 *.ttf *.map
+		header @static Cache-Control "public, max-age=3600"
+
+		@html {
+			not path *.js *.css *.png *.jpg *.jpeg *.svg *.gif *.ico *.webp *.woff *.woff2 *.ttf *.map
+		}
+		header @html Cache-Control "no-cache, must-revalidate"
+
+		try_files {path} {path}.html /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Когда появится домен:
+# example.com {
+#     # тот же набор handle-блоков
+#     # Caddy сам получит TLS-сертификат
+# }

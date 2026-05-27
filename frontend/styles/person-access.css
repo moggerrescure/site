@@ -1,0 +1,175 @@
+/* person-access.css — UI выдачи доступа (Frontend G) */
+.access-toggle-btn {
+    margin-left: 8px;
+}
+#access-panel {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 90;
+    display: flex;
+    gap: 8px;
+}
+.access-modal {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+}
+.access-modal__backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+}
+.access-modal__panel {
+    position: relative; z-index: 1;
+    background: #1a1a1a; color: #e8e8e8;
+    border: 1px solid #c9a96e; border-radius: 14px;
+    width: min(560px, 92vw); max-height: 88vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+.access-modal__header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid #2a2a2a;
+}
+.access-modal__title { margin: 0; font-size: 18px; font-weight: 500; color: #c9a96e; }
+.access-modal__close {
+    background: transparent; border: none; color: #888; cursor: pointer;
+    font-size: 26px; line-height: 1; padding: 0 6px; transition: color 0.2s;
+}
+.access-modal__close:hover { color: #fff; }
+.access-modal__body {
+    padding: 20px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+}
+.access-form {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+}
+.access-form__input {
+    background: #0d0d0d; border: 1px solid #333; border-radius: 8px;
+    color: #fff; padding: 9px 12px; font-size: 14px;
+}
+.access-form__input:focus { outline: none; border-color: #c9a96e; }
+.access-form__checkbox {
+    display: flex; align-items: center; gap: 6px;
+    color: #bbb; font-size: 13px; white-space: nowrap; cursor: pointer;
+}
+.access-form__submit {
+    background: #c9a96e; color: #0a0a0a; border: none; border-radius: 8px;
+    padding: 9px 14px; font-weight: 500; cursor: pointer; font-size: 13px;
+    transition: background 0.2s;
+}
+.access-form__submit:hover { background: #d4b87a; }
+.access-form__submit:disabled { opacity: 0.6; cursor: wait; }
+.access-form__error {
+    color: #e57373; font-size: 13px; padding: 8px 12px;
+    background: rgba(229, 115, 115, 0.1); border-radius: 6px;
+}
+.access-list {
+    display: flex; flex-direction: column; gap: 8px;
+    border-top: 1px solid #2a2a2a; padding-top: 12px;
+}
+.access-list__loading,
+.access-list__empty {
+    color: #888; text-align: center; padding: 16px; font-size: 14px;
+}
+.access-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px; background: #141414;
+    border: 1px solid #222; border-radius: 8px;
+}
+.access-row__name { font-size: 14px; color: #e8e8e8; }
+.access-row__email { font-size: 12px; color: #888; }
+.access-row__toggle {
+    display: flex; align-items: center; gap: 6px;
+    color: #bbb; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.access-row__remove {
+    background: transparent; border: 1px solid #444; color: #888;
+    border-radius: 6px; cursor: pointer; width: 28px; height: 28px;
+    font-size: 16px; line-height: 1; transition: all 0.2s;
+}
+.access-row__remove:hover { background: #4a1a1a; color: #e57373; border-color: #e57373; }
+@media (max-width: 480px) {
+    .access-form { grid-template-columns: 1fr; }
+    .access-row { grid-template-columns: 1fr; gap: 8px; }
+}
+
+/* ═══ codes (фича H) ═══ */
+.codes-form { grid-template-columns: 1fr 180px auto; }
+.codes-form__date { font-size: 13px; }
+
+.codes-just-created {
+    background: rgba(201, 169, 110, 0.08);
+    border: 1px solid #c9a96e;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.codes-created__warn { color: #ffc879; font-size: 13px; }
+.codes-created__row {
+    display: flex; align-items: center; gap: 10px;
+}
+.codes-created__code {
+    flex: 1; background: #0d0d0d; color: #fff;
+    padding: 10px 14px; border-radius: 8px; font-family: ui-monospace, Menlo, monospace;
+    font-size: 18px; letter-spacing: 2px; user-select: all;
+}
+.codes-created__copy {
+    background: #c9a96e; color: #0a0a0a; border: none;
+    border-radius: 8px; padding: 9px 14px; cursor: pointer; font-weight: 500;
+}
+.codes-created__copy:hover { background: #d4b87a; }
+.codes-created__close {
+    background: transparent; border: 1px solid #333; color: #888;
+    border-radius: 6px; padding: 6px 10px; cursor: pointer;
+}
+.codes-created__meta { font-size: 12px; color: #888; }
+
+.codes-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px; background: #141414;
+    border: 1px solid #222; border-radius: 8px;
+}
+.codes-row__label { font-size: 14px; color: #e8e8e8; display: flex; align-items: center; gap: 8px; }
+.codes-row__meta { font-size: 12px; color: #888; margin-top: 4px; }
+.codes-row__actions { display: flex; gap: 6px; }
+.codes-row__btn {
+    background: transparent; border: 1px solid #444; color: #bbb;
+    border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px;
+    transition: all 0.2s;
+}
+.codes-row__btn--revoke:hover { border-color: #ffc879; color: #ffc879; }
+.codes-row__btn--delete {
+    width: 28px; padding: 0; height: 28px; font-size: 16px; line-height: 1;
+}
+.codes-row__btn--delete:hover { background: #4a1a1a; color: #e57373; border-color: #e57373; }
+
+.codes-badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 10px; font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.codes-badge--active  { background: rgba(76, 175, 80, 0.15); color: #81c784; }
+.codes-badge--expired { background: rgba(255, 152, 0, 0.15); color: #ffb74d; }
+.codes-badge--revoked { background: rgba(229, 115, 115, 0.15); color: #e57373; }
+
+@media (max-width: 480px) {
+    .codes-form { grid-template-columns: 1fr; }
+    .codes-row { grid-template-columns: 1fr; }
+    .codes-created__row { flex-wrap: wrap; }
+}
+
+/* ═══ override: edit-panel в правый нижний угол (не перекрывает навбар) ═══ */
+.edit-panel {
+    top: auto !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    flex-wrap: wrap;
+    max-width: calc(100vw - 48px);
+    justify-content: flex-end;
+}

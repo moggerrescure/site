@@ -1,0 +1,121 @@
+# Единый logging-конфиг: 3 файла × 10MB = максимум ~30MB логов на контейнер.
+# Применяется ко ВСЕМ сервисам через YAML-якорь.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: memory-pg
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: memory-backend
+    env_file:
+      - .env
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      SITE_URL: ${SITE_URL}
+      NODE_ENV: production
+      PORT: 3000
+    volumes:
+      - uploads:/app/uploads
+    expose:
+      - "3000"
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: memory-bot
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      BOT_TOKEN: ${BOT_TOKEN}
+      SITE_URL: ${SITE_URL}
+      NODE_ENV: production
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${COMMIT_SHA:-dev}
+    container_name: memory-frontend
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      # - "443:443"   # раскомментировать когда появится домен
+    volumes:
+      - uploads:/srv/uploads:ro
+
+  # ═══════════════════════════════════════════════════════
+  #  pg-backup: ежедневный pg_dump → ./backups + Telegram
+  # ═══════════════════════════════════════════════════════
+  pg-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: memory-pg-backup
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${BACKUP_TZ:-Europe/Minsk}
+      BACKUP_HOUR: ${BACKUP_HOUR:-03}
+      BACKUP_MINUTE: ${BACKUP_MINUTE:-00}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      # Если BACKUP_TG_TOKEN не задан в .env — берём общий BOT_TOKEN (тот же бот для бэкапов).
+      # Если нужен ОТДЕЛЬНЫЙ бот — пропиши BACKUP_TG_TOKEN в .env, он перекроет.
+      BACKUP_TG_TOKEN: ${BACKUP_TG_TOKEN:-${BOT_TOKEN:-}}
+      BACKUP_TG_CHAT_ID: ${BACKUP_TG_CHAT_ID:-}
+      BACKUP_ON_START: ${BACKUP_ON_START:-0}
+    volumes:
+      - ./backups:/backups
+
+volumes:
+  pgdata:
+  uploads:
