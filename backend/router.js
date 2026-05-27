@@ -711,20 +711,56 @@ router.get('/profiles/:idOrSlug/access', requireAuth, wrap(async (req, res) => {
     return ok(res, { data });
 }));
 
-router.post('/profiles/:idOrSlug/access', requireAuth, wrap(async (req, res) => {
+router.post('/profiles/:idOrSlug/access', requireAuth,
+  auditWrap({
+    action: 'ACCESS_GRANT_CREATE',
+    entityType: 'ProfileAccess',
+    getEntityId: async (req, _result) => req.params.idOrSlug,
+    getMetadata: async (req, result) => ({
+      profile: req.params.idOrSlug,
+      targetUserId: result?.data?.userId || null,
+    }),
+  })(async (req, res) => {
     const data = await accessService.addGrant(req.params.idOrSlug, req.body || {}, req.user);
-    return ok(res, { data }, 201);
-}));
+    const payload = { data };
+    ok(res, payload, 201);
+    return payload;
+  })
+);
 
-router.patch('/profiles/:idOrSlug/access/:userId', requireAuth, wrap(async (req, res) => {
+router.patch('/profiles/:idOrSlug/access/:userId', requireAuth,
+  auditWrap({
+    action: 'ACCESS_GRANT_UPDATE',
+    entityType: 'ProfileAccess',
+    getEntityId: async (req, _result) => req.params.idOrSlug,
+    getMetadata: async (req) => ({
+      profile: req.params.idOrSlug,
+      targetUserId: req.params.userId,
+    }),
+  })(async (req, res) => {
     const data = await accessService.updateGrant(req.params.idOrSlug, req.params.userId, req.body || {}, req.user);
-    return ok(res, { data });
-}));
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
 
-router.delete('/profiles/:idOrSlug/access/:userId', requireAuth, wrap(async (req, res) => {
+router.delete('/profiles/:idOrSlug/access/:userId', requireAuth,
+  auditWrap({
+    action: 'ACCESS_GRANT_DELETE',
+    entityType: 'ProfileAccess',
+    getEntityId: async (req, _result) => req.params.idOrSlug,
+    getMetadata: async (req) => ({
+      profile: req.params.idOrSlug,
+      targetUserId: req.params.userId,
+    }),
+  })(async (req, res) => {
     const data = await accessService.removeGrant(req.params.idOrSlug, req.params.userId, req.user);
-    return ok(res, { data });
-}));
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
 
 /* ═══════════════════════════════════════════════════════ */
 /*  PROFILE ACCESS CODES (ротируемые одноразовые)          */
@@ -735,41 +771,68 @@ router.get('/profiles/:idOrSlug/access-codes', requireAuth, wrap(async (req, res
     return ok(res, { data });
 }));
 
-router.post('/profiles/:idOrSlug/access-codes', requireAuth, wrap(async (req, res) => {
+router.post('/profiles/:idOrSlug/access-codes', requireAuth,
+  auditWrap({
+    action: 'ACCESS_CODE_GENERATE',
+    entityType: 'ProfileAccessCode',
+    getEntityId: async (_req, result) => result?.data?.id || null,
+    getMetadata: async (req, result) => ({
+      profileSlug: req.params.idOrSlug,
+      label: result?.data?.label || null,
+      expiresAt: result?.data?.expiresAt || null,
+    }),
+  })(async (req, res) => {
     const data = await accessCodeService.createCode(req.params.idOrSlug, req.body || {}, req.user);
-    await auditService.logAction({
-        action: 'ACCESS_CODE_GENERATE',
-        userId: req.user.id,
-        entityType: 'ProfileAccessCode',
-        entityId: data?.id || null,
-        metadata: { profileSlug: req.params.idOrSlug, label: data?.label || null, expiresAt: data?.expiresAt || null },
-        req,
-    });
-    return ok(res, { data }, 201);
-}));
+    const payload = { data };
+    ok(res, payload, 201);
+    return payload;
+  })
+);
 
-router.post('/profiles/:idOrSlug/access-codes/:codeId/revoke', requireAuth, wrap(async (req, res) => {
+router.post('/profiles/:idOrSlug/access-codes/:codeId/revoke', requireAuth,
+  auditWrap({
+    action: 'ACCESS_CODE_REVOKE',
+    entityType: 'ProfileAccessCode',
+    getEntityId: async (req, _result) => req.params.codeId,
+    getMetadata: async (req) => ({ profileSlug: req.params.idOrSlug }),
+  })(async (req, res) => {
     const data = await accessCodeService.revokeCode(req.params.idOrSlug, req.params.codeId, req.user);
-    return ok(res, { data });
-}));
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
 
-router.delete('/profiles/:idOrSlug/access-codes/:codeId', requireAuth, wrap(async (req, res) => {
+router.delete('/profiles/:idOrSlug/access-codes/:codeId', requireAuth,
+  auditWrap({
+    action: 'ACCESS_CODE_DELETE',
+    entityType: 'ProfileAccessCode',
+    getEntityId: async (req, _result) => req.params.codeId,
+    getMetadata: async (req) => ({ profileSlug: req.params.idOrSlug }),
+  })(async (req, res) => {
     const data = await accessCodeService.deleteCode(req.params.idOrSlug, req.params.codeId, req.user);
-    return ok(res, { data });
-}));
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
 
-router.post('/profiles/:idOrSlug/verify-access-code', optionalAuth, wrap(async (req, res) => {
+router.post('/profiles/:idOrSlug/verify-access-code', optionalAuth,
+  auditWrap({
+    action: 'ACCESS_CODE_REDEEM',
+    entityType: 'ProfileAccessCode',
+    getEntityId: async (_req, result) => result?.data?.codeId || null,
+    getMetadata: async (req, result) => ({
+      profileSlug: req.params.idOrSlug,
+      grantCreated: result?.data?.grantCreated || false,
+    }),
+  })(async (req, res) => {
     const { code } = req.body || {};
     const data = await accessCodeService.verifyAccessCode(req.params.idOrSlug, code, req.user || null);
-    await auditService.logAction({
-        action: 'ACCESS_CODE_REDEEM',
-        userId: req.user?.id || null,
-        entityType: 'ProfileAccessCode',
-        entityId: data?.codeId || null,
-        metadata: { profileSlug: req.params.idOrSlug, grantCreated: data?.grantCreated || false },
-        req,
-    });
-    return ok(res, { data });
-}));
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
 
 module.exports = router;
