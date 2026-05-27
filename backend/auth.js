@@ -305,8 +305,9 @@ function requireProfileAccess(permission = "view") {
 
 /* ═══════════════ Сервисы регистрации / логина ═══════════════ */
 
-async function registerUser({ email, password, displayName }) {
+async function registerUser({ email, password, displayName, accept, ip }) { /* __GDPR_CONSENT_V1__ */
   if (!email || !password) throw ApiError.badRequest("Email и пароль обязательны");
+  if (!accept) throw ApiError.badRequest("Необходимо согласиться с политикой обработки персональных данных");
   const normalizedEmail = String(email).trim().toLowerCase();
 
   const exists = await prisma.user.findUnique({
@@ -320,6 +321,8 @@ async function registerUser({ email, password, displayName }) {
       passwordHash: hashPassword(password),
       displayName: displayName || normalizedEmail.split("@")[0],
       role: "USER",
+      acceptedTermsAt: new Date(),
+      acceptedTermsIp: ip || null,
     },
     select: { id: true, email: true, displayName: true, role: true },
   });

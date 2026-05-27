@@ -95,6 +95,27 @@
       opacity: 1;
       text-decoration: underline;
     }
+    .auth-modal__consent {
+      margin: 0.8rem 0;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.5;
+    }
+    .auth-modal__consent label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      cursor: pointer;
+    }
+    .auth-modal__consent input[type="checkbox"] {
+      margin-top: 0.2rem;
+      flex-shrink: 0;
+      accent-color: #c8a84b;
+    }
+    .auth-modal__consent a {
+      color: #c8a84b;
+      text-decoration: underline;
+    }
   `;
   document.head.appendChild(styleEl);
 
@@ -166,7 +187,8 @@
             <input class="auth-modal__input" type="password" name="password" placeholder="Пароль" required minlength="6" autocomplete="current-password"/>
           </div>
           ${mode === 'login' ? '<div class="auth-modal__forgot"><a href="/forgot-password.html">Забыли пароль?</a></div>' : ''}
-          <button type="submit" class="auth-modal__submit">
+          ${mode === 'register' ? `<div class="auth-modal__consent"><label><input type="checkbox" name="accept" id="auth-accept" required/><span>Я согласен с <a href="/privacy.html" target="_blank">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank">Пользовательским соглашением</a></span></label></div>` : ''}
+          /* __CONSENT_CHECKBOX_V1__ */ <button type="submit" class="auth-modal__submit">
             ${mode === 'login' ? 'Войти' : 'Создать аккаунт'}
           </button>
           <p class="auth-modal__error" id="auth-error"></p>
@@ -210,7 +232,10 @@
         if (mode === 'login') {
           await API.login(fd.get('email'), fd.get('password'));
         } else {
-          await API.register(fd.get('name'), fd.get('email'), fd.get('password'));
+          if (!fd.get('accept')) {
+            throw new Error('Необходимо согласиться с политикой обработки персональных данных');
+          }
+          await API.register(fd.get('name'), fd.get('email'), fd.get('password'), true);
         }
         closeModal();
         updateAuthBtn();

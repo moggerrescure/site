@@ -137,12 +137,17 @@ router.get('/health', async (req, res) => {
 /*  AUTH                                                   */
 /* ═══════════════════════════════════════════════════════ */
 router.post('/auth/register', registerLimiter, wrap(async (req, res) => {
-    const { name, displayName, email, password } = req.body || {};
+    /* __GDPR_ROUTER_V1__ */
+    const { name, displayName, email, password, accept } = req.body || {};
     if (!email || !password) return err(res, 400, 'email and password required');
+    if (!accept) return err(res, 400, 'consent required: accept must be true');
+    const clientIp = req.ip || ((req.headers['x-forwarded-for'] || '').split(',')[0] || '').trim() || null;
     const result = await auth.registerUser({
         email,
         password,
         displayName: displayName || name || email.split('@')[0],
+        accept: true,
+        ip: clientIp,
     });
     return ok(res, result, 201);
 }));

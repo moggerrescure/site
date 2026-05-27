@@ -13,6 +13,13 @@ const { errorHandler, notFoundHandler } = require('./middleware/errors');
 const { buildSitemap, buildRobotsTxt } = require('./lib/sitemap');
 
 const app = express();
+
+// __TRUST_PROXY_V1__
+// Caddy is the single trusted reverse proxy in front of Express.
+// Without this, req.ip is the docker-network IP and all rate-limiters
+// + acceptedTermsIp become useless (shared across all clients).
+app.set('trust proxy', 1);
+
 // __HELMET_MOUNT__
 app.use(require("./lib/security-headers"));
 

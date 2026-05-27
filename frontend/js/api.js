@@ -168,8 +168,8 @@ const API = (() => {
       if (r.user) localStorage.setItem('memory_user', JSON.stringify(r.user));
       return r;
     },
-    async register(name, email, password) {
-      const r = await req('POST', '/api/auth/register', { name, email, password });
+    async register(name, email, password, accept) {
+      const r = await req('POST', '/api/auth/register', { name, email, password, accept });
       setToken(r.token);
       if (r.user) localStorage.setItem('memory_user', JSON.stringify(r.user));
       return r;

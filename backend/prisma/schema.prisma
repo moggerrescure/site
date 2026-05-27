@@ -108,6 +108,8 @@ model User {
 
   @@index([role])
   passwordResetTokens PasswordResetToken[]
+  acceptedTermsAt   DateTime?
+  acceptedTermsIp   String?
 }
 
 // ============================================================
