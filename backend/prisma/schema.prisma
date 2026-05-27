@@ -174,6 +174,7 @@ model Profile {
   disputes      ProfileDispute[]
   mergeSources  ProfileMergeRequest[] @relation("MergeSource")
   mergeTargets  ProfileMergeRequest[] @relation("MergeTarget")
+  disputesAsDuplicate ProfileDispute[]      @relation("DisputeDuplicateOf")
 
   @@index([ownerId])
   @@index([visibility])
@@ -661,6 +662,10 @@ model ProfileDispute {
   resolution  String?       @db.Text
   resolvedAt  DateTime?
 
+  // Если reason = DUPLICATE — какой профиль является оригиналом
+  duplicateOfProfileId String?
+  duplicateOfProfile   Profile? @relation("DisputeDuplicateOf", fields: [duplicateOfProfileId], references: [id], onDelete: SetNull)
+
   // Если reason = DUPLICATE — линкуется к merge request 1:1
   mergeRequestId String?              @unique
   mergeRequest   ProfileMergeRequest? @relation(fields: [mergeRequestId], references: [id], onDelete: SetNull)
@@ -672,6 +677,7 @@ model ProfileDispute {
   @@index([reporterId])
   @@index([status])
   @@index([reason])
+  @@index([duplicateOfProfileId])
   @@index([createdAt])
 }
 

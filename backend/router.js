@@ -7,6 +7,7 @@ const multer = require('multer');
 
 const profileService  = require('./services/profileService');
 const reviewService   = require('./services/reviewService');
+const disputeService = require('./services/disputeService');
 const candleService   = require('./services/candleService');
 const codeService     = require('./services/codeService');
 const mediaService    = require('./services/mediaService');
@@ -955,5 +956,118 @@ router.post('/profiles/:idOrSlug/verify-access-code', optionalAuth,
     return payload;
   })
 );
+
+/* ═══════════════════════════════════════════════════════ */
+/*  DISPUTES                                               */
+/* ═══════════════════════════════════════════════════════ */
+
+// Создать спор на профиль
+router.post('/profiles/:idOrSlug/disputes', requireAuth,
+  auditWrap({
+    action: 'DISPUTE_CREATE',
+    entityType: 'ProfileDispute',
+    getEntityId: async (_req, result) => result?.data?.id || null,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id,
+      profileId: result.data.profileId,
+      reason: result.data.reason,
+      status: result.data.status,
+      duplicateOfProfileId: result.data.duplicateOfProfileId,
+    } : null,
+    getMetadata: async (req) => ({ idOrSlug: req.params.idOrSlug }),
+  })(async (req, res) => {
+    const data = await disputeService.create(req.params.idOrSlug, req.body || {}, req.user);
+    const payload = { data };
+    ok(res, payload, 201);
+    return payload;
+  })
+);
+
+// Список споров по профилю
+router.get('/profiles/:idOrSlug/disputes', requireAuth, wrap(async (req, res) => {
+  const data = await disputeService.listForProfile(
+    req.params.idOrSlug,
+    req.user,
+    { status: req.query.status }
+  );
+  return ok(res, { data });
+}));
+
+// Мои поданные споры
+router.get('/disputes/me', requireAuth, wrap(async (req, res) => {
+  const data = await disputeService.listMine(req.user);
+  return ok(res, { data });
+}));
+
+// Все споры (ADMIN)
+router.get('/disputes', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const data = await disputeService.listAll(req.user, {
+    status: req.query.status,
+    reason: req.query.reason,
+    page:   req.query.page,
+    limit:  req.query.limit,
+  });
+  return ok(res, data);
+}));
+
+// Детали спора
+router.get('/disputes/:id', requireAuth, wrap(async (req, res) => {
+  const data = await disputeService.getById(req.params.id, req.user);
+  return ok(res, { data });
+}));
+
+// Отозвать (reporter)
+router.post('/disputes/:id/withdraw', requireAuth,
+  auditWrap({
+    action: 'DISPUTE_WITHDRAW',
+    entityType: 'ProfileDispute',
+    getEntityId: async (req) => req.params.id,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id, status: result.data.status,
+    } : null,
+  })(async (req, res) => {
+    const data = await disputeService.withdraw(req.params.id, req.user);
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
+
+// Изменить статус (ADMIN: OPEN → UNDER_REVIEW)
+router.patch('/disputes/:id/status', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'DISPUTE_UPDATE_STATUS',
+    entityType: 'ProfileDispute',
+    getEntityId: async (req) => req.params.id,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id, status: result.data.status,
+    } : null,
+  })(async (req, res) => {
+    const data = await disputeService.updateStatus(req.params.id, req.body?.status, req.user);
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
+
+// Resolve (ADMIN)
+router.post('/disputes/:id/resolve', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'DISPUTE_RESOLVE',
+    entityType: 'ProfileDispute',
+    getEntityId: async (req) => req.params.id,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id,
+      status: result.data.status,
+      resolution: result.data.resolution,
+    } : null,
+  })(async (req, res) => {
+    const data = await disputeService.resolve(req.params.id, req.body || {}, req.user);
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
+
 
 module.exports = router;
