@@ -379,10 +379,84 @@ const currentTreeId = urlParams.get('tree') || 'default';
   if (_urlTree && _urlTree !== 'default') return;
 
   /* ── DOM SETUP ── */
+
+  async function ensureTreeSelector() {
+    try {
+      if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
+
+      const treesRes = await fetch(`${BASE}/api/family-trees`, {
+        headers: API.getToken ? (API.getToken() ? { 'Authorization': 'Bearer ' + API.getToken() } : {}) : {}
+      }).catch(() => null);
+
+      const treesJson = treesRes ? await treesRes.json().catch(() => null) : null;
+      const trees = (treesJson && (treesJson.data || treesJson.trees)) || [];
+      if (!Array.isArray(trees) || trees.length === 0) return;
+
+      // auto redirect if no tree param
+      const urlParams = new URLSearchParams(window.location.search);
+      const t = urlParams.get('tree');
+      const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
+
+      if (!t) {
+        const target = (user && user.rootTreeId) ? user.rootTreeId : (trees[0].id || trees[0].treeId);
+        if (target) {
+          window.location.replace('family-tree.html?tree=' + encodeURIComponent(target));
+          return;
+        }
+      }
+
+      // inject select near buttons
+      if (document.getElementById('tree-select')) return;
+      const legend = document.querySelector('.clan-legend-wrap');
+      if (!legend) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'tree-select-wrap';
+      wrap.style.cssText = 'display:flex;justify-content:center;gap:10px;align-items:center;margin-top:10px;';
+
+      const label = document.createElement('span');
+      label.textContent = 'Дерево:';
+      label.style.cssText = 'opacity:0.8;font-size:14px;';
+
+      const sel = document.createElement('select');
+      sel.id = 'tree-select';
+      sel.className = 'tree-select';
+      sel.style.cssText = 'min-width:220px;padding:8px 10px;border-radius:10px;';
+
+      const current = urlParams.get('tree') || 'default';
+      sel.innerHTML = trees.map(tr => {
+        const id = tr.id || tr.treeId || '';
+        const name = tr.name || 'Без названия';
+        const selected = (id === current) ? 'selected' : '';
+        return `<option value="${String(id).replace(/"/g,'&quot;')}" ${selected}>${String(name).replace(/</g,'&lt;')}</option>`;
+      }).join('');
+
+      sel.addEventListener('change', () => {
+        const id = sel.value;
+        if (!id) return;
+        window.location.href = 'family-tree.html?tree=' + encodeURIComponent(id);
+      });
+
+      wrap.appendChild(label);
+      wrap.appendChild(sel);
+      legend.appendChild(wrap);
+    } catch (e) {
+      console.warn('[tree] selector init failed:', e.message);
+    }
+  }
+
   const wrapper = document.getElementById('tree-wrapper');
   const svgEl   = document.getElementById('tree-threads');
   const gensEl  = document.getElementById('tree-generations');
   if (!wrapper || !svgEl || !gensEl) return;
+
+    // Open linked profile on double click
+    wrapper.addEventListener('dblclick', (e) => {
+      const card = e.target && e.target.closest ? e.target.closest('.tree-node') : null;
+      if (!card) return;
+      const pid = card.dataset && (card.dataset.personPageId || card.dataset.profileSlug || card.dataset.profileId);
+      if (pid) window.location.href = 'person.html?id=' + encodeURIComponent(pid);
+    });
 
   const nodeEls   = {};
   const threadEls = {};
@@ -420,7 +494,9 @@ const currentTreeId = urlParams.get('tree') || 'default';
   }
 
   // Asynchronous Loader from database
-  async function loadDataFromDb() {
+  ensureTreeSelector();
+
+    async function loadDataFromDb() {
     try {
       const clansRes = await fetch(`${BASE}/api/family-clans?treeId=${encodeURIComponent(currentTreeId)}`);
       const nodesRes = await fetch(`${BASE}/api/family-nodes?treeId=${encodeURIComponent(currentTreeId)}`);
@@ -498,7 +574,7 @@ const currentTreeId = urlParams.get('tree') || 'default';
               years: n.years || '',
               spouseOf: n.spouseId || null,
               clanId: n.clanId || 'ivanov',
-              personPageId: n.linkedProfileId || null,
+              personPageId: n.profileSlug || n.profileId || null,
               photoUrl: n.photoUrl || ''
             })),
             childrenMap
