@@ -1211,7 +1211,6 @@ router.post('/merge-requests/:id/execute', requireAuth, requireAdmin,
   }))
 );
 
-module.exports = router;
 
 /* ═══════════════════════════════════════════════════════════════
    LEGACY CONTACT (Task 5.4) — Phase 2.3
@@ -1352,3 +1351,5 @@ router.post('/admin/legacy/expire-claims', requireAuth, requireAdmin, wrap(async
     const data = await legacyContactService.expireOldClaims();
     return ok(res, { data });
 }));
+
+module.exports = router;
