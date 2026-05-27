@@ -102,4 +102,75 @@ async function saveFile(buffer, originalName, mimetype, opts = {}) {
   return media;
 }
 
-module.exports = { saveFile, UPLOAD_DIR };
+/**
+ * Удалить физические файлы по URL'ам (best-effort, не throw).
+ * /uploads/* -> fs.unlink в UPLOAD_DIR
+ * else if s3.isEnabled() -> s3.deleteByUrl
+ */
+async function deleteMediaFiles(urls) {
+    const stats = { r2: 0, local: 0, skipped: 0, failed: 0 };
+    for (const url of urls || []) {
+        if (!url || typeof url !== 'string') { stats.skipped++; continue; }
+        try {
+            if (url.startsWith('/uploads/')) {
+                const filename = path.basename(url);
+                const filePath = path.join(UPLOAD_DIR, filename);
+                try {
+                    await fs.promises.unlink(filePath);
+                    stats.local++;
+                } catch (e) {
+                    if (e && e.code === 'ENOENT') stats.skipped++;
+                    else { stats.failed++; console.warn('[mediaService] unlink failed:', filePath, e && e.message); }
+                }
+                continue;
+            }
+            if (s3.isEnabled()) {
+                const ok = await s3.deleteByUrl(url);
+                if (ok) stats.r2++; else stats.skipped++;
+                continue;
+            }
+            stats.skipped++;
+        } catch (e) {
+            stats.failed++;
+            console.warn('[mediaService] deleteMediaFiles error:', url, e && e.message);
+        }
+    }
+    return stats;
+}
+
+async function purgeOrphanMedia({ limit = 1000 } = {}) {
+    const candidates = await prisma.media.findMany({
+        take: limit,
+        select: {
+            id: true,
+            url: true,
+            profileCover:      { select: { id: true } },
+            blockPhotos:       { select: { id: true }, take: 1 },
+            nodePhotos:        { select: { id: true }, take: 1 },
+            galleryItems:      { select: { id: true }, take: 1 },
+            memoryAttachments: { select: { id: true }, take: 1 },
+        },
+    });
+    const orphan = candidates.filter((m) =>
+        !m.profileCover &&
+        (m.blockPhotos || []).length === 0 &&
+        (m.nodePhotos || []).length === 0 &&
+        (m.galleryItems || []).length === 0 &&
+        (m.memoryAttachments || []).length === 0
+    );
+    if (orphan.length === 0) return { mediaRows: 0, files: { r2: 0, local: 0, skipped: 0, failed: 0 } };
+    const urls = orphan.map((m) => m.url);
+    const ids = orphan.map((m) => m.id);
+    const fileStats = await deleteMediaFiles(urls);
+    let mediaRows = 0;
+    try {
+        const res = await prisma.media.deleteMany({ where: { id: { in: ids } } });
+        mediaRows = res.count;
+    } catch (e) {
+        console.warn('[mediaService] purgeOrphanMedia deleteMany failed:', e && e.message);
+    }
+    console.log('[mediaService] purgeOrphanMedia: rows=' + mediaRows, 'r2=' + fileStats.r2, 'local=' + fileStats.local, 'skipped=' + fileStats.skipped, 'failed=' + fileStats.failed);
+    return { mediaRows, files: fileStats };
+}
+
+module.exports = { saveFile, UPLOAD_DIR, deleteMediaFiles, purgeOrphanMedia };

@@ -124,6 +124,9 @@ async function main() {
     return;
   }
 
+  const urls = orphanWithDisk.map((m) => m.url).filter(Boolean);
+  const fileStats = await mediaService.deleteMediaFiles(urls);
+  console.log('[cleanup:photos] files: r2=' + fileStats.r2, 'local=' + fileStats.local, 'skipped=' + fileStats.skipped, 'failed=' + fileStats.failed);
   const res = await prisma.media.deleteMany({ where: { id: { in: ids } } });
   console.log('[cleanup:photos] deleted media rows:', res.count);
 

@@ -1,6 +1,7 @@
 'use strict';
 
 const prisma = require('../lib/prisma');
+const mediaService = require('../services/mediaService');
 
 const PROFILE_HARD_DELETE_DAYS = parseInt(process.env.PROFILE_HARD_DELETE_DAYS || '30', 10);
 const AUDIT_RETENTION_DAYS     = parseInt(process.env.AUDIT_RETENTION_DAYS     || '90', 10);
@@ -15,6 +16,11 @@ async function hardDeleteOldSoftDeletedProfiles() {
     const result = await prisma.profile.deleteMany({
         where: { deletedAt: { lt: cutoff } },
     });
+    try {
+        await mediaService.purgeOrphanMedia({ limit: 5000 });
+    } catch (e) {
+        console.warn('[cleanup] purgeOrphanMedia failed:', e && e.message);
+    }
     console.log(`[cleanup] hard-deleted ${result.count} profiles older than ${PROFILE_HARD_DELETE_DAYS}d (cutoff=${cutoff.toISOString()})`);
     return result.count;
 }
