@@ -445,40 +445,53 @@ router.get('/family-trees', optionalAuth, wrap(async (req, res) => {
     return ok(res, { data });
 }));
 
-router.post('/family-trees', requireAuth, wrap(async (req, res) => {
+router.post('/family-trees', requireAuth,
+  auditWrap({
+    action: 'TREE_CREATE',
+    entityType: 'FamilyTree',
+    getEntityId: async (_req, result) => result?.data?.id || null,
+    getNewValue: async (_req, result) =>
+      result?.data ? { id: result.data.id, name: result.data.name, visibility: result.data.visibility } : null,
+  })(async (req, res) => {
     const data = await familyService.createTree(req.body || {}, req.user);
-    await auditService.logAction({
-        action: 'TREE_CREATE',
-        userId: req.user.id,
-        entityType: 'FamilyTree',
-        entityId: data?.id || null,
-        newValue: { id: data?.id, name: data?.name, visibility: data?.visibility },
-        req,
-    });
-    return ok(res, { data }, 201);
-}));
+    const payload = { data };
+    ok(res, payload, 201);
+    return payload;
+  })
+);
 
 router.get('/family-trees/:id', optionalAuth, wrap(async (req, res) => {
     const data = await familyService.getTree(req.params.id, req.user);
     return ok(res, { data });
 }));
 
-router.put('/family-trees/:id', requireAuth, wrap(async (req, res) => {
+router.put('/family-trees/:id', requireAuth,
+  auditWrap({
+    action: 'TREE_UPDATE',
+    entityType: 'FamilyTree',
+    getEntityId: async (req, _result) => req.params.id,
+    getNewValue: async (_req, result) =>
+      result?.data ? { id: result.data.id, name: result.data.name, visibility: result.data.visibility } : null,
+  })(async (req, res) => {
     const data = await familyService.updateTree(req.params.id, req.body || {}, req.user);
-    return ok(res, { data });
-}));
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
 
-router.delete('/family-trees/:id', requireAuth, wrap(async (req, res) => {
+router.delete('/family-trees/:id', requireAuth,
+  auditWrap({
+    action: 'TREE_DELETE',
+    entityType: 'FamilyTree',
+    getEntityId: async (req, _result) => req.params.id,
+  })(async (req, res) => {
     await familyService.deleteTree(req.params.id, req.user);
-    await auditService.logAction({
-        action: 'TREE_DELETE',
-        userId: req.user.id,
-        entityType: 'FamilyTree',
-        entityId: req.params.id,
-        req,
-    });
-    return ok(res, {});
-}));
+    const payload = {};
+    ok(res, payload);
+    return payload;
+  })
+);
 
 /* ── Clans ── */
 router.get('/family-clans', requireAuth, wrap(async (req, res) => {
