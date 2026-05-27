@@ -6,6 +6,7 @@
 const crypto = require("node:crypto");
 const prisma = require("./lib/prisma");
 const { ApiError } = require("./middleware/errors");
+const lastSeen = require("./middleware/lastSeen");
 
 /* ── Конфиг ───────────────────────────────────────────────── */
 const JWT_SECRET =
@@ -198,6 +199,7 @@ async function requireAuth(req, res, next) {
 
     req.user = user;
     req.token = token;
+    lastSeen.touch(user.id);
     next();
   } catch (err) {
     console.error("[auth] requireAuth error:", err);
@@ -218,6 +220,7 @@ async function optionalAuth(req, res, next) {
       if (user) {
         req.user = user;
         req.token = token;
+        lastSeen.touch(user.id);
       }
     }
     next();

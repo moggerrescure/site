@@ -17,6 +17,7 @@ const timelineService = require('./services/timelineService');
 const accessService   = require('./services/accessService');
 const accessCodeService = require('./services/accessCodeService');
 const auditService    = require('./services/auditService');
+const legacyContactService = require('./services/legacyContactService');
 const prisma          = require('./lib/prisma');
 const pkg             = require('./package.json');
 
@@ -1211,3 +1212,143 @@ router.post('/merge-requests/:id/execute', requireAuth, requireAdmin,
 );
 
 module.exports = router;
+
+/* ═══════════════════════════════════════════════════════════════
+   LEGACY CONTACT (Task 5.4) — Phase 2.3
+   ═══════════════════════════════════════════════════════════════ */
+
+// ───── Owner flow ─────
+router.get('/legacy-contact', requireAuth, wrap(async (req, res) => {
+    const data = await legacyContactService.getContact(req.user.id);
+    return ok(res, { data });
+}));
+
+router.put('/legacy-contact', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_INVITE_SEND',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+        getNewValue: (req) => req._auditNewValue,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.setContact({
+            ownerId:        req.user.id,
+            heirEmail:      req.body?.heirEmail,
+            heirName:       req.body?.heirName,
+            inactivityDays: req.body?.inactivityDays,
+            message:        req.body?.message,
+        });
+        req._auditEntityId = data?.id;
+        req._auditNewValue = { heirEmail: data?.heirEmail, heirName: data?.heirName, inactivityDays: data?.inactivityDays, status: data?.status };
+        return ok(res, { data });
+    }))
+);
+
+router.post('/legacy-contact/resend', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_INVITE_SEND',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.resendInvite(req.user.id);
+        req._auditEntityId = data?.id;
+        return ok(res, { data });
+    }))
+);
+
+router.delete('/legacy-contact', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_REVOKE',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.revokeContact(req.user.id);
+        req._auditEntityId = data?.id;
+        return ok(res, { data });
+    }))
+);
+
+// ───── Heir flow ─────
+router.post('/legacy-invites/accept', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_INVITE_ACCEPT',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.acceptInvite({
+            inviteToken: req.body?.inviteToken,
+            claimantId:  req.user.id,
+        });
+        req._auditEntityId = data?.id;
+        return ok(res, { data });
+    }))
+);
+
+// ───── Claims (heir + admin) ─────
+router.post('/legacy-contacts/:id/claims', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CLAIM_CREATE',
+        entityType: 'LegacyClaim',
+        getEntityId: (req) => req._auditEntityId,
+        getNewValue: (req) => req._auditNewValue,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.createClaim({
+            legacyContactId: req.params.id,
+            claimantId:      req.user.id,
+            evidence:        req.body?.evidence,
+        });
+        req._auditEntityId = data?.id;
+        req._auditNewValue = { legacyContactId: data?.legacyContactId, claimantId: data?.claimantId, status: data?.status };
+        return ok(res, { data }, 201);
+    }))
+);
+
+router.get('/legacy-claims/me', requireAuth, wrap(async (req, res) => {
+    const rows = await legacyContactService.listMyClaims(req.user.id);
+    return ok(res, { rows });
+}));
+
+router.get('/legacy-claims/:id', requireAuth, wrap(async (req, res) => {
+    const data = await legacyContactService.getClaim(req.params.id, req.user);
+    return ok(res, { data });
+}));
+
+// ───── Admin endpoints ─────
+router.get('/admin/legacy-claims', requireAuth, requireAdmin, wrap(async (req, res) => {
+    const rows = await legacyContactService.listPendingClaims();
+    return ok(res, { rows });
+}));
+
+router.post('/admin/legacy-claims/:id/approve', requireAuth, requireAdmin,
+    auditWrap({
+        action: 'LEGACY_CLAIM_APPROVE',
+        entityType: 'LegacyClaim',
+        getEntityId: (req) => req.params.id,
+        getMetadata: (req) => req._auditMetadata,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.approveClaim(req.params.id, req.user, req.body?.notes);
+        req._auditMetadata = { profilesTransferred: data?.profilesTransferred };
+        return ok(res, { data });
+    }))
+);
+
+router.post('/admin/legacy-claims/:id/reject', requireAuth, requireAdmin,
+    auditWrap({
+        action: 'LEGACY_CLAIM_REJECT',
+        entityType: 'LegacyClaim',
+        getEntityId: (req) => req.params.id,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.rejectClaim(req.params.id, req.user, req.body?.notes);
+        return ok(res, { data });
+    }))
+);
+
+// ───── Admin manual cron triggers (для smoke tests + ops) ─────
+router.post('/admin/legacy/trigger-check', requireAuth, requireAdmin, wrap(async (req, res) => {
+    const data = await legacyContactService.triggerInactive();
+    return ok(res, { data });
+}));
+
+router.post('/admin/legacy/expire-claims', requireAuth, requireAdmin, wrap(async (req, res) => {
+    const data = await legacyContactService.expireOldClaims();
+    return ok(res, { data });
+}));
