@@ -95,6 +95,9 @@
             <button type="button" class="btn btn--primary trash-restore-btn" data-slug="${escapeHtml(slug)}">
               Восстановить
             </button>
+            <button type="button" class="btn btn--ghost trash-hard-delete-btn" data-slug="${escapeHtml(slug)}">
+              Удалить навсегда
+            </button>
           </div>
         </div>
       </article>
@@ -127,6 +130,9 @@
     document.querySelectorAll('.trash-restore-btn').forEach(btn => {
       btn.addEventListener('click', onRestore);
     });
+    document.querySelectorAll('.trash-hard-delete-btn').forEach(btn => {
+      btn.addEventListener('click', onHardDelete);
+    });
     document.querySelectorAll('[data-pg]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const dir = e.currentTarget.dataset.pg;
@@ -138,7 +144,37 @@
     });
   }
 
-  async function onRestore (e) {
+    async function onHardDelete (e) {
+    const btn = e.currentTarget;
+    const slug = btn.dataset.slug;
+    if (!slug) return;
+
+    if (!confirm('Удалить страницу навсегда? Это действие нельзя отменить.')) return;
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Удаляем…';
+
+    try {
+      await API.del(`/api/profiles/${encodeURIComponent(slug)}?hard=true`);
+      const card = btn.closest('.trash-card');
+      if (card) {
+        card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => loadTrash(), 320);
+      } else {
+        loadTrash();
+      }
+    } catch (err) {
+      console.error('[trash] hard delete error:', err);
+      alert('Не удалось удалить навсегда: ' + (err.message || 'неизвестная ошибка'));
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+async function onRestore (e) {
     const btn = e.currentTarget;
     const slug = btn.dataset.slug;
     if (!slug) return;
