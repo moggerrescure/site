@@ -1,0 +1,33 @@
+# Этот файл compose подхватывает АВТОМАТИЧЕСКИ, если он рядом с docker-compose.yml
+# Применяется ТОЛЬКО в dev (когда запускаешь `docker compose up` без -f).
+# В проде запускай: docker compose -f docker-compose.yml up -d  (без override)
+
+services:
+  db:
+    ports:
+      - "5433:5432"     # доступ к Postgres с хоста через DBeaver/psql
+
+  backend:
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3000:3000"     # прямой доступ к API минуя Caddy
+    # Hot reload: Node 24 нативный --watch перезапускает процесс при изменении .js
+    # migrate deploy остаётся, т.к. контейнер может стартовать после новых миграций.
+    command: sh -c "npx -y prisma@6.19.3 migrate deploy && node --watch index.js"
+    volumes:
+      # Bind весь backend исходник с хоста → правки на MacBook сразу видны в контейнере.
+      # Заменяет COPY-baked /app, поэтому никаких stale schema.prisma и т.п.
+      - ./backend:/app
+      # Анонимный volume защищает контейнерный node_modules от перезаписи хостовыми.
+      # На MacBook node_modules может быть под Darwin/arm64 (bcrypt, sharp с native бинарями),
+      # в контейнере — под Linux. Без этого volume bind ./backend:/app сломал бы запуск.
+      - /app/node_modules
+      # Bind-mount uploads — формально избыточен после ./backend:/app, но оставляем для ясности
+      # и совместимости с frontend сервисом, который использует тот же путь.
+      - ./backend/uploads:/app/uploads
+
+  frontend:
+    volumes:
+      # Тот же путь, read-only — Caddy отдаёт статику /uploads/* напрямую.
+      - ./backend/uploads:/srv/uploads:ro

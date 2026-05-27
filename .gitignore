@@ -17,7 +17,6 @@ Thumbs.db
 
 # === Docker ===
 volumes/
-docker-compose.override.yml
 
 # === IDE ===
 .kiro/
@@ -49,3 +48,7 @@ backend/uploads/*
 # Backup artifacts
 *.bak
 deploy.log
+
+# Local manual backups
+backup/manual-*.sql.gz
+backup/predeploy_*.sql.gz
