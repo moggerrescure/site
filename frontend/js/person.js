@@ -53,7 +53,92 @@
   }
 
   /* ── LOAD ── */
+
+/* ── PASSWORD access (profiles) ── */
+function ssKey() { return 'profile_access_code:' + id; }
+
+async function promptProfileAccessCode() {
+  return new Promise((resolve, reject) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'code-modal-overlay';
+    overlay.innerHTML = `
+      <div class="code-modal" role="dialog" aria-modal="true">
+        <div class="code-modal__header">
+          <div class="code-modal__title">Код доступа</div>
+          <button class="code-modal__close" id="code-close" aria-label="Закрыть">×</button>
+        </div>
+        <div class="code-modal__body">
+          <p class="code-modal__hint">Введите код доступа к странице.</p>
+          <input id="code-input" class="code-modal__input" placeholder="8 символов" autocomplete="one-time-code" />
+          <div class="code-modal__error" id="code-error"></div>
+          <div class="code-modal__actions">
+            <button class="code-modal__submit" id="code-submit" disabled>Подтвердить</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const input = document.getElementById('code-input');
+    const errEl = document.getElementById('code-error');
+    const submitBtn = document.getElementById('code-submit');
+    const closeBtn = document.getElementById('code-close');
+
+    setTimeout(() => input && input.focus(), 60);
+
+    function close() { overlay.remove(); reject(new Error('cancelled')); }
+
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function onEsc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+    });
+
+    input.addEventListener('input', () => {
+      const len = input.value.trim().length;
+      submitBtn.disabled = len < 4;
+      input.classList.remove('code-modal__input--error');
+      errEl.textContent = '';
+    });
+
+    submitBtn.addEventListener('click', () => {
+      const code = input.value.trim();
+      if (!code) return;
+      overlay.remove();
+      resolve(code);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !submitBtn.disabled) submitBtn.click();
+    });
+  });
+}
+
+async function loadProfileWithAccess() {
+  if (typeof API === 'undefined') return null;
+
+  const cached = sessionStorage.getItem(ssKey());
+  try {
+    const res = await API.get(`/api/profiles/${encodeURIComponent(id)}`, cached ? { headers: { 'X-Profile-Access': cached } } : undefined);
+    if (res && res.data) return res.data;
+  } catch (e) {
+    // 403/401 -> try prompt
+    try {
+      const code = await promptProfileAccessCode();
+      sessionStorage.setItem(ssKey(), code);
+      const res2 = await API.get(`/api/profiles/${encodeURIComponent(id)}`, { headers: { 'X-Profile-Access': code } });
+      if (res2 && res2.data) return res2.data;
+    } catch (_) {}
+  }
+  return null;
+}
+
   async function loadPerson() {
+  // Primary source: new backend profiles (supports PASSWORD via X-Profile-Access)
+  try {
+    const profile = await loadProfileWithAccess();
+    if (profile) { render(profile, 'profile'); return; }
+  } catch (_) {}
+
     // Если id выглядит как UUID — данные из бот-БД
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     if (isUUID) {

@@ -153,6 +153,21 @@
     if (cityEl) {
       const val = cityEl.textContent.trim().replace(/^◎\s*/, '');
       cityEl.innerHTML = `<input class="edit-input" data-field="city" placeholder="Город" value="${escAttr(val)}"/>`;
+        // Видимость
+        const visWrap = document.createElement("div");
+        visWrap.className = "edit-visibility";
+        const currentVis = (originalData && originalData.visibility) ? String(originalData.visibility) : "";
+        visWrap.innerHTML = `
+          <label class="edit-visibility__label">Видимость:</label>
+          <select class="edit-input edit-input--select" data-field="visibility">
+            <option value="PUBLIC"   ${currentVis==="PUBLIC"   ? "selected":""}>Публичная</option>
+            <option value="UNLISTED" ${currentVis==="UNLISTED" ? "selected":""}>По ссылке</option>
+            <option value="PRIVATE"  ${currentVis==="PRIVATE"  ? "selected":""}>Приватная</option>
+            <option value="PASSWORD"${currentVis==="PASSWORD"? "selected":""}>С паролем</option>
+          </select>
+          <div class="edit-visibility__hint">Для “С паролем” используйте “Коды доступа” на странице.</div>
+        `;
+        cityEl.after(visWrap);
       cityEl.style.cssText = 'display:block;';
     }
 
@@ -523,6 +538,10 @@
     // Город
     const cityInput = document.querySelector('[data-field="city"]');
     data.city = cityInput?.value?.trim() || '';
+
+      // Видимость
+      const visSelect = document.querySelector('[data-field="visibility"]');
+      data.visibility = visSelect?.value || originalData.visibility || '';
 
     // Блоки — собираем ВСЕ в порядке DOM (включая кастомные)
     const bioBlocksContainer = document.getElementById('bio-blocks-container');

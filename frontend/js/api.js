@@ -95,12 +95,18 @@ const API = (() => {
     return originalFetch.call(this, resource, options);
   };
 
-  async function req(method, path, body, isForm) {
+  async function req(method, path, body, isForm, opts) {
     const controller = new AbortController();
     const timeoutMs = isForm ? TIMEOUT_UPLOAD : TIMEOUT_DEFAULT;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     const headers = {};
+    // extra headers (e.g. X-Profile-Access)
+    if (opts && opts.headers) {
+      for (const k of Object.keys(opts.headers)) {
+        headers[k] = opts.headers[k];
+      }
+    }
     const tok = getToken();
     if (tok) headers['Authorization'] = 'Bearer ' + tok;
     if (body && !isForm) headers['Content-Type'] = 'application/json';
@@ -139,12 +145,12 @@ const API = (() => {
       }
       return path;
     },
-    get:    (path)       => req('GET',    path),
-    post:   (path, body) => req('POST',   path, body),
-    put:    (path, body) => req('PUT',    path, body),
-    patch:  (path, body) => req('PATCH',  path, body),
-    del:    (path)       => req('DELETE', path),
-    upload: (path, form) => req('POST',   path, form, true),
+    get:    (path, opts)       => req('GET',    path, undefined, false, opts),
+    post:   (path, body, opts) => req('POST',   path, body, false, opts),
+    put:    (path, body, opts) => req('PUT',    path, body, false, opts),
+    patch:  (path, body, opts) => req('PATCH',  path, body, false, opts),
+    del:    (path, opts)       => req('DELETE', path, undefined, false, opts),
+    upload: (path, form, opts) => req('POST',   path, form, true, opts),
     compressImage,
     getToken, setToken,
     isLoggedIn: () => !!getToken(),
