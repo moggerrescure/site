@@ -2,6 +2,8 @@
 
 const prisma = require('../lib/prisma');
 const { ApiError } = require('../middleware/errors');
+const mergeService = require('./mergeService');
+const auditService = require('./auditService');
 
 const VALID_REASONS = ['WRONG_INFO', 'INAPPROPRIATE', 'OWNERSHIP_CLAIM', 'DUPLICATE', 'OTHER'];
 
@@ -304,10 +306,52 @@ async function resolve(disputeId, data, actor) {
     include: STANDARD_INCLUDE,
   });
 
-  // TODO Phase 2.2: если reason=DUPLICATE && finalStatus=RESOLVED_ACCEPTED →
-  // создать ProfileMergeRequest, связать через mergeRequestId
+  // Auto-link: если DUPLICATE спор подтверждён и указан duplicateOfProfileId,
+  // автоматически создаём ProfileMergeRequest (source=disputed, target=canonical).
+  // mergeService.createRequest({disputeId}) сам линкует dispute.mergeRequestId в транзакции.
+  let autoMerge = null;
+  if (d.reason === 'DUPLICATE' && finalStatus === 'RESOLVED_ACCEPTED' && d.duplicateOfProfileId) {
+    try {
+      const [source, target] = await Promise.all([
+        prisma.profile.findUnique({ where: { id: d.profileId },            select: { slug: true } }),
+        prisma.profile.findUnique({ where: { id: d.duplicateOfProfileId }, select: { slug: true } }),
+      ]);
+      if (source && target) {
+        autoMerge = await mergeService.createRequest({
+          sourceSlug: source.slug,
+          targetSlug: target.slug,
+          reason:     `Автосоздан после разрешения спора #${d.id}: ${resolution}`.slice(0, 2000),
+          actor,
+          disputeId:  d.id,
+        });
+        // Audit log MR creation (мимо auditWrap, поскольку вызов из service)
+        try {
+          await auditService.logAction({
+            action:     'MERGE_REQUEST_CREATE',
+            userId:     actor.id,
+            entityType: 'ProfileMergeRequest',
+            entityId:   autoMerge.id,
+            newValue:   autoMerge,
+            metadata:   { source: 'dispute-auto-link', disputeId: d.id },
+          });
+        } catch (auditErr) {
+          console.error('[disputeService.resolve] audit log failed:', auditErr.message);
+        }
+      }
+    } catch (e) {
+      console.error('[disputeService.resolve] auto-merge failed:', e.message);
+      autoMerge = { error: e.message };
+    }
+  }
 
-  return serialize(updated, { viewerHint: 'admin' });
+  // Если auto-merge сработал — перечитаем dispute, чтобы mergeRequestId был свежим
+  const finalDispute = (autoMerge && !autoMerge.error)
+    ? await prisma.profileDispute.findUnique({ where: { id: disputeId }, include: STANDARD_INCLUDE })
+    : updated;
+
+  const out = serialize(finalDispute, { viewerHint: 'admin' });
+  if (autoMerge) out.mergeRequest = autoMerge;
+  return out;
 }
 
 module.exports = {

@@ -8,6 +8,7 @@ const multer = require('multer');
 const profileService  = require('./services/profileService');
 const reviewService   = require('./services/reviewService');
 const disputeService = require('./services/disputeService');
+const mergeService   = require('./services/mergeService');
 const candleService   = require('./services/candleService');
 const codeService     = require('./services/codeService');
 const mediaService    = require('./services/mediaService');
@@ -310,15 +311,37 @@ async function listHandler(req, res) {
 }
 
 async function detailHandler(req, res) {
+    const idOrSlug = req.params.id;
     const accessToken =
         req.headers['x-profile-access'] ||
         req.query.accessToken ||
         null;
-    const data = await profileService.getProfileDetail(
-        req.params.id,
-        req.user || null,
-        { accessToken },
-    );
+    const actor = req.user || null;
+    const isAdmin = !!actor && actor.role === 'ADMIN';
+
+    // 302 redirect: если profile soft-deleted и для не-владельца/не-админа,
+    // и существует последний EXECUTED MergeRequest source→target — отправляем на canonical.
+    if (!isAdmin) {
+        const candidate = await prisma.profile.findFirst({
+            where:  { OR: [{ id: idOrSlug }, { slug: idOrSlug }], deletedAt: { not: null } },
+            select: { id: true, ownerId: true },
+        });
+        if (candidate && (!actor || candidate.ownerId !== actor.id)) {
+            const mr = await prisma.profileMergeRequest.findFirst({
+                where:   { sourceProfileId: candidate.id, status: 'EXECUTED' },
+                orderBy: { executedAt: 'desc' },
+                select:  { targetProfile: { select: { slug: true, deletedAt: true } } },
+            });
+            if (mr && mr.targetProfile && !mr.targetProfile.deletedAt) {
+                const toSlug = mr.targetProfile.slug;
+                return res.status(302)
+                    .set('Location', `/profiles/${toSlug}`)
+                    .json({ ok: false, redirect: { type: 'merge', toSlug }, error: 'Профиль объединён в другой' });
+            }
+        }
+    }
+
+    const data = await profileService.getProfileDetail(idOrSlug, actor, { accessToken });
     return ok(res, { data });
 }
 
@@ -1069,5 +1092,122 @@ router.post('/disputes/:id/resolve', requireAuth, requireAdmin,
   })
 );
 
+
+
+/* ═══════════════════════════════════════════════════════ */
+/*  MERGE REQUESTS (Task 5.3 / Phase 2.2)                  */
+/* ═══════════════════════════════════════════════════════ */
+
+router.post('/profiles/:idOrSlug/merge-requests',
+  requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_CREATE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req._auditEntityId || null,
+    getNewValue: (req) => req._auditNewValue || null,
+    getMetadata: (req) => ({
+      source: req.params.idOrSlug,
+      target: req.body?.targetIdOrSlug,
+    }),
+  })(wrap(async (req, res) => {
+    const { targetIdOrSlug, reason } = req.body || {};
+    if (!targetIdOrSlug) return err(res, 400, 'targetIdOrSlug обязателен');
+    const result = await mergeService.createRequest({
+      sourceSlug: req.params.idOrSlug,
+      targetSlug: targetIdOrSlug,
+      reason,
+      actor: req.user,
+    });
+    req._auditEntityId = result?.id;
+    req._auditNewValue = result;
+    return ok(res, result, 201);
+  }))
+);
+
+router.get('/profiles/:idOrSlug/merge-requests', requireAuth, wrap(async (req, res) => {
+  const rows = await mergeService.listForProfile({ slug: req.params.idOrSlug, actor: req.user });
+  return ok(res, { rows });
+}));
+
+router.get('/merge-requests/me', requireAuth, wrap(async (req, res) => {
+  const rows = await mergeService.listMine({ actor: req.user });
+  return ok(res, { rows });
+}));
+
+router.get('/merge-requests', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const { status, limit, page } = req.query || {};
+  const result = await mergeService.listAll({ status, limit, page, actor: req.user });
+  return res.json({ ok: true, ...result });
+}));
+
+router.get('/merge-requests/:id', requireAuth, wrap(async (req, res) => {
+  const result = await mergeService.getById({ id: req.params.id, actor: req.user });
+  return ok(res, result);
+}));
+
+router.post('/merge-requests/:id/owner-approve', requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_OWNER_APPROVE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+  })(wrap(async (req, res) => {
+    const result = await mergeService.ownerApprove({ requestId: req.params.id, actor: req.user });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/admin-approve', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'MERGE_REQUEST_ADMIN_APPROVE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+  })(wrap(async (req, res) => {
+    const result = await mergeService.adminApprove({ requestId: req.params.id, actor: req.user });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/reject', requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_REJECT',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+    getMetadata: (req) => ({ reason: req.body?.reason }),
+  })(wrap(async (req, res) => {
+    const { reason } = req.body || {};
+    const result = await mergeService.reject({ requestId: req.params.id, actor: req.user, reason });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/cancel', requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_CANCEL',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+  })(wrap(async (req, res) => {
+    const result = await mergeService.cancel({ requestId: req.params.id, actor: req.user });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/execute', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'MERGE_REQUEST_EXECUTE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: (req) => req._auditNewValue || null,
+    getMetadata: (req) => ({ stats: req._auditStats || null }),
+  })(wrap(async (req, res) => {
+    const result = await mergeService.execute({ requestId: req.params.id, actor: req.user });
+    req._auditNewValue = result?.request;
+    req._auditStats = result?.stats;
+    return ok(res, result);
+  }))
+);
 
 module.exports = router;
