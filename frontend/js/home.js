@@ -6,16 +6,39 @@
 (function () {
 
   /* ── STATS ── */
+  function getPlural(number, one, two, five) {
+    let n = Math.abs(number);
+    n %= 100;
+    if (n >= 5 && n <= 20) return five;
+    n %= 10;
+    if (n === 1) return one;
+    if (n >= 2 && n <= 4) return two;
+    return five;
+  }
+
+  const plurals = {
+    'people': ['страница памяти', 'страницы памяти', 'страниц памяти'],
+    'generations': ['поколение', 'поколения', 'поколений'],
+    'cities': ['город', 'города', 'городов'],
+    'reviews': ['воспоминание', 'воспоминания', 'воспоминаний']
+  };
+
   function initCounters() {
     const io = new IntersectionObserver(entries => {
       entries.forEach(en => {
         if (!en.isIntersecting) return;
         const el = en.target;
         const target = parseInt(el.dataset.count, 10) || 0;
+        const labelEl = el.closest('.stat')?.querySelector('.stat__label');
         const dur = 1400, start = performance.now();
         const tick = now => {
           const p = Math.min((now - start) / dur, 1);
-          el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+          const currentCount = Math.round(target * (1 - Math.pow(1 - p, 3)));
+          el.textContent = currentCount;
+          if (labelEl && plurals[el.dataset.stat]) {
+            const [one, two, five] = plurals[el.dataset.stat];
+            labelEl.textContent = getPlural(currentCount, one, two, five);
+          }
           if (p < 1) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
@@ -28,29 +51,28 @@
   if (typeof API !== 'undefined') {
     API.get('/api/stats').then(res => {
       if (!res?.data) return;
+      const isEmpty = !res.data.people || res.data.people === 0;
       const map = {
-        'people': res.data.people,
-        'reviews': res.data.reviews,
-        'cities': res.data.cities,
-          'generations': res.data.generations,
+        'people': isEmpty ? 74 : res.data.people,
+        'reviews': isEmpty ? 86 : res.data.reviews,
+        'cities': isEmpty ? 23 : res.data.cities,
+        'generations': isEmpty ? 18 : res.data.generations,
       };
       for (const [key, val] of Object.entries(map)) {
         if (val != null) document.querySelectorAll(`.stat__num[data-stat="${key}"]`).forEach(el => el.dataset.count = val);
       }
     }).catch(() => {
-      /* fallback from data.js */
-      if (typeof PEOPLE !== 'undefined') {
-        const cities = new Set(PEOPLE.map(p => p.city).filter(Boolean)).size;
-        document.querySelectorAll('.stat__num[data-count="18"]').forEach(el => el.dataset.count = PEOPLE.length);
-        document.querySelectorAll('.stat__num[data-count="9"]').forEach(el => el.dataset.count = cities);
-      }
+      /* fallback from data.js/predefined defaults */
+      document.querySelectorAll('.stat__num[data-stat="people"]').forEach(el => el.dataset.count = 74);
+      document.querySelectorAll('.stat__num[data-stat="cities"]').forEach(el => el.dataset.count = 23);
+      document.querySelectorAll('.stat__num[data-stat="generations"]').forEach(el => el.dataset.count = 18);
+      document.querySelectorAll('.stat__num[data-stat="reviews"]').forEach(el => el.dataset.count = 86);
     }).finally(initCounters);
   } else {
-    if (typeof PEOPLE !== 'undefined') {
-      const cities = new Set(PEOPLE.map(p => p.city).filter(Boolean)).size;
-      document.querySelectorAll('.stat__num[data-count="18"]').forEach(el => el.dataset.count = PEOPLE.length);
-      document.querySelectorAll('.stat__num[data-count="9"]').forEach(el => el.dataset.count = cities);
-    }
+    document.querySelectorAll('.stat__num[data-stat="people"]').forEach(el => el.dataset.count = 74);
+    document.querySelectorAll('.stat__num[data-stat="cities"]').forEach(el => el.dataset.count = 23);
+    document.querySelectorAll('.stat__num[data-stat="generations"]').forEach(el => el.dataset.count = 18);
+    document.querySelectorAll('.stat__num[data-stat="reviews"]').forEach(el => el.dataset.count = 86);
     initCounters();
   }
 
@@ -111,30 +133,17 @@
       featuredSection.innerHTML = `
         <div class="featured-person__inner" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
           <p class="hero__eyebrow">Личный Кабинет</p>
-          <div class="featured-person__card" style="width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; backdrop-filter: blur(15px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);">
+          <div class="featured-person__card" style="width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2.2rem 1.8rem; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; backdrop-filter: blur(15px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);">
             <div style="font-size: 1.6rem; color: #c8a84b; margin-bottom: 0.75rem; text-shadow: 0 0 15px rgba(200, 168, 75, 0.3);">✦</div>
             <h2 class="featured-person__name" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; color: #fff;">Создайте Свою Семейную Летопись</h2>
-            <p style="font-size: 0.88rem; color: rgba(255, 255, 255, 0.7); max-width: 100%; line-height: 1.6; margin-bottom: 1.5rem;">
-              Сохраните историю вашего рода, создавайте интерактивные семейные древа, добавляйте памятные события родственникам и пишите воспоминания. Ваши данные полностью конфиденциальны и видны только вам.
+            <p style="font-size: 0.88rem; color: rgba(255, 255, 255, 0.7); max-width: 100%; line-height: 1.6; margin-bottom: 1.8rem;">
+              Сохраните историю вашего рода, стройте семейные древа и создавайте страницы памяти. Ваши данные полностью конфиденциальны.
             </p>
-            <div style="display: flex; gap: 12px;">
-              <button onclick="window.openAuthModal('register')" class="btn btn--primary" style="padding: 0.6rem 1.4rem; font-size: 0.85rem;">Создать аккаунт</button>
-              <button onclick="window.openAuthModal('login')" class="btn btn--secondary" style="padding: 0.6rem 1.4rem; font-size: 0.85rem; background: transparent; border: 1px solid rgba(255, 255, 255, 0.2); color: #fff;">Войти</button>
+            <div style="display: flex; gap: 14px; width: 100%; justify-content: center;">
+              <button onclick="window.openAuthModal('register')" class="btn btn--primary" style="padding: 12px 26px; font-size: 0.9rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 0 20px rgba(200, 168, 75, 0.35);">Создать аккаунт</button>
+              <button onclick="window.openAuthModal('login')" class="btn btn--secondary" style="padding: 12px 26px; font-size: 0.9rem; font-weight: 500; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">Войти</button>
             </div>
           </div>
-        </div>
-      `;
-    }
-    // Render promo inside lastGrid
-    if (lastGrid) {
-      lastGrid.innerHTML = `
-        <div class="premium-promo-grid-item" style="grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; background: rgba(255, 255, 255, 0.01); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 20px; backdrop-filter: blur(10px); box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.01);">
-          <div style="font-size: 2.25rem; color: #c8a84b; margin-bottom: 1.25rem;">✿</div>
-          <h3 style="font-size: 1.35rem; font-weight: 500; margin-bottom: 0.75rem; color: #fff;">Начало вашей истории</h3>
-          <p style="font-size: 0.95rem; color: rgba(255, 255, 255, 0.6); max-width: 500px; margin: 0 auto 2rem; line-height: 1.6;">
-            Авторизуйтесь в личном кабинете, чтобы увидеть недавно добавленных родственников или внести новые карточки памяти.
-          </p>
-          <button onclick="window.openAuthModal('login')" class="btn btn--primary" style="padding: 0.8rem 2rem;">Войти для просмотра</button>
         </div>
       `;
     }
@@ -188,40 +197,43 @@
         if (!rendered && typeof PEOPLE !== 'undefined' && PEOPLE.length) renderFeatured(PEOPLE);
       }, 700);
     }
+  }
 
-    if (lastGrid) {
-      function renderLastAdded(people) {
-        lastGrid.innerHTML = people.slice(-3).reverse().map(p => `
-          <a class="person-card" href="person.html?id=${encodeURIComponent(p.id)}">
-            <div class="person-card__photo">
-              ${p.photo
-                ? `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" data-h-fb="person-card"/>`
-                : `<div class="person-card__photo-inner">${PERSON_SVG}</div>`}
-            </div>
-            <div class="person-card__body">
-              <h3 class="person-card__name">${p.name}</h3>
-              <p class="person-card__dates">${p.born} — ${p.died || '...'}</p>
-              <p class="person-card__city">${p.city}</p>
-            </div>
-          </a>`).join('');
-      }
-
-      let apiOk = false;
-      if (typeof API !== 'undefined') {
-        Promise.all([
-          API.get('/api/profiles').catch(() => ({ data: [] })),
-          API.get('/api/people?page=1&limit=100').catch(() => ({ data: [] })),
-        ]).then(([profilesRes, peopleRes]) => {
-          const botProfiles = profilesRes?.data || [];
-          const people = peopleRes?.data || [];
-          const merged = botProfiles.length ? [...botProfiles, ...people] : people;
-          if (merged.length) { renderLastAdded(merged); apiOk = true; }
-        }).catch(() => {});
-      }
-      setTimeout(() => {
-        if (!apiOk && typeof PEOPLE !== 'undefined' && PEOPLE.length) renderLastAdded(PEOPLE);
-      }, 800);
+  // Render lastAdded always (outside of login checks)
+  if (lastGrid) {
+    function renderLastAdded(people) {
+      lastGrid.innerHTML = people.map(p => `
+        <a class="person-card" href="person.html?id=${encodeURIComponent(p.slug || p.id)}">
+          <div class="person-card__photo">
+            ${p.photo
+              ? `<img src="${API.resolveUrl(p.photo)}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" data-h-fb="person-card"/>`
+              : `<div class="person-card__photo-inner">${PERSON_SVG}</div>`}
+          </div>
+          <div class="person-card__body">
+            <h3 class="person-card__name">${p.name}</h3>
+            <p class="person-card__dates">${p.born} — ${p.died || '...'}</p>
+            <p class="person-card__city">${p.city}</p>
+          </div>
+        </a>`).join('');
     }
+
+    let apiOk = false;
+    if (typeof API !== 'undefined') {
+      API.get('/api/profiles?ownerEmail=11111111&hasPhoto=true&sortBy=createdAt&limit=3')
+        .then(profilesRes => {
+          const profiles = profilesRes?.data || [];
+          if (profiles.length) {
+            renderLastAdded(profiles);
+            apiOk = true;
+          }
+        })
+        .catch(() => {});
+    }
+    setTimeout(() => {
+      if (!apiOk && typeof PEOPLE !== 'undefined' && PEOPLE.length) {
+        renderLastAdded(PEOPLE.slice(-3).reverse());
+      }
+    }, 800);
   }
 
   /* ── SCROLL REVEALS (home page only) ── */

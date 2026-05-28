@@ -229,6 +229,9 @@ async function listProfiles(opts = {}) {
         visibility:   visibilityRaw  = '',
         mine = false,
         actor = null,
+        ownerEmail = '',
+        hasPhoto = false,
+        sortBy = 'birthDate',
     } = opts;
 
     const tsQuery = buildTsQuery(q);
@@ -287,17 +290,23 @@ async function listProfiles(opts = {}) {
         }
         if (gender) andClauses.push({ gender });
         if (mine && actor) andClauses.push({ ownerId: actor.id });
+        if (ownerEmail) andClauses.push({ owner: { email: ownerEmail } });
+        if (hasPhoto) andClauses.push({ coverPhotoId: { not: null } });
         // Скрыть пустые "Новая страница" заглушки из публичного списка
         if (!mine) andClauses.push({ NOT: { fullName: 'Новая страница' } });
         
 
         const where = andClauses.length ? { AND: [baseWhere, ...andClauses] } : baseWhere;
 
+        const orderBy = sortBy === 'createdAt'
+            ? [{ createdAt: 'desc' }]
+            : [{ birthDate: 'asc' }, { fullName: 'asc' }];
+
         const [total, rows] = await Promise.all([
             prisma.profile.count({ where }),
             prisma.profile.findMany({
                 where,
-                orderBy: [{ birthDate: 'asc' }, { fullName: 'asc' }],
+                orderBy,
                 skip: offset,
                 take: limit,
                 include: { coverPhoto: true },
@@ -310,6 +319,8 @@ async function listProfiles(opts = {}) {
     const aliveSql = Prisma.sql`AND p."deletedAt" IS NULL`;
 	const notPlaceholderSql = (!mine) ? Prisma.sql`AND p."fullName" != 'Новая страница'` : Prisma.empty;
     const mineSql  = (mine && actor) ? Prisma.sql`AND p."ownerId" = ${actor.id}` : Prisma.empty;
+    const ownerEmailFilter = ownerEmail ? Prisma.sql`AND p."ownerId" IN (SELECT id FROM "User" WHERE email = ${ownerEmail})` : Prisma.empty;
+    const hasPhotoFilter   = hasPhoto ? Prisma.sql`AND p."coverPhotoId" IS NOT NULL` : Prisma.empty;
     const visFilter = (() => {
         if (visibilityHardFilterSql) return visibilityHardFilterSql;
         if (actor && actor.role === 'ADMIN') return Prisma.empty;
@@ -343,6 +354,8 @@ async function listProfiles(opts = {}) {
           ${diedToFilter}
           ${genderFilter}
           ${mineSql}
+          ${ownerEmailFilter}
+          ${hasPhotoFilter}
           ${visFilter}
         ORDER BY rank DESC, p."fullName" ASC
         LIMIT ${limit} OFFSET ${offset}
@@ -359,6 +372,8 @@ async function listProfiles(opts = {}) {
           ${diedToFilter}
           ${genderFilter}
           ${mineSql}
+          ${ownerEmailFilter}
+          ${hasPhotoFilter}
           ${visFilter}
     `;
     const items = rows.map((r) => serializeForList({

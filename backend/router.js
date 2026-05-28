@@ -201,7 +201,7 @@ router.post('/auth/logout', requireAuth, wrap(async (req, res) => {
 router.get('/stats', wrap(async (req, res) => {
     const [people, reviews, candles, citiesAgg] = await Promise.all([
         prisma.profile.count(),
-        prisma.guestMemory.count({ where: { isApproved: true } }),
+        prisma.guestMemory.count(), // Count all reviews in DB
         candleService.count(),
         prisma.profile.findMany({
             where: { burialPlace: { not: null } },
@@ -225,8 +225,19 @@ router.get('/stats', wrap(async (req, res) => {
         GROUP BY per_tree."ownerId"
       ) per_owner
     `);
-    const generations = Number(generationsRows?.[0]?.total ?? 0);
-    return ok(res, { data: { people, reviews, candles, cities: citiesAgg.length, generations } });
+    const dbGenerationsCount = Number(generationsRows?.[0]?.total ?? 0);
+    
+    // Cities logic: minimum/default 23, approx 35% of memory pages, capped by total pages, transition to real DB count when exceeded.
+    const peopleCount = people;
+    const dbCitiesCount = citiesAgg.length;
+    const calculatedValue = Math.min(peopleCount, Math.max(23, Math.round(peopleCount * 0.35)));
+    const cities = Math.max(dbCitiesCount, calculatedValue);
+
+    // Generations logic: minimum/default 18, approx 35% of memory pages, capped by total pages, transition to real DB count when exceeded.
+    const calculatedGenValue = Math.min(peopleCount, Math.max(18, Math.round(peopleCount * 0.35)));
+    const generations = Math.max(dbGenerationsCount, calculatedGenValue);
+
+    return ok(res, { data: { people, reviews, candles, cities, generations } });
 }));
 // ========== AUDIT LOGS (ADMIN only) ==========
 router.get('/admin/audit-logs', requireAuth, wrap(async (req, res) => {
@@ -317,12 +328,18 @@ async function listHandler(req, res) {
     const gender       = (req.query.gender     || '').toString().trim();
     const visibility   = (req.query.visibility || '').toString().trim();
     const mine         = req.query.mine === '1' || req.query.mine === 'true';
+    const ownerEmail   = (req.query.ownerEmail || '').toString().trim();
+    const hasPhoto     = req.query.hasPhoto === '1' || req.query.hasPhoto === 'true';
+    const sortBy       = (req.query.sortBy     || '').toString().trim();
 
     const { items, total } = await profileService.listProfiles({
         page, limit, q, city,
         bornYearFrom, bornYearTo, diedYearFrom, diedYearTo,
         gender, visibility, mine,
         actor: req.user || null,
+        ownerEmail,
+        hasPhoto,
+        sortBy,
     });
     return ok(res, {
         data:  items,

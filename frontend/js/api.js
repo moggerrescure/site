@@ -122,7 +122,11 @@ const API = (() => {
       });
       clearTimeout(timer);
       const json = await res.json().catch(() => ({}));
-      if (!res.ok && !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (!res.ok && !json.ok) {
+        const error = new Error(json.error || `HTTP ${res.status}`);
+        error.status = res.status;
+        throw error;
+      }
       return json;
     } catch (err) {
       clearTimeout(timer);

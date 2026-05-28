@@ -119,15 +119,26 @@ async function loadProfileWithAccess() {
   const cached = sessionStorage.getItem(ssKey());
   try {
     const res = await API.get(`/api/profiles/${encodeURIComponent(id)}`, cached ? { headers: { 'X-Profile-Access': cached } } : undefined);
-    if (res && res.data) return res.data;
-  } catch (e) {
-    // 403/401 -> try prompt
-    try {
+    
+    // If backend returns a teaser requiring an access code, prompt for it
+    if (res && res.data && res.data.requiresAccessCode) {
       const code = await promptProfileAccessCode();
       sessionStorage.setItem(ssKey(), code);
       const res2 = await API.get(`/api/profiles/${encodeURIComponent(id)}`, { headers: { 'X-Profile-Access': code } });
       if (res2 && res2.data) return res2.data;
-    } catch (_) {}
+    }
+    
+    if (res && res.data) return res.data;
+  } catch (e) {
+    // Only prompt for access code if error is 403 or 401 (unauthorized access)
+    if (e.status === 403 || e.status === 401) {
+      try {
+        const code = await promptProfileAccessCode();
+        sessionStorage.setItem(ssKey(), code);
+        const res2 = await API.get(`/api/profiles/${encodeURIComponent(id)}`, { headers: { 'X-Profile-Access': code } });
+        if (res2 && res2.data) return res2.data;
+      } catch (_) {}
+    }
   }
   return null;
 }

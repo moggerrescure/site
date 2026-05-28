@@ -96,25 +96,67 @@
       text-decoration: underline;
     }
     .auth-modal__consent {
-      margin: 0.8rem 0;
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.75);
-      line-height: 1.5;
+      margin: 1rem 0 1.2rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.48;
+      text-align: left;
     }
     .auth-modal__consent label {
       display: flex;
       align-items: flex-start;
-      gap: 0.6rem;
+      gap: 0.75rem;
       cursor: pointer;
+      user-select: none;
     }
     .auth-modal__consent input[type="checkbox"] {
-      margin-top: 0.2rem;
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-top: 0.15rem;
       flex-shrink: 0;
-      accent-color: #c8a84b;
+      outline: none;
+    }
+    .auth-modal__consent input[type="checkbox"]:checked {
+      background: #c8a84b;
+      border-color: #c8a84b;
+      box-shadow: 0 0 8px rgba(200, 168, 75, 0.4);
+    }
+    .auth-modal__consent input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid #000;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .auth-modal__consent input[type="checkbox"]:hover {
+      border-color: #c8a84b;
+      background: rgba(200, 168, 75, 0.08);
+    }
+    .auth-modal__consent input[type="checkbox"]:focus-visible {
+      border-color: #c8a84b;
+      box-shadow: 0 0 0 2px rgba(200, 168, 75, 0.2);
     }
     .auth-modal__consent a {
       color: #c8a84b;
-      text-decoration: underline;
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(200, 168, 75, 0.4);
+      transition: all 0.2s ease;
+    }
+    .auth-modal__consent a:hover {
+      color: #e5c060;
+      border-bottom-color: #e5c060;
     }
   `;
   document.head.appendChild(styleEl);
@@ -188,7 +230,7 @@
           </div>
           ${mode === 'login' ? '<div class="auth-modal__forgot"><a href="/forgot-password.html">Забыли пароль?</a></div>' : ''}
           ${mode === 'register' ? `<div class="auth-modal__consent"><label><input type="checkbox" name="accept" id="auth-accept" required/><span>Я согласен с <a href="/privacy.html" target="_blank">Политикой обработки персональных данных</a> и <a href="/terms.html" target="_blank">Пользовательским соглашением</a></span></label></div>` : ''}
-          /* __CONSENT_CHECKBOX_V1__ */ <button type="submit" class="auth-modal__submit">
+          <button type="submit" class="auth-modal__submit">
             ${mode === 'login' ? 'Войти' : 'Создать аккаунт'}
           </button>
           <p class="auth-modal__error" id="auth-error"></p>
