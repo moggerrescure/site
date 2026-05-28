@@ -49,3 +49,5 @@ backend/uploads/*
 # Backup artifacts
 *.bak
 deploy.log
+frontend/serve.js
+

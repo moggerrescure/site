@@ -3,8 +3,10 @@
    AbortController timeouts (15s default, 60s upload)
    ═══════════════════════════════════════════════ */
 const API = (() => {
-  // Same-origin: Caddy проксирует /api → backend и отдаёт /uploads
-  const BASE = '';
+  // В Docker/Caddy фронт работает на стандартном порту 80/443 (same-origin).
+  // Если мы запущены на нестандартном локальном порту (например, 5500), перенаправляем API-запросы на backend (порт 3000).
+  const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443';
+  const BASE = isLocalDev ? 'http://localhost:3000' : '';
   const TOKEN_KEY = 'memory_jwt';
   const TIMEOUT_DEFAULT = 15000;
   const TIMEOUT_UPLOAD = 60000;
@@ -136,12 +138,14 @@ const API = (() => {
       if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
         return path;
       }
-      // Same-origin: /uploads/, /bot-data/, /images/ отдаются тем же хостом через Caddy
+      const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443';
+      const devPrefix = isLocalDev ? 'http://localhost:3000' : '';
+      // Same-origin: /uploads/, /bot-data/, /images/ отдаются тем же хостом через Caddy. В dev-режиме берем с порта 3000.
       if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
-        return path;
+        return devPrefix + path;
       }
       if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
-        return '/' + path;
+        return devPrefix + '/' + path;
       }
       return path;
     },
