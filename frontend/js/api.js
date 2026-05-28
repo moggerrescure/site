@@ -192,3 +192,13 @@ const API = (() => {
     },
   };
 })();
+
+// ─── Telegram deep-link login (Phase 3) ───
+API.telegramLoginInit = async function () {
+    const r = await this.post('/api/auth/telegram/init', {});
+    return r.data || r;
+};
+API.telegramLoginPoll = async function (token) {
+    return await this.get('/api/auth/telegram/poll?token=' + encodeURIComponent(token));
+};
+

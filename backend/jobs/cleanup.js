@@ -1,6 +1,7 @@
 'use strict';
 
 const prisma = require('../lib/prisma');
+const mediaService = require('../services/mediaService');
 
 const PROFILE_HARD_DELETE_DAYS = parseInt(process.env.PROFILE_HARD_DELETE_DAYS || '30', 10);
 const AUDIT_RETENTION_DAYS     = parseInt(process.env.AUDIT_RETENTION_DAYS     || '90', 10);
@@ -15,6 +16,11 @@ async function hardDeleteOldSoftDeletedProfiles() {
     const result = await prisma.profile.deleteMany({
         where: { deletedAt: { lt: cutoff } },
     });
+    try {
+        await mediaService.purgeOrphanMedia({ limit: 5000 });
+    } catch (e) {
+        console.warn('[cleanup] purgeOrphanMedia failed:', e && e.message);
+    }
     console.log(`[cleanup] hard-deleted ${result.count} profiles older than ${PROFILE_HARD_DELETE_DAYS}d (cutoff=${cutoff.toISOString()})`);
     return result.count;
 }
@@ -28,6 +34,18 @@ async function purgeOldAuditLogs() {
         where: { createdAt: { lt: cutoff } },
     });
     console.log(`[cleanup] purged ${result.count} audit logs older than ${AUDIT_RETENTION_DAYS}d (cutoff=${cutoff.toISOString()})`);
+    return result.count;
+}
+
+
+const TG_LOGIN_TOKEN_RETENTION_HOURS = parseInt(process.env.TG_LOGIN_TOKEN_RETENTION_HOURS || '24', 10);
+
+async function purgeOldTgLoginTokens() {
+    const cutoff = new Date(Date.now() - TG_LOGIN_TOKEN_RETENTION_HOURS * 3600 * 1000);
+    const result = await prisma.tgLoginToken.deleteMany({
+        where: { createdAt: { lt: cutoff } },
+    });
+    console.log(`[cleanup] purged ${result.count} tg-login tokens older than ${TG_LOGIN_TOKEN_RETENTION_HOURS}h`);
     return result.count;
 }
 
@@ -45,7 +63,14 @@ async function runAllCleanupTasks() {
     } catch (e) {
         console.error('[cleanup] purgeOldAuditLogs error:', e.message);
     }
-    console.log(`[cleanup] done in ${Date.now() - startedAt}ms (profiles=${profiles}, audits=${audits})`);
+
+    let tgTokens = 0;
+    try {
+        tgTokens = await purgeOldTgLoginTokens();
+    } catch (e) {
+        console.error('[cleanup] purgeOldTgLoginTokens error:', e.message);
+    }
+    console.log(`[cleanup] done in ${Date.now() - startedAt}ms (profiles=${profiles}, audits=${audits}, tgTokens=${tgTokens})`);
 }
 
 module.exports = {

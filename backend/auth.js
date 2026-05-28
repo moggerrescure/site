@@ -6,6 +6,7 @@
 const crypto = require("node:crypto");
 const prisma = require("./lib/prisma");
 const { ApiError } = require("./middleware/errors");
+const lastSeen = require("./middleware/lastSeen");
 
 /* ── Конфиг ───────────────────────────────────────────────── */
 const JWT_SECRET =
@@ -191,13 +192,18 @@ async function requireAuth(req, res, next) {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, role: true, email: true, displayName: true },
+      select: { id: true, role: true, email: true, displayName: true, jwtVersion: true },
     });
     if (!user)
       return res.status(401).json({ ok: false, error: "Account not found" });
 
+    if (payload.jwtVersion !== undefined && user.jwtVersion !== payload.jwtVersion) {
+      return res.status(401).json({ ok: false, error: "Token revoked" });
+    }
+
     req.user = user;
     req.token = token;
+    lastSeen.touch(user.id);
     next();
   } catch (err) {
     console.error("[auth] requireAuth error:", err);
@@ -213,11 +219,12 @@ async function optionalAuth(req, res, next) {
     if (payload?.sub) {
       const user = await prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, role: true, email: true, displayName: true },
+        select: { id: true, role: true, email: true, displayName: true, jwtVersion: true },
       });
-      if (user) {
+      if (user && (payload.jwtVersion === undefined || user.jwtVersion === payload.jwtVersion)) {
         req.user = user;
         req.token = token;
+        lastSeen.touch(user.id);
       }
     }
     next();
@@ -324,10 +331,10 @@ async function registerUser({ email, password, displayName, accept, ip }) { /* _
       acceptedTermsAt: new Date(),
       acceptedTermsIp: ip || null,
     },
-    select: { id: true, email: true, displayName: true, role: true },
+    select: { id: true, email: true, displayName: true, role: true, jwtVersion: true },
   });
 
-  const token = signJWT({ sub: user.id, role: user.role, email: user.email });
+  const token = signJWT({ sub: user.id, role: user.role, email: user.email, jwtVersion: user.jwtVersion ?? 0 });
   return { user, token };
 }
 
@@ -343,6 +350,7 @@ async function loginUser({ email, password }) {
       displayName: true,
       role: true,
       passwordHash: true,
+      jwtVersion: true,
     },
   });
   if (!user) throw ApiError.unauthorized("Неверный email или пароль");
@@ -356,7 +364,7 @@ async function loginUser({ email, password }) {
     });
   }
 
-  const token = signJWT({ sub: user.id, role: user.role, email: user.email });
+  const token = signJWT({ sub: user.id, role: user.role, email: user.email, jwtVersion: user.jwtVersion ?? 0 });
   return {
     user: {
       id: user.id,
@@ -392,10 +400,10 @@ async function loginByTelegram(tgData) {
       displayName,
       role: "USER",
     },
-    select: { id: true, email: true, displayName: true, role: true },
+    select: { id: true, email: true, displayName: true, role: true, jwtVersion: true },
   });
 
-  const token = signJWT({ sub: user.id, role: user.role, email: user.email });
+  const token = signJWT({ sub: user.id, role: user.role, email: user.email, jwtVersion: user.jwtVersion ?? 0 });
   return { user, token };
 }
 

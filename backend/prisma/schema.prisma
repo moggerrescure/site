@@ -89,6 +89,7 @@ model User {
   email        String   @unique
   // PBKDF2-SHA512: хранится строкой формата "iterations:saltHex:hashHex"
   passwordHash String
+  jwtVersion   Int      @default(0)
   displayName  String?
   role         UserRole @default(USER)
   telegramId   BigInt?  @unique // привязка к боту (объединение bot.db)
@@ -100,6 +101,7 @@ model User {
   guestMemories          GuestMemory[] // если оставил воспоминание авторизованным
   candleLights           CandleLight[]
   accessGrants           ProfileAccess[]
+  tgLoginTokens          TgLoginToken[]
   editorOf               ProfileAccess[]   @relation("EditorGrants")
   uploadedMedia          Media[]
   auditLogs              AuditLog[]
@@ -110,6 +112,16 @@ model User {
   passwordResetTokens PasswordResetToken[]
   acceptedTermsAt   DateTime?
   acceptedTermsIp   String?
+
+  // === Disputes / Merge / Legacy Contact (Phase 1) ===
+  lastSeenAt           DateTime?
+  legacyInactivityDays Int       @default(90)
+
+  disputesCreated      ProfileDispute[]      @relation("DisputeReporter")
+  mergeRequestsCreated ProfileMergeRequest[] @relation("MergeRequester")
+  legacyContactAsOwner LegacyContact?        @relation("LegacyContactOwner")
+  legacyContactAsHeir  LegacyContact[]       @relation("LegacyContactHeir")
+  legacyClaims         LegacyClaim[]
 }
 
 // ============================================================
@@ -159,6 +171,12 @@ model Profile {
   deletedAt    DateTime?
   searchVector Unsupported("tsvector")?
   accessCodes  ProfileAccessCode[]
+
+  // === Disputes / Merge (Phase 1) ===
+  disputes      ProfileDispute[]
+  mergeSources  ProfileMergeRequest[] @relation("MergeSource")
+  mergeTargets  ProfileMergeRequest[] @relation("MergeTarget")
+  disputesAsDuplicate ProfileDispute[]      @relation("DisputeDuplicateOf")
 
   @@index([ownerId])
   @@index([visibility])
@@ -520,6 +538,32 @@ ACCESS_GRANT_UPDATE
 ACCESS_GRANT_DELETE
 ACCESS_CODE_REVOKE
 ACCESS_CODE_DELETE
+
+  // === Disputes (Phase 1) ===
+  DISPUTE_CREATE
+  DISPUTE_UPDATE_STATUS
+  DISPUTE_RESOLVE
+  DISPUTE_WITHDRAW
+
+  // === Merge (Phase 1) ===
+  MERGE_REQUEST_CREATE
+  MERGE_REQUEST_OWNER_APPROVE
+  MERGE_REQUEST_ADMIN_APPROVE
+  MERGE_REQUEST_REJECT
+  MERGE_REQUEST_EXECUTE
+  MERGE_REQUEST_CANCEL
+
+  // === Legacy Contact (Phase 1) ===
+  LEGACY_CONTACT_SET
+  LEGACY_CONTACT_INVITE_SEND
+  LEGACY_CONTACT_INVITE_ACCEPT
+  LEGACY_CONTACT_REVOKE
+  LEGACY_CONTACT_TRIGGER
+  LEGACY_CLAIM_CREATE
+  LEGACY_CLAIM_APPROVE
+  LEGACY_CLAIM_REJECT
+  LEGACY_CLAIM_EXPIRE
+  OWNERSHIP_TRANSFER
 }
 
 model AuditLog {
@@ -555,4 +599,229 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// ============================================================
+// === Disputes / Merge / Legacy Contact (Phase 1) ============
+// ============================================================
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_ACCEPTED
+  RESOLVED_REJECTED
+  WITHDRAWN
+}
+
+enum DisputeReason {
+  WRONG_INFO        // Неверная информация в профиле
+  INAPPROPRIATE     // Оскорбительный/неуместный контент
+  OWNERSHIP_CLAIM   // Я родственник, прошу передать ownership
+  DUPLICATE         // Дубликат другого профиля — триггерит merge
+  OTHER
+}
+
+enum MergeStatus {
+  PENDING_OWNERS    // Ждём согласия обоих владельцев source и target
+  PENDING_ADMIN     // Оба владельца согласны, ждём ADMIN review
+  APPROVED          // Все согласия получены, готов к execute
+  EXECUTED          // Merge выполнен, source soft-deleted
+  REJECTED          // Кто-то из owner/admin отказал
+  CANCELLED         // Заявитель отозвал
+}
+
+enum LegacyContactStatus {
+  PENDING           // Owner пригласил, наследник не подтвердил
+  ACTIVE            // Наследник подтвердил, ждёт триггера
+  TRIGGERED         // Бездействие > inactivityDays, наследник может claim
+  TRANSFERRED       // Передача состоялась
+  REVOKED           // Owner отозвал
+}
+
+enum LegacyClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// --- Disputes -----------------------------------------------
+
+model ProfileDispute {
+  id          String        @id @default(cuid())
+
+  profileId   String
+  profile     Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  reporterId  String
+  reporter    User          @relation("DisputeReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  reason      DisputeReason
+  description String        @db.Text
+  evidence    String?       @db.Text  // ссылки на документы, имена файлов
+
+  status      DisputeStatus @default(OPEN)
+  resolverId  String?                  // ADMIN userId (без FK — оставим String для гибкости)
+  resolution  String?       @db.Text
+  resolvedAt  DateTime?
+
+  // Если reason = DUPLICATE — какой профиль является оригиналом
+  duplicateOfProfileId String?
+  duplicateOfProfile   Profile? @relation("DisputeDuplicateOf", fields: [duplicateOfProfileId], references: [id], onDelete: SetNull)
+
+  // Если reason = DUPLICATE — линкуется к merge request 1:1
+  mergeRequestId String?              @unique
+  mergeRequest   ProfileMergeRequest? @relation(fields: [mergeRequestId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([profileId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([reason])
+  @@index([duplicateOfProfileId])
+  @@index([createdAt])
+}
+
+// --- Merge Request -------------------------------------------
+
+model ProfileMergeRequest {
+  id              String      @id @default(cuid())
+
+  // source merges INTO target; source становится soft-deleted
+  sourceProfileId String
+  sourceProfile   Profile     @relation("MergeSource", fields: [sourceProfileId], references: [id], onDelete: Cascade)
+
+  targetProfileId String
+  targetProfile   Profile     @relation("MergeTarget", fields: [targetProfileId], references: [id], onDelete: Cascade)
+
+  requesterId     String
+  requester       User        @relation("MergeRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  reason          String?     @db.Text
+
+  status          MergeStatus @default(PENDING_OWNERS)
+
+  // Two-step approval: оба owner → ADMIN
+  sourceOwnerApprovedAt DateTime?
+  sourceOwnerApprovedBy String?
+  targetOwnerApprovedAt DateTime?
+  targetOwnerApprovedBy String?
+  adminApprovedAt       DateTime?
+  adminApprovedBy       String?
+
+  executedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectedBy      String?
+  rejectionReason String?     @db.Text
+
+  // Обратная сторона 1:1 с ProfileDispute.mergeRequest
+  dispute         ProfileDispute?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([sourceProfileId])
+  @@index([targetProfileId])
+  @@index([requesterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// --- Legacy Contact -----------------------------------------
+
+model LegacyContact {
+  id              String              @id @default(cuid())
+
+  // 1:1 — у каждого user'а ровно один наследник
+  ownerId         String              @unique
+  owner           User                @relation("LegacyContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Наследник: либо существующий User (после accept invite), либо просто email
+  heirUserId      String?
+  heirUser        User?               @relation("LegacyContactHeir", fields: [heirUserId], references: [id], onDelete: SetNull)
+  heirEmail       String
+  heirName        String?
+
+  status          LegacyContactStatus @default(PENDING)
+
+  // Invite flow (token = SHA-256 hex)
+  inviteTokenHash String?             @unique
+  inviteExpiresAt DateTime?
+  inviteSentAt    DateTime?
+  verifiedAt      DateTime?
+
+  // Trigger flow
+  triggeredAt     DateTime?
+
+  // Per-contact override (default 90, синхронизируется с User.legacyInactivityDays при create)
+  inactivityDays  Int                 @default(90)
+  message         String?             @db.Text  // прощальное сообщение наследнику
+
+  revokedAt       DateTime?
+
+  claims          LegacyClaim[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([heirUserId])
+  @@index([heirEmail])
+  @@index([status])
+  @@index([triggeredAt])
+}
+
+// --- Legacy Claim -------------------------------------------
+
+model LegacyClaim {
+  id              String            @id @default(cuid())
+
+  legacyContactId String
+  legacyContact   LegacyContact     @relation(fields: [legacyContactId], references: [id], onDelete: Cascade)
+
+  claimantId      String
+  claimant        User              @relation(fields: [claimantId], references: [id], onDelete: Cascade)
+
+  status          LegacyClaimStatus @default(PENDING)
+  evidence        String?           @db.Text
+
+  // ADMIN review (resolverId без FK — String)
+  reviewerId      String?
+  reviewedAt      DateTime?
+  reviewNotes     String?           @db.Text
+
+  expiresAt       DateTime          // обычно +30 дней с createdAt
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([legacyContactId])
+  @@index([claimantId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Telegram deep-link login (Phase 3) — без widget/домена
+// ─────────────────────────────────────────────────────────────
+enum TgLoginStatus {
+  PENDING       // создан, ждёт подтверждения через бота
+  READY         // бот подтвердил, ждёт poll'а от фронта
+  CONSUMED      // фронт забрал JWT, токен использован
+  EXPIRED       // не подтверждён в TTL (5 минут)
+}
+
+model TgLoginToken {
+  id           String        @id @default(cuid())
+  token        String        @unique
+  status       TgLoginStatus @default(PENDING)
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  expiresAt    DateTime
+  confirmedAt  DateTime?
+  consumedAt   DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([status, expiresAt])
 }

@@ -7,6 +7,8 @@ const multer = require('multer');
 
 const profileService  = require('./services/profileService');
 const reviewService   = require('./services/reviewService');
+const disputeService = require('./services/disputeService');
+const mergeService   = require('./services/mergeService');
 const candleService   = require('./services/candleService');
 const codeService     = require('./services/codeService');
 const mediaService    = require('./services/mediaService');
@@ -15,6 +17,8 @@ const timelineService = require('./services/timelineService');
 const accessService   = require('./services/accessService');
 const accessCodeService = require('./services/accessCodeService');
 const auditService    = require('./services/auditService');
+const legacyContactService = require('./services/legacyContactService');
+const tgLoginService  = require('./services/tgLoginService');
 const prisma          = require('./lib/prisma');
 const pkg             = require('./package.json');
 
@@ -179,6 +183,10 @@ router.get('/auth/me', authGeneralLimiter, requireAuth, wrap(async (req, res) =>
 }));
 
 router.post('/auth/logout', requireAuth, wrap(async (req, res) => {
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { jwtVersion: { increment: 1 } },
+    });
     await auditService.logAction({
         action: 'LOGOUT',
         userId: req.user.id,
@@ -201,7 +209,24 @@ router.get('/stats', wrap(async (req, res) => {
             distinct: ['burialPlace'],
         }),
     ]);
-    return ok(res, { data: { people, reviews, candles, cities: citiesAgg.length } });
+    // Generations: sum of per-account-max of per-tree generation ranges (MAX-MIN+1)
+    const generationsRows = await prisma.$queryRawUnsafe(`
+      SELECT COALESCE(SUM(per_owner_max), 0)::int AS total
+      FROM (
+        SELECT MAX(per_tree_range) AS per_owner_max
+        FROM (
+          SELECT t."ownerId",
+                 (MAX(n.generation) - MIN(n.generation) + 1) AS per_tree_range
+          FROM "FamilyTree" t
+          INNER JOIN "FamilyNode" n ON n."treeId" = t.id
+          WHERE n.generation IS NOT NULL
+          GROUP BY t.id, t."ownerId"
+        ) per_tree
+        GROUP BY per_tree."ownerId"
+      ) per_owner
+    `);
+    const generations = Number(generationsRows?.[0]?.total ?? 0);
+    return ok(res, { data: { people, reviews, candles, cities: citiesAgg.length, generations } });
 }));
 // ========== AUDIT LOGS (ADMIN only) ==========
 router.get('/admin/audit-logs', requireAuth, wrap(async (req, res) => {
@@ -309,15 +334,37 @@ async function listHandler(req, res) {
 }
 
 async function detailHandler(req, res) {
+    const idOrSlug = req.params.id;
     const accessToken =
         req.headers['x-profile-access'] ||
         req.query.accessToken ||
         null;
-    const data = await profileService.getProfileDetail(
-        req.params.id,
-        req.user || null,
-        { accessToken },
-    );
+    const actor = req.user || null;
+    const isAdmin = !!actor && actor.role === 'ADMIN';
+
+    // 302 redirect: если profile soft-deleted и для не-владельца/не-админа,
+    // и существует последний EXECUTED MergeRequest source→target — отправляем на canonical.
+    if (!isAdmin) {
+        const candidate = await prisma.profile.findFirst({
+            where:  { OR: [{ id: idOrSlug }, { slug: idOrSlug }], deletedAt: { not: null } },
+            select: { id: true, ownerId: true },
+        });
+        if (candidate && (!actor || candidate.ownerId !== actor.id)) {
+            const mr = await prisma.profileMergeRequest.findFirst({
+                where:   { sourceProfileId: candidate.id, status: 'EXECUTED' },
+                orderBy: { executedAt: 'desc' },
+                select:  { targetProfile: { select: { slug: true, deletedAt: true } } },
+            });
+            if (mr && mr.targetProfile && !mr.targetProfile.deletedAt) {
+                const toSlug = mr.targetProfile.slug;
+                return res.status(302)
+                    .set('Location', `/profiles/${toSlug}`)
+                    .json({ ok: false, redirect: { type: 'merge', toSlug }, error: 'Профиль объединён в другой' });
+            }
+        }
+    }
+
+    const data = await profileService.getProfileDetail(idOrSlug, actor, { accessToken });
     return ok(res, { data });
 }
 
@@ -955,5 +1002,405 @@ router.post('/profiles/:idOrSlug/verify-access-code', optionalAuth,
     return payload;
   })
 );
+
+/* ═══════════════════════════════════════════════════════ */
+/*  DISPUTES                                               */
+/* ═══════════════════════════════════════════════════════ */
+
+// Создать спор на профиль
+router.post('/profiles/:idOrSlug/disputes', requireAuth,
+  auditWrap({
+    action: 'DISPUTE_CREATE',
+    entityType: 'ProfileDispute',
+    getEntityId: async (_req, result) => result?.data?.id || null,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id,
+      profileId: result.data.profileId,
+      reason: result.data.reason,
+      status: result.data.status,
+      duplicateOfProfileId: result.data.duplicateOfProfileId,
+    } : null,
+    getMetadata: async (req) => ({ idOrSlug: req.params.idOrSlug }),
+  })(async (req, res) => {
+    const data = await disputeService.create(req.params.idOrSlug, req.body || {}, req.user);
+    const payload = { data };
+    ok(res, payload, 201);
+    return payload;
+  })
+);
+
+// Список споров по профилю
+router.get('/profiles/:idOrSlug/disputes', requireAuth, wrap(async (req, res) => {
+  const data = await disputeService.listForProfile(
+    req.params.idOrSlug,
+    req.user,
+    { status: req.query.status }
+  );
+  return ok(res, { data });
+}));
+
+// Мои поданные споры
+router.get('/disputes/me', requireAuth, wrap(async (req, res) => {
+  const data = await disputeService.listMine(req.user);
+  return ok(res, { data });
+}));
+
+// Все споры (ADMIN)
+router.get('/disputes', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const data = await disputeService.listAll(req.user, {
+    status: req.query.status,
+    reason: req.query.reason,
+    page:   req.query.page,
+    limit:  req.query.limit,
+  });
+  return ok(res, data);
+}));
+
+// Детали спора
+router.get('/disputes/:id', requireAuth, wrap(async (req, res) => {
+  const data = await disputeService.getById(req.params.id, req.user);
+  return ok(res, { data });
+}));
+
+// Отозвать (reporter)
+router.post('/disputes/:id/withdraw', requireAuth,
+  auditWrap({
+    action: 'DISPUTE_WITHDRAW',
+    entityType: 'ProfileDispute',
+    getEntityId: async (req) => req.params.id,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id, status: result.data.status,
+    } : null,
+  })(async (req, res) => {
+    const data = await disputeService.withdraw(req.params.id, req.user);
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
+
+// Изменить статус (ADMIN: OPEN → UNDER_REVIEW)
+router.patch('/disputes/:id/status', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'DISPUTE_UPDATE_STATUS',
+    entityType: 'ProfileDispute',
+    getEntityId: async (req) => req.params.id,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id, status: result.data.status,
+    } : null,
+  })(async (req, res) => {
+    const data = await disputeService.updateStatus(req.params.id, req.body?.status, req.user);
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
+
+// Resolve (ADMIN)
+router.post('/disputes/:id/resolve', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'DISPUTE_RESOLVE',
+    entityType: 'ProfileDispute',
+    getEntityId: async (req) => req.params.id,
+    getNewValue: async (_req, result) => result?.data ? {
+      id: result.data.id,
+      status: result.data.status,
+      resolution: result.data.resolution,
+    } : null,
+  })(async (req, res) => {
+    const data = await disputeService.resolve(req.params.id, req.body || {}, req.user);
+    const payload = { data };
+    ok(res, payload);
+    return payload;
+  })
+);
+
+
+
+/* ═══════════════════════════════════════════════════════ */
+/*  MERGE REQUESTS (Task 5.3 / Phase 2.2)                  */
+/* ═══════════════════════════════════════════════════════ */
+
+router.post('/profiles/:idOrSlug/merge-requests',
+  requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_CREATE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req._auditEntityId || null,
+    getNewValue: (req) => req._auditNewValue || null,
+    getMetadata: (req) => ({
+      source: req.params.idOrSlug,
+      target: req.body?.targetIdOrSlug,
+    }),
+  })(wrap(async (req, res) => {
+    const { targetIdOrSlug, reason } = req.body || {};
+    if (!targetIdOrSlug) return err(res, 400, 'targetIdOrSlug обязателен');
+    const result = await mergeService.createRequest({
+      sourceSlug: req.params.idOrSlug,
+      targetSlug: targetIdOrSlug,
+      reason,
+      actor: req.user,
+    });
+    req._auditEntityId = result?.id;
+    req._auditNewValue = result;
+    return ok(res, result, 201);
+  }))
+);
+
+router.get('/profiles/:idOrSlug/merge-requests', requireAuth, wrap(async (req, res) => {
+  const rows = await mergeService.listForProfile({ slug: req.params.idOrSlug, actor: req.user });
+  return ok(res, { rows });
+}));
+
+router.get('/merge-requests/me', requireAuth, wrap(async (req, res) => {
+  const rows = await mergeService.listMine({ actor: req.user });
+  return ok(res, { rows });
+}));
+
+router.get('/merge-requests', requireAuth, requireAdmin, wrap(async (req, res) => {
+  const { status, limit, page } = req.query || {};
+  const result = await mergeService.listAll({ status, limit, page, actor: req.user });
+  return res.json({ ok: true, ...result });
+}));
+
+router.get('/merge-requests/:id', requireAuth, wrap(async (req, res) => {
+  const result = await mergeService.getById({ id: req.params.id, actor: req.user });
+  return ok(res, result);
+}));
+
+router.post('/merge-requests/:id/owner-approve', requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_OWNER_APPROVE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+  })(wrap(async (req, res) => {
+    const result = await mergeService.ownerApprove({ requestId: req.params.id, actor: req.user });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/admin-approve', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'MERGE_REQUEST_ADMIN_APPROVE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+  })(wrap(async (req, res) => {
+    const result = await mergeService.adminApprove({ requestId: req.params.id, actor: req.user });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/reject', requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_REJECT',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+    getMetadata: (req) => ({ reason: req.body?.reason }),
+  })(wrap(async (req, res) => {
+    const { reason } = req.body || {};
+    const result = await mergeService.reject({ requestId: req.params.id, actor: req.user, reason });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/cancel', requireAuth,
+  auditWrap({
+    action: 'MERGE_REQUEST_CANCEL',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: () => null,
+  })(wrap(async (req, res) => {
+    const result = await mergeService.cancel({ requestId: req.params.id, actor: req.user });
+    return ok(res, result);
+  }))
+);
+
+router.post('/merge-requests/:id/execute', requireAuth, requireAdmin,
+  auditWrap({
+    action: 'MERGE_REQUEST_EXECUTE',
+    entityType: 'ProfileMergeRequest',
+    getEntityId: (req) => req.params.id,
+    getNewValue: (req) => req._auditNewValue || null,
+    getMetadata: (req) => ({ stats: req._auditStats || null }),
+  })(wrap(async (req, res) => {
+    const result = await mergeService.execute({ requestId: req.params.id, actor: req.user });
+    req._auditNewValue = result?.request;
+    req._auditStats = result?.stats;
+    return ok(res, result);
+  }))
+);
+
+
+/* ═══════════════════════════════════════════════════════════════
+   LEGACY CONTACT (Task 5.4) — Phase 2.3
+   ═══════════════════════════════════════════════════════════════ */
+
+// ───── Owner flow ─────
+router.get('/legacy-contact', requireAuth, wrap(async (req, res) => {
+    const data = await legacyContactService.getContact(req.user.id);
+    return ok(res, { data });
+}));
+
+router.put('/legacy-contact', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_INVITE_SEND',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+        getNewValue: (req) => req._auditNewValue,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.setContact({
+            ownerId:        req.user.id,
+            heirEmail:      req.body?.heirEmail,
+            heirName:       req.body?.heirName,
+            inactivityDays: req.body?.inactivityDays,
+            message:        req.body?.message,
+        });
+        req._auditEntityId = data?.id;
+        req._auditNewValue = { heirEmail: data?.heirEmail, heirName: data?.heirName, inactivityDays: data?.inactivityDays, status: data?.status };
+        return ok(res, { data });
+    }))
+);
+
+router.post('/legacy-contact/resend', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_INVITE_SEND',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.resendInvite(req.user.id);
+        req._auditEntityId = data?.id;
+        return ok(res, { data });
+    }))
+);
+
+router.delete('/legacy-contact', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_REVOKE',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.revokeContact(req.user.id);
+        req._auditEntityId = data?.id;
+        return ok(res, { data });
+    }))
+);
+
+// ───── Heir flow ─────
+router.post('/legacy-invites/accept', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CONTACT_INVITE_ACCEPT',
+        entityType: 'LegacyContact',
+        getEntityId: (req) => req._auditEntityId,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.acceptInvite({
+            inviteToken: req.body?.inviteToken,
+            claimantId:  req.user.id,
+        });
+        req._auditEntityId = data?.id;
+        return ok(res, { data });
+    }))
+);
+
+// ───── Claims (heir + admin) ─────
+router.post('/legacy-contacts/:id/claims', requireAuth,
+    auditWrap({
+        action: 'LEGACY_CLAIM_CREATE',
+        entityType: 'LegacyClaim',
+        getEntityId: (req) => req._auditEntityId,
+        getNewValue: (req) => req._auditNewValue,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.createClaim({
+            legacyContactId: req.params.id,
+            claimantId:      req.user.id,
+            evidence:        req.body?.evidence,
+        });
+        req._auditEntityId = data?.id;
+        req._auditNewValue = { legacyContactId: data?.legacyContactId, claimantId: data?.claimantId, status: data?.status };
+        return ok(res, { data }, 201);
+    }))
+);
+
+router.get('/legacy-claims/me', requireAuth, wrap(async (req, res) => {
+    const rows = await legacyContactService.listMyClaims(req.user.id);
+    return ok(res, { rows });
+}));
+
+router.get('/legacy-claims/:id', requireAuth, wrap(async (req, res) => {
+    const data = await legacyContactService.getClaim(req.params.id, req.user);
+    return ok(res, { data });
+}));
+
+// ───── Admin endpoints ─────
+router.get('/admin/legacy-claims', requireAuth, requireAdmin, wrap(async (req, res) => {
+    const rows = await legacyContactService.listPendingClaims();
+    return ok(res, { rows });
+}));
+
+router.post('/admin/legacy-claims/:id/approve', requireAuth, requireAdmin,
+    auditWrap({
+        action: 'LEGACY_CLAIM_APPROVE',
+        entityType: 'LegacyClaim',
+        getEntityId: (req) => req.params.id,
+        getMetadata: (req) => req._auditMetadata,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.approveClaim(req.params.id, req.user, req.body?.notes);
+        req._auditMetadata = { profilesTransferred: data?.profilesTransferred };
+        return ok(res, { data });
+    }))
+);
+
+router.post('/admin/legacy-claims/:id/reject', requireAuth, requireAdmin,
+    auditWrap({
+        action: 'LEGACY_CLAIM_REJECT',
+        entityType: 'LegacyClaim',
+        getEntityId: (req) => req.params.id,
+    })(wrap(async (req, res) => {
+        const data = await legacyContactService.rejectClaim(req.params.id, req.user, req.body?.notes);
+        return ok(res, { data });
+    }))
+);
+
+// ───── Admin manual cron triggers (для smoke tests + ops) ─────
+router.post('/admin/legacy/trigger-check', requireAuth, requireAdmin, wrap(async (req, res) => {
+    const data = await legacyContactService.triggerInactive();
+    return ok(res, { data });
+}));
+
+router.post('/admin/legacy/expire-claims', requireAuth, requireAdmin, wrap(async (req, res) => {
+    const data = await legacyContactService.expireOldClaims();
+    return ok(res, { data });
+}));
+
+
+/* ═══════════════════════════════════════════════════════ */
+/*  TELEGRAM DEEP-LINK LOGIN (Phase 3)                     */
+/*  Without TG Widget — works on localhost / any origin    */
+/* ═══════════════════════════════════════════════════════ */
+router.post('/auth/telegram/init', authGeneralLimiter, wrap(async (req, res) => {
+    const data = await tgLoginService.createToken();
+    return ok(res, { data });
+}));
+
+router.get('/auth/telegram/poll', authGeneralLimiter, wrap(async (req, res) => {
+    const token = (req.query.token || '').toString();
+    if (!token) return err(res, 400, 'token required');
+    const result = await tgLoginService.pollToken(token);
+    if (result.status === 'READY' && result.user) {
+        try {
+            await auditService.logAction({
+                action: 'LOGIN',
+                userId: result.user.id,
+                metadata: { method: 'telegram_deep_link' },
+                req,
+            });
+        } catch (e) {
+            console.error('[tg-login] audit failed:', e.message);
+        }
+    }
+    return ok(res, result);
+}));
 
 module.exports = router;

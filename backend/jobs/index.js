@@ -2,6 +2,7 @@
 
 const cron = require('node-cron');
 const cleanup = require('./cleanup');
+const legacy  = require('./legacy');
 
 function startCronJobs() {
     if (process.env.ENABLE_CRON === 'false') {
@@ -11,7 +12,11 @@ function startCronJobs() {
     const schedule = process.env.CLEANUP_CRON || '0 3 * * *'; // каждый день в 03:00
     const tz = process.env.CRON_TZ || 'Europe/Minsk';
     cron.schedule(schedule, cleanup.runAllCleanupTasks, { timezone: tz });
-    console.log(`[cron] cleanup scheduled: ${schedule} (${tz}); retention: profiles=${cleanup.PROFILE_HARD_DELETE_DAYS}d, audit=${cleanup.AUDIT_RETENTION_DAYS}d`);
+    // Legacy contact: ежедневная проверка inactive owners + истечения PENDING claims
+  const legacySchedule = process.env.LEGACY_CRON || '15 3 * * *';
+  cron.schedule(legacySchedule, legacy.runLegacyTasks, { timezone: tz });
+  console.log(`[cron] legacy scheduled: ${legacySchedule} (${tz})`);
+  console.log(`[cron] cleanup scheduled: ${schedule} (${tz}); retention: profiles=${cleanup.PROFILE_HARD_DELETE_DAYS}d, audit=${cleanup.AUDIT_RETENTION_DAYS}d`);
 }
 
-module.exports = { startCronJobs, ...cleanup };
+module.exports = { startCronJobs, ...cleanup, runLegacyTasks: legacy.runLegacyTasks };

@@ -34,6 +34,37 @@ const MAIN_MENU = Markup.keyboard([
 bot.start(async (ctx) => {
   ctx.session = {};
   // Регистрируем юзера в Postgres при /start
+  // ── Deep-link login: /start login_<token> ──
+  const payload = ctx.startPayload || '';
+  if (payload.startsWith('login_')) {
+      const token = payload.slice(6);
+      try {
+          const  confirmLoginToken  = require('./lib/tg-login');
+          const result = await confirmLoginToken(token, ctx.from);
+          if (result.ok) {
+              await ctx.reply(
+                  '✅ Вход подтверждён!\n\n' +
+                  'Возвращайтесь на сайт — через несколько секунд вы будете автоматически залогинены.'
+              );
+              return;
+          }
+          const reasonMap = {
+              not_found:           '❌ Токен не найден или уже использован.',
+              status_consumed:     '⚠️ Этот токен уже использован.',
+              status_ready:        '⚠️ Этот токен уже подтверждён, возвращайтесь на сайт.',
+              status_expired:      '⏱ Срок действия токена истёк. Запросите новый.',
+              expired:             '⏱ Срок действия токена истёк (5 минут). Запросите новый.',
+              user_create_failed:  '❌ Не удалось создать пользователя.',
+          };
+          await ctx.reply(reasonMap[result.reason] || ('❌ Ошибка: ' + result.reason));
+          return;
+      } catch (e) {
+          console.error('[bot.start] login confirm error:', e.message);
+          await ctx.reply('❌ Ошибка подтверждения входа. Попробуйте ещё раз с сайта.');
+          return;
+      }
+  }
+
   try { await require('./lib/auth').getOrCreateBotUser(ctx.from); } catch (_) {}
 
   await ctx.reply(

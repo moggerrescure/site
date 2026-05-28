@@ -2,6 +2,7 @@
 
 const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
+const mediaService = require('./mediaService');
 const { generateUniqueSlug } = require('../lib/slug');
 const { parseDate, formatDate, getYear } = require('../lib/dates');
 const { verifyProfileAccessToken } = require('./codeService');
@@ -553,6 +554,11 @@ async function deleteProfile(idOrSlug, actor, { hard = false } = {}) {
             const err = new Error('admin_required'); err.status = 403; throw err;
         }
         await prisma.profile.delete({ where: { id: profile.id } });
+        try {
+            await mediaService.purgeOrphanMedia({ limit: 5000 });
+        } catch (e) {
+            console.warn('[profileService] purgeOrphanMedia after hard-delete failed:', e && e.message);
+        }
         return { ok: true, hard: true, id: profile.id };
     }
 
