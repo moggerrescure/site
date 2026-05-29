@@ -54,5 +54,12 @@ backend/uploads/
 # === Локальная Windows-папка коллеги (не должна быть в репо) ===
 server/
 
+# === Scratch / temp files ===
+scratch_*.js
+scratch_*.txt
+backend/scratch_*.js
+mobile-audit/
+doc_*.gitignore
+
 # === Прочее ===
 frontend/serve.js
