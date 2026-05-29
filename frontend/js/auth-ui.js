@@ -238,7 +238,7 @@
         <p class="auth-modal__switch">
           ${mode === 'login'
             ? 'Нет аккаунта? <a id="auth-switch">Зарегистрироваться</a>'
-            : 'Уже есть аккаунт? <a id="auth-switch">Войти</a>'}}
+            : 'Уже есть аккаунт? <a id="auth-switch">Войти</a>'}
           ${mode === 'login' ? `
             <div class="auth-modal__divider"><span>или</span></div>
             <button type="button" id="tg-login-btn" class="auth-modal__tg-btn">

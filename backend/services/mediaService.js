@@ -173,4 +173,141 @@ async function purgeOrphanMedia({ limit = 1000 } = {}) {
     return { mediaRows, files: fileStats };
 }
 
-module.exports = { saveFile, UPLOAD_DIR, deleteMediaFiles, purgeOrphanMedia };
+/**
+ * Stream-friendly counterpart of saveFile: source already on disk (tmp staging from multer.diskStorage).
+ * Avoids loading the whole file into RAM. Images still go through sharp.toBuffer() because WebP output is small;
+ * audio/video are piped to S3 via lib-storage multipart Upload.
+ */
+async function saveFileFromPath(filePath, originalName, mimetype, opts = {}) {
+  if (!filePath) throw new ApiError('Файл отсутствует', 400);
+  const stat0 = await fs.promises.stat(filePath);
+  if (!stat0.size) throw new ApiError('Пустой файл', 400);
+
+  const kind = pickKind(originalName, opts.requestedKind);
+  if (!kind) throw new ApiError(`Тип файла не поддерживается: ${originalName}`, 400);
+
+  const limit = MAX_BYTES[kind] || MAX_BYTES.IMAGE;
+  if (stat0.size > limit) {
+    throw new ApiError(`Файл превышает лимит ${(limit / 1024 / 1024).toFixed(0)} МБ`, 413);
+  }
+
+  const ext = path.extname(originalName || '').toLowerCase();
+  let outExt = ext || '';
+  let outMime = mimetype || '';
+  let width = null, height = null;
+  let outSize = stat0.size;
+  const filenameBase = `${opts.prefix || 'file'}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  let storageUrl = null;
+
+  if (sharp && kind === 'IMAGE' && ext !== '.gif') {
+    try {
+      const processed = await sharp(filePath)
+        .rotate()
+        .resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer({ resolveWithObject: true });
+      const outBuf = processed.data;
+      width = processed.info.width || null;
+      height = processed.info.height || null;
+      outSize = outBuf.length;
+      outExt = '.webp';
+      outMime = 'image/webp';
+      const filename = `${filenameBase}${outExt}`;
+      if (s3.isEnabled()) {
+        storageUrl = await s3.uploadBuffer(filename, outBuf, outMime);
+      } else {
+        await fs.promises.writeFile(path.join(UPLOAD_DIR, filename), outBuf);
+        storageUrl = `/uploads/${filename}`;
+      }
+    } catch (e) {
+      console.warn('[media] sharp failed in saveFileFromPath, fallback to raw stream:', e.message);
+      storageUrl = null;
+    }
+  }
+
+  if (!storageUrl) {
+    const filename = `${filenameBase}${outExt}`;
+    if (s3.isEnabled()) {
+      const readable = fs.createReadStream(filePath);
+      storageUrl = await s3.uploadStream(filename, readable, outMime || 'application/octet-stream');
+    } else {
+      const outPath = path.join(UPLOAD_DIR, filename);
+      await new Promise((resolve, reject) => {
+        const rs = fs.createReadStream(filePath);
+        const ws = fs.createWriteStream(outPath);
+        rs.on('error', reject);
+        ws.on('error', reject);
+        ws.on('finish', resolve);
+        rs.pipe(ws);
+      });
+      storageUrl = `/uploads/${filename}`;
+    }
+    outSize = (await fs.promises.stat(filePath)).size;
+  }
+
+  const media = await prisma.media.create({
+    data: {
+      url: storageUrl,
+      kind,
+      originalName: originalName || null,
+      mimeType: outMime || 'application/octet-stream',
+      sizeBytes: outSize,
+      width, height,
+      uploadedById: opts.uploadedById || null,
+    },
+  });
+  return media;
+}
+
+const PRESIGN_LIMITS = {
+  image: 16 * 1024 * 1024,
+  audio: 32 * 1024 * 1024,
+  video: 100 * 1024 * 1024,
+};
+
+async function createPresignedUpload({ kind, filename, mimetype, sizeBytes } = {}) {
+  if (!s3.isEnabled()) throw new ApiError('S3 не настроен — pre-signed URLs недоступны', 503);
+  if (!filename || !mimetype || !kind) throw new ApiError('filename, mimetype, kind обязательны', 400);
+  const k = String(kind).toLowerCase();
+  if (!['image', 'audio', 'video'].includes(k)) throw new ApiError('kind должен быть image|audio|video', 400);
+  if (typeof sizeBytes === 'number' && sizeBytes > PRESIGN_LIMITS[k]) {
+    throw new ApiError(`Файл превышает лимит ${(PRESIGN_LIMITS[k] / 1024 / 1024).toFixed(0)} МБ`, 413);
+  }
+  const ext = path.extname(filename || '').toLowerCase();
+  const id = crypto.randomUUID();
+  const key = `presigned-${Date.now()}-${id}${ext}`;
+  return await s3.getPresignedPutUrl({ key, mimeType: mimetype, expiresIn: 300 });
+}
+
+async function commitPresignedUpload({ key, originalName, mimetype, uploadedById } = {}) {
+  if (!s3.isEnabled()) throw new ApiError('S3 не настроен', 503);
+  if (!key || !originalName || !mimetype) throw new ApiError('key, originalName, mimetype обязательны', 400);
+  const head = await s3.headObject(key);
+  if (!head) throw new ApiError('Файл не найден в R2 (PUT не завершён?)', 404);
+  const kind = pickKind(originalName);
+  if (!kind) {
+    await s3.deleteKey(key);
+    throw new ApiError(`Тип файла не поддерживается: ${originalName}`, 400);
+  }
+  const limit = MAX_BYTES[kind] || MAX_BYTES.IMAGE;
+  if (head.contentLength > limit) {
+    await s3.deleteKey(key);
+    throw new ApiError(`Файл превышает лимит ${(limit / 1024 / 1024).toFixed(0)} МБ`, 413);
+  }
+  const url = s3.publicUrlForKey(key);
+  const media = await prisma.media.create({
+    data: {
+      url,
+      kind,
+      originalName,
+      mimeType: mimetype,
+      sizeBytes: head.contentLength,
+      width: null,
+      height: null,
+      uploadedById: uploadedById || null,
+    },
+  });
+  return media;
+}
+
+module.exports = { saveFile, saveFileFromPath, createPresignedUpload, commitPresignedUpload, UPLOAD_DIR, deleteMediaFiles, purgeOrphanMedia };

@@ -5,6 +5,9 @@ const {
     PutObjectCommand,
     DeleteObjectCommand,
 } = require('@aws-sdk/client-s3');
+const { Upload } = require('@aws-sdk/lib-storage');
+const { HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const trim = (v) => (v || '').trim();
 
@@ -79,4 +82,82 @@ async function deleteByUrl(url) {
     }
 }
 
-module.exports = { isEnabled, uploadBuffer, deleteByUrl };
+async function uploadStream(filename, readable, mimeType) {
+    ensureChecked();
+    if (!_enabled) throw new Error('[s3] not enabled');
+    const key = `media/${filename}`;
+    const uploader = new Upload({
+        client: _client,
+        params: {
+            Bucket: _bucket,
+            Key: key,
+            Body: readable,
+            ContentType: mimeType || 'application/octet-stream',
+        },
+        queueSize: 4,
+        partSize: 8 * 1024 * 1024,
+        leavePartsOnError: false,
+    });
+    await uploader.done();
+    return `${_publicBase}/${key}`;
+}
+
+function publicUrlForKey(key) {
+    ensureChecked();
+    if (!_enabled) throw new Error('[s3] not enabled');
+    return `${_publicBase}/${key}`;
+}
+
+async function getPresignedPutUrl({ key, mimeType, expiresIn = 300 }) {
+    ensureChecked();
+    if (!_enabled) throw new Error('[s3] not enabled');
+    if (!key) throw new Error('[s3] key required');
+    const fullKey = key.startsWith('media/') ? key : `media/${key}`;
+    const cmd = new PutObjectCommand({
+        Bucket: _bucket,
+        Key: fullKey,
+        ContentType: mimeType || 'application/octet-stream',
+    });
+    const uploadUrl = await getSignedUrl(_client, cmd, { expiresIn });
+    return { uploadUrl, key: fullKey, publicUrl: `${_publicBase}/${fullKey}`, expiresIn };
+}
+
+async function headObject(key) {
+    ensureChecked();
+    if (!_enabled) throw new Error('[s3] not enabled');
+    try {
+        const res = await _client.send(new HeadObjectCommand({ Bucket: _bucket, Key: key }));
+        return {
+            contentLength: Number(res.ContentLength || 0),
+            contentType: res.ContentType || '',
+        };
+    } catch (e) {
+        const code = e && (e.name || e.Code);
+        const status = e && e.$metadata && e.$metadata.httpStatusCode;
+        if (code === 'NotFound' || code === 'NoSuchKey' || status === 404) return null;
+        throw e;
+    }
+}
+
+async function deleteKey(key) {
+    ensureChecked();
+    if (!_enabled) return false;
+    try {
+        await _client.send(new DeleteObjectCommand({ Bucket: _bucket, Key: key }));
+        return true;
+    } catch (e) {
+        console.warn('[s3] deleteKey failed:', e.name, '-', e.message);
+        return false;
+    }
+}
+
+module.exports = {
+    isEnabled,
+    uploadBuffer,
+    uploadStream,
+    deleteByUrl,
+    deleteKey,
+    headObject,
+    getPresignedPutUrl,
+    publicUrlForKey,
+};

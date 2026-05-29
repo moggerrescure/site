@@ -9,8 +9,9 @@ Thumbs.db
 
 # === Logs ===
 *.log
+deploy.log
 
-# === Local databases (SQLite legacy) ===
+# === Local databases (SQLite legacy + binary dumps) ===
 *.db
 *.db-shm
 *.db-wal
@@ -31,25 +32,27 @@ volumes/
 !.env.example
 !**/.env.example
 
-# === Backups & временный мусор ===
+# === Backups (все варианты) ===
 backups/
+backup/
+backup/manual-*.sql.gz
+backup/predeploy_*.sql.gz
 *.bak
+*.bak.*
+
+# === Дампы кода / скрипты-копировщики ===
 project_dump.txt
 project_structure.txt
 copy-ts.sh
 /tmp/
 
-# uploads (только .gitkeep и тестовые webp коммитим)
-backend/uploads/*
+# === Uploads (только .gitkeep и тестовые webp) ===
+backend/uploads/
 !backend/uploads/.gitkeep
 !backend/uploads/*.webp
-*.bak
 
-# Backup artifacts
-*.bak
-deploy.log
+# === Локальная Windows-папка коллеги (не должна быть в репо) ===
+server/
+
+# === Прочее ===
 frontend/serve.js
-
-# Local manual backups
-backup/manual-*.sql.gz
-backup/predeploy_*.sql.gz

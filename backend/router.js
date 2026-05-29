@@ -29,16 +29,25 @@ const { loginLimiter, registerLimiter, authGeneralLimiter } = require('./middlew
 const router = express.Router();
 
 /* ─── Multer 2.x (memory) ─────────────────────────────── */
+const path = require('path');
+const crypto = require('crypto');
+const fsp = require('node:fs').promises;
+const { tmpCleanupMiddleware, TMP_UPLOAD_DIR } = require('./middleware/upload');
+
+/* Multer 2.x DISK staging (NOT memoryStorage) - fixes 200MB OOM bomb */
+const diskStorage = multer.diskStorage({
+    destination: function (req, file, cb) { cb(null, TMP_UPLOAD_DIR); },
+    filename: function (req, file, cb) {
+        const id = crypto.randomUUID();
+        const ext = (path.extname(file.originalname || '') || '').toLowerCase();
+        cb(null, id + ext);
+    },
+});
 const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 200 * 1024 * 1024 },
+    storage: diskStorage,
+    limits: { fileSize: 200 * 1024 * 1024, files: 1 },
 });
 
-/**
- * Гибкий upload: принимает файл под ЛЮБЫМ именем multipart-поля
- * и кладёт его в req.file (совместимо с upload.single()).
- * Нужен чтобы фронт мог слать audio под полем 'audio', video под 'video' и т.д.
- */
 const uploadAnyAsSingle = (req, res, next) => {
     upload.any()(req, res, (uploadErr) => {
         if (uploadErr) return next(uploadErr);
@@ -48,6 +57,15 @@ const uploadAnyAsSingle = (req, res, next) => {
         next();
     });
 };
+
+// INTERIM (step 1): mediaService.saveFile() still takes a Buffer.
+// Step 2 will switch to a path/stream and remove this helper.
+async function readUploadedBuffer(file) {
+    if (!file) return null;
+    if (file.buffer) return file.buffer;
+    if (file.path)   return fsp.readFile(file.path);
+    return null;
+}
 
 /* ─── Small helpers ───────────────────────────────────── */
 const ok  = (res, data, code = 200) => res.status(code).json({ ok: true, ...data });
@@ -525,10 +543,10 @@ for (const base of ['/people', '/profiles']) {
 }
 
 /* ── Photo upload (main cover) ── */
-router.post('/people/:id/photo', requireAuth, upload.single('photo'), wrap(async (req, res) => {
+router.post('/people/:id/photo', requireAuth, tmpCleanupMiddleware, upload.single('photo'), wrap(async (req, res) => {
     if (!req.file) return err(res, 400, 'photo file required');
-    const media = await mediaService.saveFile(
-        req.file.buffer,
+    const media = await mediaService.saveFileFromPath(
+        req.file.path,
         req.file.originalname,
         req.file.mimetype,
         { kind: 'image', userId: req.user.id },
@@ -542,12 +560,11 @@ router.post('/people/:id/photo', requireAuth, upload.single('photo'), wrap(async
     return ok(res, { photo: media.url, url: media.url });
 }));
 
-router.post('/profiles/:id/photo', requireAuth, upload.single('photo'), wrap(async (req, res) => {
-    // Идентичная логика с /people/:id/photo
-    // (раньше был хрупкий router.handle hack — multer падал на повторном парсинге)
+router.post('/profiles/:id/photo', requireAuth, tmpCleanupMiddleware, upload.single('photo'), wrap(async (req, res) => {
+    // Identical logic with /people/:id/photo
     if (!req.file) return err(res, 400, 'photo file required');
-    const media = await mediaService.saveFile(
-        req.file.buffer,
+    const media = await mediaService.saveFileFromPath(
+        req.file.path,
         req.file.originalname,
         req.file.mimetype,
         { kind: 'image', userId: req.user.id },
@@ -639,8 +656,8 @@ router.post('/candles/light', optionalAuth, wrap(async (req, res) => {
 function makeUploadHandler(kind) {
     return async (req, res) => {
         if (!req.file) return err(res, 400, 'file required');
-        const media = await mediaService.saveFile(
-            req.file.buffer,
+        const media = await mediaService.saveFileFromPath(
+            req.file.path,
             req.file.originalname,
             req.file.mimetype,
             { kind, userId: req.user?.id || null },
@@ -649,9 +666,30 @@ function makeUploadHandler(kind) {
     };
 }
 
-router.post('/upload-photo', optionalAuth, upload.single('photo'), wrap(makeUploadHandler('image')));
-router.post('/upload-audio', optionalAuth, uploadAnyAsSingle, wrap(makeUploadHandler('audio')));
-router.post('/upload-video', optionalAuth, uploadAnyAsSingle, wrap(makeUploadHandler('video')));
+router.post('/upload-photo', optionalAuth, tmpCleanupMiddleware, upload.single('photo'), wrap(makeUploadHandler('image')));
+router.post('/upload-audio', optionalAuth, tmpCleanupMiddleware, uploadAnyAsSingle, wrap(makeUploadHandler('audio')));
+router.post('/upload-video', optionalAuth, tmpCleanupMiddleware, uploadAnyAsSingle, wrap(makeUploadHandler('video')));
+
+/* Pre-signed direct upload: клиент PUT'ит файл сразу в R2, бекенд только подписывает URL.
+   1) POST /upload-presign  -> { uploadUrl, key, publicUrl, expiresIn }
+   2) client: PUT uploadUrl с заголовком Content-Type === mimetype
+   3) POST /upload-confirm  -> создаёт Media-запись после проверки в R2 (HEAD)         */
+router.post('/upload-presign', optionalAuth, wrap(async (req, res) => {
+    const { kind, filename, mimetype, sizeBytes } = req.body || {};
+    const result = await mediaService.createPresignedUpload({ kind, filename, mimetype, sizeBytes });
+    return ok(res, result);
+}));
+
+router.post('/upload-confirm', optionalAuth, wrap(async (req, res) => {
+    const { key, originalName, mimetype } = req.body || {};
+    const media = await mediaService.commitPresignedUpload({
+        key,
+        originalName,
+        mimetype,
+        uploadedById: req.user?.id || null,
+    });
+    return ok(res, { url: media.url, id: media.id });
+}));
 
 /* ═══════════════════════════════════════════════════════ */
 /*  FAMILY TREES                                           */
