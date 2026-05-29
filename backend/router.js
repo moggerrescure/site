@@ -221,11 +221,12 @@ router.get('/stats', wrap(async (req, res) => {
         prisma.profile.count(),
         prisma.guestMemory.count(), // Count all reviews in DB
         candleService.count(),
-        prisma.profile.findMany({
-            where: { burialPlace: { not: null } },
-            select: { burialPlace: true },
-            distinct: ['burialPlace'],
-        }),
+        prisma.$queryRawUnsafe(`
+      SELECT COUNT(DISTINCT LOWER(TRIM("burialPlace")))::int AS total
+      FROM "Profile"
+      WHERE "burialPlace" IS NOT NULL
+        AND LENGTH(TRIM("burialPlace")) > 0
+    `),
     ]);
     // Generations: sum of per-account-max of per-tree generation ranges (MAX-MIN+1)
     const generationsRows = await prisma.$queryRawUnsafe(`
@@ -247,7 +248,7 @@ router.get('/stats', wrap(async (req, res) => {
     
     // Cities logic: minimum/default 23, approx 35% of memory pages, capped by total pages, transition to real DB count when exceeded.
     const peopleCount = people;
-    const dbCitiesCount = citiesAgg.length;
+    const dbCitiesCount = Number(citiesAgg?.[0]?.total ?? 0);
     const calculatedValue = Math.min(peopleCount, Math.max(23, Math.round(peopleCount * 0.35)));
     const cities = Math.max(dbCitiesCount, calculatedValue);
 
