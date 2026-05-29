@@ -2,193 +2,100 @@
 
 require('dotenv').config();
 
-const { Telegraf, Markup, session } = require('telegraf');
-const { createProfile } = require('./handlers/create-profile');
-const { blockWizard } = require('./handlers/block-wizard');
-const { myPages, handleEdit, handleDelete, confirmDelete } = require('./handlers/my-pages');
-const setPassword = require('./handlers/set-password');
-const trash = require('./handlers/trash');
-const access = require('./handlers/access');
+const { Telegraf, Markup } = require('telegraf');
+const { confirmLoginToken } = require('./lib/tg-login');
+const { relayFromUserToAdmin, handleAdminMessage } = require('./lib/relay');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const SITE_URL = process.env.SITE_URL || '';
 
 if (!BOT_TOKEN) {
-  console.error('❌ BOT_TOKEN не задан в .env');
+  console.error('BOT_TOKEN не задан в .env');
+  process.exit(1);
+}
+if (!ADMIN_CHAT_ID) {
+  console.error('ADMIN_CHAT_ID не задан в .env (нужен для пересылки поддержки)');
   process.exit(1);
 }
 
 const bot = new Telegraf(BOT_TOKEN);
 
-bot.use(session());
-bot.use((ctx, next) => {
-  if (!ctx.session) ctx.session = {};
-  return next();
-});
-
-const MAIN_MENU = Markup.keyboard([
-	['🕯 Создать страницу памяти'],
-	['📋 Мои страницы', '🔑 Пароль'],
-	['🗑 Корзина', '❓ Помощь'],
-]).resize();
-
 bot.start(async (ctx) => {
-  ctx.session = {};
-  // Регистрируем юзера в Postgres при /start
-  // ── Deep-link login: /start login_<token> ──
-  const payload = ctx.startPayload || '';
+  const payload = (ctx.startPayload || '').trim();
+
   if (payload.startsWith('login_')) {
-      const token = payload.slice(6);
-      try {
-          const  confirmLoginToken  = require('./lib/tg-login');
-          const result = await confirmLoginToken(token, ctx.from);
-          if (result.ok) {
-              await ctx.reply(
-                  '✅ Вход подтверждён!\n\n' +
-                  'Возвращайтесь на сайт — через несколько секунд вы будете автоматически залогинены.'
-              );
-              return;
-          }
-          const reasonMap = {
-              not_found:           '❌ Токен не найден или уже использован.',
-              status_consumed:     '⚠️ Этот токен уже использован.',
-              status_ready:        '⚠️ Этот токен уже подтверждён, возвращайтесь на сайт.',
-              status_expired:      '⏱ Срок действия токена истёк. Запросите новый.',
-              expired:             '⏱ Срок действия токена истёк (5 минут). Запросите новый.',
-              user_create_failed:  '❌ Не удалось создать пользователя.',
-          };
-          await ctx.reply(reasonMap[result.reason] || ('❌ Ошибка: ' + result.reason));
-          return;
-      } catch (e) {
-          console.error('[bot.start] login confirm error:', e.message);
-          await ctx.reply('❌ Ошибка подтверждения входа. Попробуйте ещё раз с сайта.');
-          return;
+    const token = payload.slice(6);
+    try {
+      const result = await confirmLoginToken(token, ctx.from);
+      if (result.ok) {
+        return ctx.reply('Вход подтверждён!\n\nВозвращайтесь на сайт — через несколько секунд вы будете автоматически залогинены.', Markup.removeKeyboard());
       }
+      const reasonMap = {
+        not_found:          'Токен не найден или уже использован.',
+        status_consumed:    'Этот токен уже использован.',
+        status_ready:       'Этот токен уже подтверждён, возвращайтесь на сайт.',
+        status_expired:     'Срок действия токена истёк. Запросите новый.',
+        expired:            'Срок действия токена истёк (5 минут). Запросите новый.',
+        user_create_failed: 'Не удалось создать пользователя.',
+      };
+      return ctx.reply(reasonMap[result.reason] || ('Ошибка: ' + result.reason), Markup.removeKeyboard());
+    } catch (e) {
+      console.error('[bot.start] login confirm error:', e.message);
+      return ctx.reply('Ошибка подтверждения входа. Попробуйте ещё раз с сайта.', Markup.removeKeyboard());
+    }
   }
 
-  try { await require('./lib/auth').getOrCreateBotUser(ctx.from); } catch (_) {}
-
-  await ctx.reply(
-    '🕯 Память — Хранители воспоминаний\n\n' +
-    'Этот бот создаёт мемориальные страницы для ваших близких.\n\n' +
-    'Вы заполняете информацию шаг за шагом — имя, даты, фото, историю жизни — ' +
-    'а бот собирает из этого красивую веб-страницу с уникальной ссылкой и QR-кодом.'
-  );
-
-  await ctx.reply('🔄 Обновляю меню…', Markup.removeKeyboard());
-  await ctx.reply('👇 Выберите действие:', MAIN_MENU);
-});
-
-bot.command('menu', async (ctx) => {
-  await ctx.reply('🔄 Обновляю меню…', Markup.removeKeyboard());
-  return ctx.reply('👇 Выберите действие:', MAIN_MENU);
-});
-
-bot.hears('❓ Помощь', (ctx) => {
+  const siteLine = SITE_URL ? ('\nСайт: ' + SITE_URL) : '';
   return ctx.reply(
-    '📖 Как это работает\n\n' +
-    'Вы создаёте мемориальную страницу за 5-10 минут:\n\n' +
-    '1. ФИО и даты жизни\n' +
-    '2. Главное фото (обязательно)\n' +
-    '3. Краткий текст-эпитафия\n' +
-    '4. 6 блоков истории жизни:\n' +
-    '    • Детство и юность\n    • Образование\n    • Профессиональный путь\n' +
-    '    • Семья\n    • Хобби и увлечения\n    • Наследие\n\n' +
-    'К каждому блоку можно прикрепить фото. Любой блок можно пропустить.'
+    'Здравствуйте!\n\n' +
+    'Этот бот используется только для:\n' +
+    '— подтверждения входа на сайт\n' +
+    '— связи с поддержкой' + siteLine + '\n\n' +
+    'Если у вас вопрос — напишите его в этот чат, мы ответим. /help — подробнее.'
+  , Markup.removeKeyboard());
+});
+
+bot.help(async (ctx) => {
+  return ctx.reply(
+    'Возможности бота:\n\n' +
+    '1, Markup.removeKeyboard()) Вход на сайт — нажмите на сайте «Войти через Telegram», ссылка для подтверждения придёт сюда.\n\n' +
+    '2) Поддержка — напишите боту любое сообщение (текст, фото, документ). Мы получим уведомление и ответим прямо в этом чате.'
   );
 });
 
-bot.hears('📋 Мои страницы', (ctx) => myPages(ctx));
-bot.hears('🕯 Создать страницу памяти', (ctx) => createProfile.start(ctx));
-bot.hears('🔑 Пароль', (ctx) => setPassword.start(ctx));
-bot.hears('🗑 Корзина', (ctx) => trash.showTrash(ctx));
-bot.command('trash', (ctx) => trash.showTrash(ctx));
-bot.command('access', (ctx) => access.start(ctx));
+bot.on('message', async (ctx) => {
+  if (ctx.chat.type !== 'private') return;
 
-bot.on('text', (ctx) => {
-  const state = ctx.session?.wizard;
-  if (!state) return;
-  switch (state.step) {
-    case 'fullName':        return createProfile.handleFullName(ctx);
-    case 'dates':           return createProfile.handleDates(ctx);
-    case 'mainText':        return createProfile.handleMainText(ctx);
-    case 'blockText':       return blockWizard.handleBlockText(ctx);
-    case 'quoteAfterBlock': return blockWizard.handleQuoteAfterBlock(ctx);
-		case 'setpw_input':     return setPassword.handleInput(ctx);
-		case 'access_email':    return access.handleEmail(ctx);
-    default: return;
+  if (String(ctx.from.id) === String(ADMIN_CHAT_ID)) {
+    return handleAdminMessage(ctx, bot);
+  }
+
+  try {
+    await relayFromUserToAdmin(ctx, bot, ADMIN_CHAT_ID);
+    await ctx.reply('Ваше сообщение отправлено в поддержку. Мы ответим вам в этом чате.', Markup.removeKeyboard());
+  } catch (e) {
+    if (e.message === 'rate_limited') {
+      return ctx.reply('Слишком много сообщений. Подождите минуту и попробуйте снова.', Markup.removeKeyboard());
+    }
+    console.error('[support relay] error:', e.message);
+    return ctx.reply('Не удалось отправить сообщение. Попробуйте позже.', Markup.removeKeyboard());
   }
 });
 
-bot.on('photo', (ctx) => {
-  const state = ctx.session?.wizard;
-  if (!state) return;
-  switch (state.step) {
-    case 'mainPhoto':  return createProfile.handleMainPhoto(ctx);
-    case 'blockPhoto': return blockWizard.handleBlockPhoto(ctx);
-    default: return;
-  }
-});
-
-bot.on('callback_query', async (ctx) => {
-  const data = ctx.callbackQuery.data;
-
-  if (data === 'skip_main_photo')        return createProfile.skipMainPhoto(ctx);
-  if (data === 'skip_block_photo')       return blockWizard.skipBlockPhoto(ctx);
-  if (data === 'skip_block')             return blockWizard.skipBlock(ctx);
-  if (data === 'skip_quote_after_block') return blockWizard.skipQuoteAfterBlock(ctx);
-  if (data === 'visibility_public')      return blockWizard.setVisibility(ctx, true);
-  if (data === 'visibility_private')     return blockWizard.setVisibility(ctx, false);
-  if (data === 'confirm_publish')        return createProfile.confirmPublish(ctx);
-  if (data === 'cancel_wizard')          return createProfile.cancel(ctx);
-	if (data === 'setpw_cancel')          return setPassword.cancel(ctx);
-	if (data === 'trash_cancel')          return trash.cancelHardDelete(ctx);
-	if (data.startsWith('trash_restore_')) return trash.handleRestore(ctx, data.replace('trash_restore_', ''));
-	if (data.startsWith('trash_hard_'))    return trash.handleHardDelete(ctx, data.replace('trash_hard_', ''));
-	if (data.startsWith('trash_confirm_')) return trash.confirmHardDelete(ctx, data.replace('trash_confirm_', ''));
-	if (data === 'access_back')           return access.back(ctx);
-	if (data === 'access_level_view')     return access.finishGrant(ctx, false);
-	if (data === 'access_level_edit')     return access.finishGrant(ctx, true);
-	if (data.startsWith('access_pick_'))   return access.pickProfile(ctx, data.replace('access_pick_', ''));
-	if (data.startsWith('access_list_'))   return access.listGrants(ctx, data.replace('access_list_', ''));
-	if (data.startsWith('access_add_'))    return access.startAdd(ctx, data.replace('access_add_', ''));
-	if (data.startsWith('access_revoke_')) {
-		const rest = data.replace('access_revoke_', '');
-		const sep = rest.indexOf('_');
-		return access.revokeGrant(ctx, rest.slice(0, sep), rest.slice(sep + 1));
-	}
-  if (data === 'cancel_delete')          { ctx.answerCbQuery('Отменено'); return; }
-
-  if (data.startsWith('confirm_delete_')) {
-    const id = data.replace('confirm_delete_', '');
-    return confirmDelete(ctx, id);
-  }
-  if (data.startsWith('edit_'))   return handleEdit(ctx, data);
-  if (data.startsWith('delete_')) return handleDelete(ctx, data);
-
-  return ctx.answerCbQuery();
-});
-
-const { startScheduler } = require('./scheduler');
-
-// Регистрируем команды в "/" меню Telegram (видны в UI bot-чата)
 bot.telegram.setMyCommands([
-	{ command: 'start',   description: '🚀 Главное меню и приветствие' },
-	{ command: 'menu',    description: '📋 Обновить клавиатуру меню' },
-	{ command: 'access',  description: '🤝 Управление доступом к страницам' },
-	{ command: 'trash',   description: '🗑 Корзина удалённых страниц' },
-]).catch((e) => console.error('[setMyCommands] failed:', e));
+  { command: 'start', description: 'Начало работы' },
+  { command: 'help',  description: 'Что умеет этот бот' },
+]).catch((e) => console.error('[setMyCommands] failed:', e.message));
 
 bot.launch()
-  .then(() => {
-    process.stdout.write('🤖 Memorial Bot запущен\n');
-    startScheduler(bot);
-  })
+  .then(() => process.stdout.write('SecureShip Bot запущен (verification + support relay)\n'))
   .catch((err) => {
-    process.stderr.write('❌ Ошибка запуска: ' + err.message + '\n');
+    process.stderr.write('Ошибка запуска: ' + err.message + '\n');
     process.exit(1);
   });
 
-bot.catch((err) => console.error('Bot error:', err.message));
+bot.catch((err) => console.error('[bot.catch]:', err.message));
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
