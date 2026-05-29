@@ -1251,7 +1251,21 @@
           }
         }
       }
-      connectNodes(connectionNodeA, nodeId, connectionMode);
+      /* __MARRIAGE_YEAR_PROMPT_V1__ */
+      let __extras = {};
+      if (connectionMode === 'marriage') {
+        const __yearStr = (prompt('Год брака (необязательно, можно оставить пустым):', '') || '').trim();
+        if (__yearStr) {
+          const __y = parseInt(__yearStr, 10);
+          const __yearMax = new Date().getFullYear() + 5;
+          if (Number.isInteger(__y) && __y >= 1500 && __y <= __yearMax) {
+            __extras.startDate = __y + '-01-01';
+          } else {
+            alert('Введите год от 1500 до ' + __yearMax + ', либо оставьте поле пустым.');
+          }
+        }
+      }
+      connectNodes(connectionNodeA, nodeId, connectionMode, __extras);
       nodeEl.classList.add('tree-node--conn-selected');
       updateConnectionToast(2);
       setTimeout(() => cancelConnectionMode(), 1400);
@@ -1261,7 +1275,7 @@
   }
 
   /* ── Сохранить и нарисовать соединение ── */
-  function connectNodes(idA, idB, type) {
+  function connectNodes(idA, idB, type, extras = {}) {
     const conns = getLocalConnections();
     const ex = conns.find(c => (c.a === idA && c.b === idB) || (c.a === idB && c.b === idA));
 
@@ -1277,6 +1291,7 @@
     }
 
     const connData = { id: Date.now().toString(36), a: idA, b: idB, type };
+    if (extras && extras.startDate) connData.startDate = extras.startDate;
     if (lineColor) connData.color = lineColor;
 
     if (ex) { Object.assign(ex, { type, color: lineColor || ex.color }); }
@@ -1285,8 +1300,8 @@
 
     fetch(`${BASE}/api/family-connections`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ treeId: currentTreeId, nodeA: idA, nodeB: idB, type: type, color: lineColor }),
-    }).catch(() => {});
+      /* __CONN_FIELD_NAMES_V1__ */ body: JSON.stringify(Object.assign({ treeId: currentTreeId, fromNodeId: idA, toNodeId: idB, nodeA: idA, nodeB: idB, type: type, color: lineColor }, (extras && extras.startDate ? { startDate: extras.startDate } : {}))),
+    }).then(r => { if (!r.ok) r.text().then(t => console.error('POST /family-connections failed:', r.status, t)); }).catch(e => console.error('POST /family-connections network error:', e));
 
     /* Нарисовать нити — и в dynamic и в static контейнере */
     const dc = document.getElementById('tree-dynamic');
