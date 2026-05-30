@@ -26,11 +26,13 @@
   let fadedIn = false;
   function fadeIn() {
     if (fadedIn) return;
+    if (!document.body) {
+      requestAnimationFrame(fadeIn);
+      return;
+    }
     fadedIn = true;
     
-    if (document.body) {
-      document.body.classList.add('page-loaded');
-    }
+    document.body.classList.add('page-loaded');
     
     requestAnimationFrame(() => {
       overlay.classList.remove('page-transition--visible');

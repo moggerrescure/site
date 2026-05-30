@@ -1949,7 +1949,7 @@ section { position: relative; z-index: 1; }
    PAGE TRANSITIONS — body opacity
    ═══════════════════════════════════════════════ */
 body {
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.28s ease;
 }
 body.page-loaded  { opacity: 1; }
