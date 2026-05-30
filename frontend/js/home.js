@@ -4,6 +4,22 @@
    ═══════════════════════════════════════════════ */
 
 (function () {
+  /* ── PARALLAX POLYGONS ── */
+  document.addEventListener('mousemove', (e) => {
+    const polygons = document.querySelectorAll('.hero__polygon');
+    if (!polygons.length) return;
+    const x = (e.clientX - window.innerWidth / 2);
+    const y = (e.clientY - window.innerHeight / 2);
+    
+    polygons.forEach(poly => {
+      const speed = parseFloat(poly.dataset.parallax) || 0;
+      // We apply a custom variable to let CSS animations continue working smoothly if we combine them
+      // But for now, setting translate directly. To preserve CSS animations, we can use margin or left/top.
+      // Better yet, we can set CSS custom properties and use them in CSS animations!
+      poly.style.marginLeft = `${x * speed}px`;
+      poly.style.marginTop = `${y * speed}px`;
+    });
+  });
 
   /* ── STATS ── */
   function getPlural(number, one, two, five) {
