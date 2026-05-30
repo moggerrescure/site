@@ -1711,7 +1711,7 @@ const currentTreeId = urlParams.get('tree') || 'default';
         const highlightId = new URLSearchParams(window.location.search).get('highlight');
         if (highlightId && nodeEls[highlightId]) {
           const el = nodeEls[highlightId];
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          centerNode(el);
           highlight(highlightId);
         }
       }, 300);
@@ -1724,14 +1724,49 @@ const currentTreeId = urlParams.get('tree') || 'default';
     });
   });
 
+  function centerNode(nodeEl) {
+    if (!nodeEl || !wrapper) return;
+    const sectionEl = document.querySelector('.tree-section');
+    if (!sectionEl) return;
+
+    const frame = nodeEl.querySelector('.tree-node__frame') || nodeEl;
+    const wRect = wrapper.getBoundingClientRect();
+    const sRect = sectionEl.getBoundingClientRect();
+    const fRect = frame.getBoundingClientRect();
+
+    const scaleX = wRect.width / wrapper.offsetWidth || 1;
+    const scaleY = wRect.height / wrapper.offsetHeight || 1;
+
+    // Center of node relative to wrapper (unscaled coords)
+    const nodeX = ((fRect.left - wRect.left) / scaleX) + (fRect.width / scaleX) / 2;
+    const nodeY = ((fRect.top - wRect.top) / scaleY) + (fRect.height / scaleY) / 2;
+
+    const target = document.getElementById('tree-dynamic') || wrapper;
+    if (target) {
+      target.style.transformOrigin = '0 0';
+      target.style.transition = 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)';
+    }
+
+    panX = (sRect.width / 2) - nodeX * zoom;
+    panY = (sRect.height / 2) - nodeY * zoom;
+
+    updateTreeTransform();
+  }
+
   // --- PAN & ZOOM INITIALIZATION ---
   function initPanZoom() {
     const sectionEl = document.querySelector('.tree-section');
     if (!sectionEl || !wrapper) return;
 
-    // Apply styles to enable grab cursor and hide default overflow-x scrollbar
+    // Apply styles to enable grab cursor and hide default overflow scroll
     sectionEl.style.overflow = 'hidden';
     sectionEl.style.cursor = 'grab';
+
+    // Prevent programmatic focus shifting causing scrolls
+    sectionEl.addEventListener('scroll', () => {
+      sectionEl.scrollLeft = 0;
+      sectionEl.scrollTop = 0;
+    });
 
     const getTarget = () => document.getElementById('tree-dynamic') || wrapper;
 
@@ -1750,7 +1785,7 @@ const currentTreeId = urlParams.get('tree') || 'default';
       
       const target = getTarget();
       if (target) {
-        target.style.transformOrigin = 'center center';
+        target.style.transformOrigin = '0 0';
         target.style.transition = 'none'; // Instant response during dragging
       }
     };
@@ -1812,27 +1847,50 @@ const currentTreeId = urlParams.get('tree') || 'default';
 
     sectionEl.addEventListener('touchmove', e => {
       if (e.touches.length === 1) {
-        onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        if (isPointerDown) {
+          e.preventDefault();
+          onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
       }
-    }, { passive: true });
+    }, { passive: false });
 
     sectionEl.addEventListener('touchend', () => {
       onPointerUp();
     });
 
-    // Wheel Zoom
+    // Wheel Zoom & Pan (Standard Figma/Miro approach: normal wheel pans, Ctrl+wheel zooms)
     sectionEl.addEventListener('wheel', e => {
       e.preventDefault();
-      const zoomFactor = 0.08;
-      if (e.deltaY < 0) {
-        zoom = Math.min(2.5, zoom + zoomFactor);
-      } else {
-        zoom = Math.max(0.3, zoom - zoomFactor);
-      }
+      
       const target = getTarget();
       if (target) {
-        target.style.transformOrigin = 'center center';
-        target.style.transition = 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        target.style.transformOrigin = '0 0';
+      }
+
+      if (e.ctrlKey) {
+        // Zoom centered on pointer location
+        const zoomFactor = 0.05;
+        const oldZoom = zoom;
+        if (e.deltaY < 0) {
+          zoom = Math.min(2.5, zoom + zoomFactor);
+        } else {
+          zoom = Math.max(0.25, zoom - zoomFactor);
+        }
+        
+        const rect = sectionEl.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        panX = mouseX - (mouseX - panX) * (zoom / oldZoom);
+        panY = mouseY - (mouseY - panY) * (zoom / oldZoom);
+      } else {
+        // Pan tree left/right/up/down
+        panX -= e.deltaX * 0.95;
+        panY -= e.deltaY * 0.95;
+      }
+      
+      if (target) {
+        target.style.transition = 'none'; // Fast wheel response
       }
       updateTreeTransform();
     }, { passive: false });
@@ -1841,6 +1899,21 @@ const currentTreeId = urlParams.get('tree') || 'default';
   function updateTreeTransform() {
     const target = document.getElementById('tree-dynamic') || wrapper;
     if (target) {
+      if (isNaN(panX) || !isFinite(panX)) panX = 0;
+      if (isNaN(panY) || !isFinite(panY)) panY = 0;
+      if (isNaN(zoom) || !isFinite(zoom) || zoom <= 0) zoom = 1.0;
+
+      const wWidth = wrapper.offsetWidth || 1200;
+      const wHeight = wrapper.offsetHeight || 1000;
+      
+      const maxPanX = window.innerWidth * 0.8;
+      const minPanX = -wWidth * zoom - window.innerWidth * 0.2;
+      const maxPanY = window.innerHeight * 0.8;
+      const minPanY = -wHeight * zoom - window.innerHeight * 0.2;
+
+      panX = Math.max(minPanX, Math.min(maxPanX, panX));
+      panY = Math.max(minPanY, Math.min(maxPanY, panY));
+
       target.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
     }
   }
