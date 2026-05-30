@@ -15,16 +15,54 @@
   wrapper.insertBefore(canvas, wrapper.firstChild);
 
   const ctx = canvas.getContext('2d');
+  if (!ctx) return;
 
   let W, H;
   let bgStars = [];
   let nodeCenters = {};
   let pathParticles = [];
 
+  // Robust color parsing to prevent browser crashes on rgb/rgba or hex string concatenation
+  function hexToRgb(hex) {
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  function parseToRgba(colorStr, alpha) {
+    if (!colorStr) return `rgba(200, 168, 75, ${alpha})`;
+    
+    colorStr = colorStr.trim();
+    
+    // Check if rgb or rgba
+    if (colorStr.startsWith('rgb')) {
+      const match = colorStr.match(/\d+(\.\d+)?/g);
+      if (match && match.length >= 3) {
+        return `rgba(${match[0]}, ${match[1]}, ${match[2]}, ${alpha})`;
+      }
+    }
+    
+    // Check if hex
+    if (colorStr.startsWith('#')) {
+      const rgb = hexToRgb(colorStr);
+      if (rgb) {
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+      }
+    }
+    
+    // Fallback directly
+    return colorStr;
+  }
+
   // Handle sizing
   function resize() {
-    W = wrapper.offsetWidth;
-    H = wrapper.offsetHeight;
+    W = wrapper.offsetWidth || 1200;
+    H = wrapper.offsetHeight || 1000;
     canvas.width = W;
     canvas.height = H;
     
@@ -59,13 +97,22 @@
       if (!frame || !id) return;
       
       const fRect = frame.getBoundingClientRect();
-      const scaleX = wRect.width / wrapper.offsetWidth || 1;
-      const scaleY = wRect.height / wrapper.offsetHeight || 1;
+      const scaleX = (wrapper.offsetWidth > 0) ? (wRect.width / wrapper.offsetWidth) : 1;
+      const scaleY = (wrapper.offsetHeight > 0) ? (wRect.height / wrapper.offsetHeight) : 1;
+      
+      let cx = (fRect.left - wRect.left) / scaleX + (fRect.width / scaleX) / 2;
+      let cy = (fRect.top - wRect.top) / scaleY + (fRect.height / scaleY) / 2;
+      let cr = (fRect.width / scaleX) / 2;
+
+      // Safe guards against NaN / Infinity
+      if (isNaN(cx) || !isFinite(cx)) cx = 0;
+      if (isNaN(cy) || !isFinite(cy)) cy = 0;
+      if (isNaN(cr) || !isFinite(cr) || cr <= 0) cr = 10;
       
       nodeCenters[id] = {
-        x: (fRect.left - wRect.left) / scaleX + (fRect.width / scaleX) / 2,
-        y: (fRect.top - wRect.top) / scaleY + (fRect.height / scaleY) / 2,
-        r: (fRect.width / scaleX) / 2,
+        x: cx,
+        y: cy,
+        r: cr,
         color: frame.style.getPropertyValue('--clan-color') || '#c8a84b'
       };
     });
@@ -140,9 +187,9 @@
     Object.values(nodeCenters).forEach(node => {
       // Glow halo
       const grad = ctx.createRadialGradient(node.x, node.y, node.r * 0.5, node.x, node.y, node.r * 1.9);
-      grad.addColorStop(0, `${node.color}2c`);
-      grad.addColorStop(0.5, `${node.color}0f`);
-      grad.addColorStop(1, `${node.color}00`);
+      grad.addColorStop(0, parseToRgba(node.color, 0.17));
+      grad.addColorStop(0.5, parseToRgba(node.color, 0.06));
+      grad.addColorStop(1, parseToRgba(node.color, 0));
       
       ctx.fillStyle = grad;
       ctx.beginPath();
@@ -150,7 +197,7 @@
       ctx.fill();
 
       // Dotted orbit ring rotating
-      ctx.strokeStyle = `${node.color}22`;
+      ctx.strokeStyle = parseToRgba(node.color, 0.13);
       ctx.lineWidth = 0.75;
       ctx.setLineDash([2, 5]);
       ctx.beginPath();
@@ -158,7 +205,7 @@
       ctx.stroke();
 
       // Second wider solid ring
-      ctx.strokeStyle = `${node.color}0c`;
+      ctx.strokeStyle = parseToRgba(node.color, 0.05);
       ctx.setLineDash([]);
       ctx.beginPath();
       ctx.arc(node.x, node.y, node.r * 1.55, 0, Math.PI * 2);
@@ -181,12 +228,13 @@
 
         try {
           const pt = pathData.pathElement.getPointAtLength(p.progress * pathData.length);
+          if (!pt || isNaN(pt.x) || isNaN(pt.y)) return;
           
           // Draw particle glow
           const glowGrad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, p.size * 4.5);
-          glowGrad.addColorStop(0, `${p.color}ff`);
-          glowGrad.addColorStop(0.4, `${p.color}55`);
-          glowGrad.addColorStop(1, `${p.color}00`);
+          glowGrad.addColorStop(0, parseToRgba(p.color, 1.0));
+          glowGrad.addColorStop(0.4, parseToRgba(p.color, 0.33));
+          glowGrad.addColorStop(1, parseToRgba(p.color, 0));
           
           ctx.fillStyle = glowGrad;
           ctx.beginPath();
