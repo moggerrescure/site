@@ -1312,3 +1312,41 @@
   outline: none;
 }
 
+
+/* AI Assistant Button Styles */
+.edit-textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.ai-assistant-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.ai-assistant-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+}
+
+.ai-assistant-btn:active {
+  transform: scale(0.95);
+}
+
+.edit-textarea-wrapper .edit-textarea {
+  width: 100%;
+  padding-right: 40px;
+}

@@ -206,7 +206,10 @@
     const bioEl = document.querySelector('.person-bio__text');
     if (bioEl) {
       const val = bioEl.textContent.trim();
-      bioEl.outerHTML = `<textarea class="edit-textarea" data-field="bio" placeholder="Краткий текст о человеке — эпитафия, несколько тёплых слов...">${escHtml(val)}</textarea>`;
+      bioEl.outerHTML = `<div class="edit-textarea-wrapper">
+        <textarea class="edit-textarea" data-field="bio" placeholder="Краткий текст о человеке — эпитафия, несколько тёплых слов...">${escHtml(val)}</textarea>
+        <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
+      </div>`;
     }
 
     // Hero photo — кнопка загрузки
@@ -236,7 +239,10 @@
         // Если текст — это placeholder из autoSplit, очищаем
         const isAutoText = val.includes('будет дополнен') || val.includes('ждут наполнения') || val.includes('будет добавлен') || val.includes('соберут близкие') || val.includes('в разработке') || val.includes('готовят слова');
         const cleanVal = isAutoText ? '' : val;
-        textEl.innerHTML = `<textarea class="edit-textarea" data-block="${key}" data-field="text" placeholder="${hint}">${escHtml(cleanVal)}</textarea>`;
+        textEl.innerHTML = `<div class="edit-textarea-wrapper">
+          <textarea class="edit-textarea" data-block="${key}" data-field="text" placeholder="${hint}">${escHtml(cleanVal)}</textarea>
+          <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
+        </div>`;
       }
 
       // Фото — кнопка загрузки (или замены)
@@ -268,7 +274,10 @@
     // Цитаты → textarea
     document.querySelectorAll('.bio-quote__text').forEach((q, i) => {
       const val = q.textContent.trim();
-      q.outerHTML = `<textarea class="edit-textarea edit-textarea--quote" data-field="quote" data-index="${i}">${escHtml(val)}</textarea>`;
+      q.outerHTML = `<div class="edit-textarea-wrapper">
+        <textarea class="edit-textarea edit-textarea--quote" data-field="quote" data-index="${i}">${escHtml(val)}</textarea>
+        <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
+      </div>`;
     });
 
     // Добавляем кнопки «+ Блок» / «+ Цитата» между блоками
@@ -332,7 +341,10 @@
       <input class="edit-input edit-input--block-title" data-field="custom-title" placeholder="Название блока" value=""/>
       <div class="bio-block__row">
         <div class="bio-block__text">
-          <textarea class="edit-textarea" data-block="${form.dataset.block}" data-field="text" placeholder="Текст блока..."></textarea>
+          <div class="edit-textarea-wrapper">
+            <textarea class="edit-textarea" data-block="${form.dataset.block}" data-field="text" placeholder="Текст блока..."></textarea>
+            <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
+          </div>
         </div>
         <div class="bio-block__photo bio-block__photo--empty-edit" style="position:relative;"></div>
       </div>
@@ -358,7 +370,10 @@
     quote.dataset.isNew = 'true';
     quote.dataset.position = position;
     quote.innerHTML = `
-      <textarea class="edit-textarea edit-textarea--quote" data-field="quote" placeholder="Введите цитату..."></textarea>
+      <div class="edit-textarea-wrapper">
+        <textarea class="edit-textarea edit-textarea--quote" data-field="quote" placeholder="Введите цитату..."></textarea>
+        <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
+      </div>
       <button type="button" class="edit-insert-btn edit-insert-btn--delete">🗑 Удалить</button>
     `;
 
