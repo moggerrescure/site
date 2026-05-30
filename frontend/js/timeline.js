@@ -765,10 +765,45 @@ if (e.type === 'history') {
     /* Scroll reveal */
     const io = new IntersectionObserver((entries) => {
       entries.forEach(en => {
-        if (en.isIntersecting) { en.target.classList.add('is-visible'); io.unobserve(en.target); }
+        if (en.isIntersecting) {
+          en.target.classList.add('is-visible');
+          io.unobserve(en.target);
+          setTimeout(updateTimelineParallax, 50);
+        }
       });
     }, { threshold: 0.12 });
     wrap.querySelectorAll('.timeline__item').forEach(el => io.observe(el));
+
+    // Parallax effect on scroll
+    function updateTimelineParallax() {
+      const items = wrap.querySelectorAll('.timeline__item.is-visible');
+      const viewportHeight = window.innerHeight;
+      
+      items.forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const itemCenter = rect.top + rect.height / 2;
+        const relativeCenter = (itemCenter - viewportHeight / 2) / (viewportHeight / 2); // range -1.5 to 1.5
+        
+        const isLeft = item.classList.contains('timeline__item--left');
+        const direction = isLeft ? -1 : 1;
+        
+        const translateY = relativeCenter * 15; // moves slightly up/down
+        const rotateY = relativeCenter * direction * 4; // tilts slightly
+        const scale = 1 - Math.min(0.04, Math.abs(relativeCenter) * 0.04);
+        
+        const card = item.querySelector('.timeline__card');
+        if (card) {
+          card.style.transform = `translateY(${translateY}px) rotateY(${rotateY}deg) scale(${scale})`;
+        }
+      });
+    }
+
+    if (window._tlParallaxHandler) {
+      window.removeEventListener('scroll', window._tlParallaxHandler);
+    }
+    window._tlParallaxHandler = updateTimelineParallax;
+    window.addEventListener('scroll', updateTimelineParallax, { passive: true });
+    setTimeout(updateTimelineParallax, 150);
   }
 
   /* ── ADD EVENT FORM ── */

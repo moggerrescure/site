@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════
-   PARTICLES — Chaotic dust on black background
+   PARTICLES — Warm candle embers rising slowly
+   Golden sparks with soft glow, evoking the warmth
+   of a memorial candle in the darkness.
    ═══════════════════════════════════════════════ */
 
 (function () {
@@ -8,57 +10,114 @@
   const ctx = canvas.getContext('2d');
 
   let W, H, particles = [];
-  const COUNT = 110;
+  const COUNT = 90;
 
-  /* Gold/amber palette to match site theme */
+  /* Warm ember palette — gold, amber, soft orange */
   const COLORS = [
-    'rgba(200,168,75,',
-    'rgba(226,201,126,',
-    'rgba(138,112,53,',
-    'rgba(255,240,190,',
-    'rgba(180,140,60,',
+    { r: 212, g: 175, b: 55  },  // gold
+    { r: 226, g: 201, b: 126 },  // light gold
+    { r: 255, g: 200, b: 80  },  // warm amber
+    { r: 200, g: 140, b: 50  },  // deep amber
+    { r: 255, g: 230, b: 160 },  // pale flame
+    { r: 180, g: 120, b: 40  },  // dark ember
   ];
 
   function rand(min, max) { return Math.random() * (max - min) + min; }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  class Particle {
+  class Ember {
     constructor() { this.reset(true); }
 
     reset(initial) {
-      this.x  = rand(0, W);
-      this.y  = initial ? rand(0, H) : rand(-20, H + 20);
-      this.r  = rand(0.5, 2.4);
-      this.vx = rand(-0.25, 0.25);
-      this.vy = rand(-0.4, -0.05);
-      this.alpha = rand(0.04, 0.55);
-      this.alphaSpeed = rand(0.002, 0.006) * (Math.random() < 0.5 ? 1 : -1);
-      this.alphaMin = rand(0.02, 0.1);
-      this.alphaMax = rand(0.35, 0.65);
-      this.color = COLORS[Math.floor(rand(0, COLORS.length))];
-      /* occasional twinkle */
-      this.twinkle = Math.random() < 0.18;
+      this.x = rand(0, W);
+      this.y = initial ? rand(0, H) : H + rand(10, 60);
+
+      /* Size: mix of tiny sparks and rare larger embers */
+      this.isBig = Math.random() < 0.08;
+      this.r = this.isBig ? rand(2.5, 4.5) : rand(0.4, 2.2);
+
+      /* Slow upward drift like candle ash */
+      this.vx = rand(-0.15, 0.15);
+      this.vy = rand(-0.6, -0.1);
+
+      /* Unique horizontal wave */
+      this.waveAmp = rand(0.05, 0.25);
+      this.waveFreq = rand(0.0004, 0.0012);
+      this.waveOffset = rand(0, Math.PI * 2);
+
+      /* Alpha breathing */
+      this.alpha = rand(0.05, 0.5);
+      this.alphaSpeed = rand(0.002, 0.008) * (Math.random() < 0.5 ? 1 : -1);
+      this.alphaMin = rand(0.02, 0.12);
+      this.alphaMax = this.isBig ? rand(0.45, 0.75) : rand(0.25, 0.6);
+
+      /* Glow radius (shadow blur) */
+      this.glowSize = this.isBig ? rand(14, 28) : rand(4, 12);
+
+      this.color = pick(COLORS);
+
+      /* Some embers twinkle rapidly */
+      this.twinkle = Math.random() < 0.15;
+      this.twinkleSpeed = rand(0.003, 0.007);
+
+      /* Lifespan — embers fade out near top */
+      this.life = 1.0;
     }
 
     update() {
-      this.x += this.vx + Math.sin(Date.now() * 0.0003 + this.y * 0.01) * 0.12;
+      /* Gentle wave motion */
+      const wave = Math.sin(Date.now() * this.waveFreq + this.waveOffset) * this.waveAmp;
+      this.x += this.vx + wave;
       this.y += this.vy;
 
-      this.alpha += this.alphaSpeed;
-      if (this.alpha > this.alphaMax) { this.alpha = this.alphaMax; this.alphaSpeed *= -1; }
-      if (this.alpha < this.alphaMin) { this.alpha = this.alphaMin; this.alphaSpeed *= -1; }
-
+      /* Alpha breathing */
       if (this.twinkle) {
-        this.alpha = this.alphaMin + (Math.sin(Date.now() * 0.003 + this.x) + 1) * 0.5 * (this.alphaMax - this.alphaMin);
+        this.alpha = this.alphaMin +
+          (Math.sin(Date.now() * this.twinkleSpeed + this.x) + 1) * 0.5 *
+          (this.alphaMax - this.alphaMin);
+      } else {
+        this.alpha += this.alphaSpeed;
+        if (this.alpha > this.alphaMax) { this.alpha = this.alphaMax; this.alphaSpeed *= -1; }
+        if (this.alpha < this.alphaMin) { this.alpha = this.alphaMin; this.alphaSpeed *= -1; }
       }
 
-      if (this.y < -10 || this.x < -10 || this.x > W + 10) this.reset(false);
+      /* Fade out near top of screen */
+      const topFade = this.y / (H * 0.2);
+      this.life = Math.min(1, topFade);
+
+      /* Recycle if off-screen or fully faded */
+      if (this.y < -20 || this.x < -20 || this.x > W + 20 || this.life <= 0) {
+        this.reset(false);
+      }
     }
 
     draw() {
+      const a = this.alpha * this.life;
+      if (a < 0.01) return;
+
+      const { r, g, b } = this.color;
+
+      ctx.save();
+
+      /* Soft glow via shadow */
+      ctx.shadowBlur = this.glowSize * a * 2;
+      ctx.shadowColor = `rgba(${r},${g},${b},${(a * 0.7).toFixed(3)})`;
+
+      /* Main ember dot */
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-      ctx.fillStyle = this.color + this.alpha.toFixed(3) + ')';
+      ctx.fillStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
       ctx.fill();
+
+      /* Big embers get an extra outer glow ring */
+      if (this.isBig && a > 0.2) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r},${g},${b},${(a * 0.06).toFixed(3)})`;
+        ctx.fill();
+      }
+
+      ctx.restore();
     }
   }
 
@@ -69,7 +128,7 @@
 
   function init() {
     resize();
-    particles = Array.from({ length: COUNT }, () => new Particle());
+    particles = Array.from({ length: COUNT }, () => new Ember());
   }
 
   function loop() {
@@ -80,7 +139,6 @@
 
   window.addEventListener('resize', () => {
     resize();
-    /* redistribute particles */
     for (const p of particles) { if (Math.random() < 0.4) p.reset(true); }
   });
 
