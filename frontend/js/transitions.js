@@ -7,16 +7,31 @@
 (function () {
   const DURATION = 500; // ms for fade animation
 
-  /* Create the overlay element */
+  /* Create the overlay element with visible class (starts black) */
   const overlay = document.createElement('div');
-  overlay.className = 'page-transition-overlay';
-  document.body.appendChild(overlay);
+  overlay.className = 'page-transition-overlay page-transition--visible';
 
-  /* On page load: fade IN */
+  function appendOverlay() {
+    if (document.body) {
+      document.body.appendChild(overlay);
+    } else {
+      window.addEventListener('DOMContentLoaded', () => {
+        document.body.appendChild(overlay);
+      });
+    }
+  }
+  appendOverlay();
+
+  /* On page load: fade IN (fade out the black overlay to transparent) */
+  let fadedIn = false;
   function fadeIn() {
-    document.body.classList.add('page-loaded');
-    overlay.classList.add('page-transition--visible');
-    /* Small delay then remove overlay */
+    if (fadedIn) return;
+    fadedIn = true;
+    
+    if (document.body) {
+      document.body.classList.add('page-loaded');
+    }
+    
     requestAnimationFrame(() => {
       overlay.classList.remove('page-transition--visible');
     });
@@ -56,14 +71,20 @@
     if (e.persisted) {
       /* Page was restored from bfcache */
       overlay.classList.remove('page-transition--visible');
-      document.body.classList.add('page-loaded');
+      if (document.body) {
+        document.body.classList.add('page-loaded');
+      }
     }
   });
 
   /* Trigger fade-in on load */
-  if (document.readyState === 'complete') {
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
     fadeIn();
   } else {
+    window.addEventListener('DOMContentLoaded', fadeIn);
     window.addEventListener('load', fadeIn);
   }
+
+  /* Bulletproof safety fallback: force fade out after 800ms no matter what */
+  setTimeout(fadeIn, 800);
 })();
