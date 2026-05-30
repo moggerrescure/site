@@ -31,15 +31,17 @@
   function renderBioBlocks(container, data) {
     if (!container) return;
 
-    let blocks;
-    if (data?.sections && typeof data.sections === 'object') {
-      const isEditMode = new URLSearchParams(window.location.search).get('edit') === '1';
+    const isEditMode = new URLSearchParams(window.location.search).get('edit') === '1';
+    let blocks = [];
+
+    // Если есть sections, или если мы в режиме редактирования (тогда форсируем 6 базовых блоков)
+    if ((data && data.sections && typeof data.sections === 'object') || isEditMode) {
+      const sectionsData = data?.sections || {};
 
       // Сначала фиксированные блоки в правильном порядке
       blocks = BLOCK_SCHEMA
         .map(meta => {
-          const sec = data.sections[meta.key];
-          if (!sec) return null;
+          const sec = sectionsData[meta.key] || {};
           const text = (sec.text ?? '').trim();
           // В edit mode показываем даже пустые блоки
           if (!text && !isEditMode) return null;
@@ -53,11 +55,11 @@
         .filter(Boolean);
 
       // Затем кастомные блоки (ключи начинаются с custom_)
-      Object.keys(data.sections).forEach(key => {
+      Object.keys(sectionsData).forEach(key => {
         if (!key.startsWith('custom_')) return;
-        const sec = data.sections[key];
+        const sec = sectionsData[key];
         const text = (sec.text ?? '').trim();
-        if (!text) return;
+        if (!text && !isEditMode) return;
         blocks.push({
           key,
           title: sec.title || 'Без названия',
