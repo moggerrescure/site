@@ -463,7 +463,7 @@ async function migrateFamilyNodes(sqlite, db) {
           birthDate: birthYear ? new Date(Date.UTC(birthYear, 0, 1)) : null,
           deathDate: deathYear ? new Date(Date.UTC(deathYear, 0, 1)) : null,
           gender: "UNKNOWN",
-          clan: n.clan_id || null,
+          clanId: null,
           notes: n.description || null,
           photoId,
           generation: n.generation ?? null,
