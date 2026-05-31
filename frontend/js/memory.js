@@ -13,7 +13,7 @@
 
   const STATE = {
     q: '', bornFrom: '', bornTo: '', diedFrom: '', diedTo: '',
-    mine: false, page: 1, total: 0, rows: [], loading: false,
+    mine: true, page: 1, total: 0, rows: [], loading: false,
   };
 
   function $ (sel) { return document.querySelector(sel); }
@@ -32,7 +32,7 @@
     STATE.diedTo   = p.get('diedYearTo')   || '';
     STATE.gender     = p.get('gender')     || '';
     STATE.visibility = p.get('visibility') || '';
-    STATE.mine     = p.get('mine') === '1';
+    STATE.mine     = p.has('mine') ? p.get('mine') === '1' : true;
     STATE.page     = Math.max(1, parseInt(p.get('page') || '1', 10));
   }
   function writeUrl () {
@@ -44,7 +44,7 @@
     if (STATE.diedTo)   p.set('diedYearTo',   STATE.diedTo);
     if (STATE.gender)     p.set('gender',     STATE.gender);
     if (STATE.visibility) p.set('visibility', STATE.visibility);
-    if (STATE.mine)     p.set('mine', '1');
+    p.set('mine', STATE.mine ? '1' : '0');
     if (STATE.page > 1) p.set('page', STATE.page);
     const qs = p.toString();
     history.replaceState(null, '', qs ? '?' + qs : location.pathname);
@@ -147,13 +147,13 @@
     resetEl.addEventListener('click', () => {
       STATE.q = STATE.bornFrom = STATE.bornTo = STATE.diedFrom = STATE.diedTo = '';
       STATE.gender = STATE.visibility = '';
-      STATE.mine = false; STATE.page = 1;
+      STATE.mine = true; STATE.page = 1;
       qInput.value = ''; qClear.style.display = 'none';
       bFrom.value = ''; bTo.value = '';
       dFrom.value = ''; dTo.value = '';
       genderEl.value = '';
       if (visEl) visEl.value = '';
-      if (mineEl) mineEl.checked = false;
+      if (mineEl) mineEl.checked = true;
       load();
     });
 
