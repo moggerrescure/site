@@ -1227,15 +1227,10 @@ const currentTreeId = urlParams.get('tree') || 'default';
               if (personA && personB) {
                 const genA = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeFirstId));
                 const genB = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeSecondId));
-                if (genA !== -1 && genB !== -1 && genA !== genB) {
-                  alert('Брак разрешен только между членами одного поколения!');
-                  exitConnectMode();
-                  return;
-                }
                 const clanA = personA.clanId;
                 const clanB = personB.clanId;
-                if (clanA && clanB && clanA === clanB) {
-                  alert('Брак между членами одного рода запрещен!');
+                if (genA !== -1 && genB !== -1 && genA !== genB && clanA && clanB && clanA === clanB) {
+                  alert('Брак между членами одного рода из разных поколений запрещен!');
                   exitConnectMode();
                   return;
                 }
@@ -1591,15 +1586,10 @@ const currentTreeId = urlParams.get('tree') || 'default';
                 if (personA && personB) {
                   const genA = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeFirstId));
                   const genB = GENERATIONS.findIndex(g => g.people.some(p => p.id === nodeSecondId));
-                  if (genA !== -1 && genB !== -1 && genA !== genB) {
-                    alert('Брак разрешен только между членами одного поколения!');
-                    exitConnectMode();
-                    return;
-                  }
                   const clanA = personA.clanId;
                   const clanB = personB.clanId;
-                  if (clanA && clanB && clanA === clanB) {
-                    alert('Брак между членами одного рода запрещен!');
+                  if (genA !== -1 && genB !== -1 && genA !== genB && clanA && clanB && clanA === clanB) {
+                    alert('Брак между членами одного рода из разных поколений запрещен!');
                     exitConnectMode();
                     return;
                   }
