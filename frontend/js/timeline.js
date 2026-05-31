@@ -567,9 +567,13 @@ if (e.type === 'history') {
 
     /* Active tree label */
     const treeMeta  = getActivTreeMeta();
-    const treeLabel = treeMeta
-      ? `<div style="text-align:center;margin-bottom:8px;font-family:var(--font-ui);font-size:11px;letter-spacing:0.1em;">
-           <span style="color:${treeMeta.color || '#c8a84b'};">● ${treeMeta.name || treeMeta.id}</span>
+    let treeName = treeMeta ? (treeMeta.name || treeMeta.id) : '';
+    if (treeName && (treeName.includes('uuid') || treeName.length > 25)) {
+      treeName = ''; // Hide raw UUIDs
+    }
+    const treeLabel = treeName
+      ? `<div style="text-align:center;margin-bottom:8px;font-family:var(--font-ui);font-size:11px;letter-spacing:0.1em;opacity:0.5;">
+           <span style="color:${treeMeta.color || '#c8a84b'};">▪ ${treeName}</span>
          </div>`
       : '';
 
