@@ -70,6 +70,7 @@ function mapRelation(raw) {
 
 function serializeNode(n) {
     if (!n) return null;
+    const url = n.photo ? n.photo.url : null;
     return {
         id: n.id,
         treeId: n.treeId,
@@ -81,7 +82,9 @@ function serializeNode(n) {
         death: n.deathDate ? formatDate(n.deathDate, 'day') : '',
         gender: String(n.gender || 'UNKNOWN').toLowerCase(),
         photoId: n.photoId,
-        photo: n.photo ? n.photo.url : null,
+        photo: url,
+        photoUrl: url,
+        photo_url: url,
         clanId: n.clanId,
         clan: n.clan ? serializeClan(n.clan) : null,
         notes: n.notes || '',
@@ -323,6 +326,19 @@ async function createNode(input, actor) {
     const birthParsed = parseDate(birth);
     const deathParsed = parseDate(death);
 
+    // Resolve photoUrl / photo_url / photo to photoId if photoId is not provided
+    let resolvedPhotoId = photoId || null;
+    if (!resolvedPhotoId) {
+        const incomingUrl = input.photoUrl || input.photo_url || input.photo;
+        if (incomingUrl) {
+            const media = await prisma.media.findFirst({
+                where: { url: incomingUrl },
+                select: { id: true },
+            });
+            if (media) resolvedPhotoId = media.id;
+        }
+    }
+
     const node = await prisma.familyNode.create({
         data: {
             treeId,
@@ -333,7 +349,7 @@ async function createNode(input, actor) {
             deathDate: deathParsed.date,
             gender: mapGender(gender),
             clanId: clanId || null,
-            photoId: photoId || null,
+            photoId: resolvedPhotoId,
             notes: notes ? String(notes).trim() : null,
             posX: typeof posX === 'number' ? posX : null,
             posY: typeof posY === 'number' ? posY : null,
@@ -359,7 +375,6 @@ async function updateNode(nodeId, input, actor) {
     if (input.death !== undefined) data.deathDate = parseDate(input.death).date;
     if (input.gender !== undefined) data.gender = mapGender(input.gender);
     if (input.notes !== undefined) data.notes = input.notes ? String(input.notes).trim() : null;
-    if (input.photoId !== undefined) data.photoId = input.photoId || null;
     if (input.posX !== undefined) data.posX = typeof input.posX === 'number' ? input.posX : null;
     if (input.posY !== undefined) data.posY = typeof input.posY === 'number' ? input.posY : null;
     if (input.generation !== undefined) {
@@ -373,6 +388,24 @@ async function updateNode(nodeId, input, actor) {
             }
         }
         data.clanId = input.clanId || null;
+    }
+
+    // Support photoId or photoUrl / photo_url / photo resolving
+    if (input.photoId !== undefined) {
+        data.photoId = input.photoId || null;
+    } else {
+        const incomingUrl = input.photoUrl || input.photo_url || input.photo;
+        if (incomingUrl !== undefined) {
+            if (incomingUrl) {
+                const media = await prisma.media.findFirst({
+                    where: { url: incomingUrl },
+                    select: { id: true },
+                });
+                data.photoId = media ? media.id : null;
+            } else {
+                data.photoId = null;
+            }
+        }
     }
 
     const updated = await prisma.familyNode.update({
