@@ -480,6 +480,62 @@ select.tl-input option {
   color: #f5f0e8 !important;
 }
 
+/* Custom Number Input Wrapper & Arrows */
+.tl-number-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 90px;
+}
+.tl-input--number {
+  padding-right: 26px !important;
+}
+.tl-input--number::-webkit-outer-spin-button,
+.tl-input--number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.tl-input--number[type=number] {
+  -moz-appearance: textfield;
+}
+.tl-number-arrows {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 22px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(200, 168, 75, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 0 4px 4px 0;
+  overflow: hidden;
+}
+.tl-arrow-up, .tl-arrow-down {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50%;
+  border: none;
+  background: transparent;
+  color: var(--gold-dim);
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+.tl-arrow-up:hover, .tl-arrow-down:hover {
+  background: rgba(200, 168, 75, 0.15);
+  color: var(--gold-light);
+}
+.tl-arrow-up:active, .tl-arrow-down:active {
+  background: rgba(200, 168, 75, 0.3);
+}
+.tl-arrow-up {
+  border-bottom: 1px solid rgba(200, 168, 75, 0.15);
+}
+
 .tl-submit {
   display: block;
   width: 100%;
