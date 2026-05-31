@@ -1220,6 +1220,51 @@
 }
 
 
+/* ── VISIBILITY SELECTOR (edit mode) ── */
+.edit-visibility {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-visibility__label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--gold);
+  letter-spacing: 0.03em;
+}
+
+.edit-visibility__hint {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--cream-dim);
+  opacity: 0.7;
+}
+
+.edit-input--select {
+  color-scheme: dark !important;
+  cursor: pointer;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.edit-input--select:focus,
+.edit-input--select:active {
+  color-scheme: dark !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--cream) !important;
+}
+
+.edit-input--select option {
+  color-scheme: dark !important;
+  background: #12100a !important;
+  background-color: #12100a !important;
+  color: var(--cream) !important;
+}
+
+
 /* ── GENDER SELECTOR (edit mode) ── */
 .edit-gender {
   margin-top: 12px;

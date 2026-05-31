@@ -174,6 +174,7 @@
   let mobileAuthBtn = null;
   if (navLinks) {
     mobileAuthLi = document.createElement('li');
+    mobileAuthLi.className = 'nav__auth-li';
     mobileAuthBtn = document.createElement('a');
     mobileAuthBtn.className = 'nav__link nav__link--auth';
     mobileAuthBtn.style.cursor = 'pointer';

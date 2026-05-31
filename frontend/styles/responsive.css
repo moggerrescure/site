@@ -4,6 +4,10 @@
    Фото: на мобилке компактнее
    ═══════════════════════════════════════════════ */
 
+/* Hide mobile auth link AND its parent li on desktop/large screens globally */
+.nav__link--auth { display: none; }
+.nav__auth-li { display: none !important; }
+
 /* ══════════════════════════════════════
    ДЕСКТОП — увеличенные шрифты (1200px+)
    ══════════════════════════════════════ */
@@ -215,6 +219,15 @@
   .bio-block__photo {
     aspect-ratio: 4 / 3;
   }
+
+  .nav__links {
+    margin-left: 32px !important;
+    gap: 14px !important;
+  }
+
+  .nav__link {
+    font-size: 13px !important;
+  }
 }
 
 /* ══════════════════════════════════════
@@ -301,6 +314,10 @@
     font-weight: 600 !important;
   }
 
+  .nav__auth-li {
+    display: flex !important;
+  }
+
   /* Секции */
   .section-title {
     margin-bottom: 36px;
@@ -308,7 +325,7 @@
 
   /* Свеча */
   .candle-scene {
-    transform: scale(0.85);
+    transform: scale(0.6);
     transform-origin: center bottom;
   }
 
@@ -350,7 +367,4 @@
   }
 }
 
-/* Hide mobile auth link on desktop/large screens globally */
-.nav__link--auth {
-  display: none;
 }
