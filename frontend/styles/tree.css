@@ -365,8 +365,8 @@ body.tree-page { overflow-x: hidden; }
   transition: width 0.25s, box-shadow 0.25s;
 }
 .tree-legend__item:hover .tree-legend__line { width: 56px; }
-.tree-legend__line--wood   { background: linear-gradient(90deg, #7a5c30, #c8a84b, #7a5c30); }
-.tree-legend__line--braid  { background: repeating-linear-gradient(90deg, #c8a84b 0px, #c8a84b 4px, #8a7035 4px, #8a7035 8px); }
+.tree-legend__line--wood, .tree-legend__line--kinship { background: linear-gradient(90deg, #7a5c30, #c8a84b, #7a5c30); }
+.tree-legend__line--braid, .tree-legend__line--marriage { background: repeating-linear-gradient(90deg, #c8a84b 0px, #c8a84b 4px, #8a7035 4px, #8a7035 8px); }
 
 /* ── HIGHLIGHT MODE ── */
 .tree-wrapper.has-highlight .tree-node {
