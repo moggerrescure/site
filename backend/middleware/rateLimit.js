@@ -33,7 +33,7 @@ function rateLimitHandler(req, res, next, options) {
  */
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 минут
-    max: 5,
+    max: process.env.NODE_ENV === 'development' ? 1000 : 5,
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests: true,
@@ -56,7 +56,7 @@ const loginLimiter = rateLimit({
  */
 const registerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 час
-    max: 3,
+    max: process.env.NODE_ENV === 'development' ? 1000 : 3,
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests: false,
@@ -75,7 +75,7 @@ const registerLimiter = rateLimit({
  */
 const authGeneralLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 30,
+    max: process.env.NODE_ENV === 'development' ? 1000 : 30,
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => getClientIp(req),
