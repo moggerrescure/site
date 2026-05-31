@@ -601,15 +601,8 @@ if (e.type === 'history') {
       </div>`;
   }
 
-  /* ── DECADE LIST ── */
-  function getDecades(events) {
-    const d = new Set((events || []).filter(e => Number.isFinite(e.year)).map(e => Math.floor(e.year / 10) * 10));
-    return [...d].sort((a,b) => a-b);
-  }
-
   /* ── MAIN RENDER ── */
   let activeType   = 'all';
-  let activeDecade = 'all';
   let yearFrom = '';
   let yearTo = '';
 
@@ -640,7 +633,6 @@ if (e.type === 'history') {
       statsEl.after(filtersEl);
     }
 
-    const decades = getDecades(allEvents);
     filtersEl.innerHTML = `
       <div class="tl-filters">
         <div class="tl-filters__group">
@@ -663,13 +655,6 @@ if (e.type === 'history') {
             <input class="tl-input" id="tl-year-to" type="number" placeholder="до" min="1600" max="2100" value="${yearTo}" style="width:90px;"/>
             <button class="tl-filter-btn" id="tl-year-clear" type="button">Сброс</button>
           </div>
-
-          <span class="tl-filters__label" style="margin-top:10px;">Декада</span>
-          <button class="tl-filter-btn ${activeDecade==='all'?'tl-filter-btn--active':''}" data-fdecade="all">Все годы</button>
-          ${decades.map(d => `
-            <button class="tl-filter-btn ${activeDecade==d?'tl-filter-btn--active':''}" data-fdecade="${d}">
-              ${d}–${d+9}
-            </button>`).join('')}
         </div>
       </div>
       <div class="tl-controls-group">
@@ -707,9 +692,7 @@ if (e.type === 'history') {
     if (yt) yt.addEventListener('input', onRange);
     if (yc) yc.addEventListener('click', () => { yearFrom=''; yearTo=''; render(); });
 
-    filtersEl.querySelectorAll('[data-fdecade]').forEach(btn => {
-      btn.addEventListener('click', () => { activeDecade = btn.dataset.fdecade === 'all' ? 'all' : parseInt(btn.dataset.fdecade); render(); });
-    });
+
 
     const historyToggle = filtersEl.querySelector('#tl-toggle-history');
     if (historyToggle) {
@@ -726,9 +709,8 @@ if (e.type === 'history') {
       const yearOk = (!yf || e.year >= yf) && (!yt || e.year <= yt);
 
       const typeOk   = activeType === 'all' || e.type === activeType;
-      const decadeOk = activeDecade === 'all' || Math.floor(e.year / 10) * 10 === activeDecade;
       const historyOk = showHistory || e.type !== 'history';
-      return yearOk && typeOk && decadeOk && historyOk;
+      return yearOk && typeOk && historyOk;
     });
 
     /* Clear and rebuild timeline items */
@@ -901,7 +883,6 @@ if (e.type === 'history') {
       setTimeout(() => { status.style.display = 'none'; }, 3000);
 
       activeType   = 'all';
-      activeDecade = 'all';
       render();
       wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
