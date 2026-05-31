@@ -651,8 +651,20 @@ if (e.type === 'history') {
           <button class="tl-filter-btn" data-epoch="post1991">1992–н.в.</button>
           <div class="tl-range" style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <span class="tl-filters__label" style="margin:0;">Годы</span>
-            <input class="tl-input" id="tl-year-from" type="number" placeholder="от" min="1600" max="2100" value="${yearFrom}" style="width:90px;"/>
-            <input class="tl-input" id="tl-year-to" type="number" placeholder="до" min="1600" max="2100" value="${yearTo}" style="width:90px;"/>
+            <div class="tl-number-wrapper" id="tl-year-from-wrap">
+              <input class="tl-input tl-input--number" id="tl-year-from" type="number" placeholder="от" min="1600" max="2100" value="${yearFrom}"/>
+              <div class="tl-number-arrows">
+                <button type="button" class="tl-arrow-up" tabindex="-1">▲</button>
+                <button type="button" class="tl-arrow-down" tabindex="-1">▼</button>
+              </div>
+            </div>
+            <div class="tl-number-wrapper" id="tl-year-to-wrap">
+              <input class="tl-input tl-input--number" id="tl-year-to" type="number" placeholder="до" min="1600" max="2100" value="${yearTo}"/>
+              <div class="tl-number-arrows">
+                <button type="button" class="tl-arrow-up" tabindex="-1">▲</button>
+                <button type="button" class="tl-arrow-down" tabindex="-1">▼</button>
+              </div>
+            </div>
             <button class="tl-filter-btn" id="tl-year-clear" type="button">Сброс</button>
           </div>
         </div>
@@ -691,6 +703,34 @@ if (e.type === 'history') {
     if (yf) yf.addEventListener('input', onRange);
     if (yt) yt.addEventListener('input', onRange);
     if (yc) yc.addEventListener('click', () => { yearFrom=''; yearTo=''; render(); });
+
+    const setupCustomArrows = (inputEl, wrapperEl) => {
+      if (!inputEl || !wrapperEl) return;
+      const up = wrapperEl.querySelector('.tl-arrow-up');
+      const down = wrapperEl.querySelector('.tl-arrow-down');
+      if (up) {
+        up.addEventListener('click', () => {
+          if (!inputEl.value) {
+            inputEl.value = inputEl.min || '1600';
+          } else {
+            inputEl.stepUp();
+          }
+          onRange();
+        });
+      }
+      if (down) {
+        down.addEventListener('click', () => {
+          if (!inputEl.value) {
+            inputEl.value = inputEl.max || '2100';
+          } else {
+            inputEl.stepDown();
+          }
+          onRange();
+        });
+      }
+    };
+    setupCustomArrows(yf, filtersEl.querySelector('#tl-year-from-wrap'));
+    setupCustomArrows(yt, filtersEl.querySelector('#tl-year-to-wrap'));
 
 
 
