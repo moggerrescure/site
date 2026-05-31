@@ -1671,6 +1671,30 @@
      ════════════════════════════════════════════ */
   function renderDynamicTree(container) {
     const localConns = getLocalConnections();
+
+    // Pre-populate parents and spouse fields from connections for tree rendering to sort correctly
+    const parentMap = {};
+    const spouseMap = {};
+
+    localConns.forEach(c => {
+      const typeLower = String(c.type).toLowerCase();
+      if (typeLower === 'parent') {
+        if (!parentMap[c.b]) parentMap[c.b] = [];
+        parentMap[c.b].push(c.a);
+      } else if (typeLower === 'spouse' || typeLower === 'marriage') {
+        spouseMap[c.a] = c.b;
+        spouseMap[c.b] = c.a;
+      }
+    });
+
+    allNodes.forEach(n => {
+      n.parentIds = parentMap[n.id] || [];
+      n.parent_ids = n.parentIds;
+      n.spouseId = spouseMap[n.id] || null;
+      n.spouse_id = n.spouseId;
+      n.spouseOf = n.spouseId;
+    });
+
     if (!allNodes.length && !isEditMode) {
       container.innerHTML = `<div class="tree-empty"><p class="tree-empty__icon">🌳</p><p class="tree-empty__text">Дерево пустое</p><p class="tree-empty__hint">Нажмите «Редактировать дерево» и добавьте первого человека</p></div>`;
       return;

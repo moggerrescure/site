@@ -517,6 +517,35 @@ const currentTreeId = urlParams.get('tree') || 'default';
       }
 
       if (clansJson.ok && nodesJson.ok && Array.isArray(clansJson.data) && Array.isArray(nodesJson.data) && clansJson.data.length > 0 && nodesJson.data.length > 0) {
+        if (connsJson.ok && Array.isArray(connsJson.data)) {
+          // Pre-populate parents and spouse fields from connections for tree rendering to sort correctly
+          const parentMap = {};
+          const spouseMap = {};
+
+          connsJson.data.forEach(c => {
+            const typeLower = String(c.type).toLowerCase();
+            const fromId = c.fromNodeId || c.nodeA;
+            const toId = c.toNodeId || c.nodeB;
+            if (fromId && toId) {
+              if (typeLower === 'parent') {
+                if (!parentMap[toId]) parentMap[toId] = [];
+                parentMap[toId].push(fromId);
+              } else if (typeLower === 'spouse' || typeLower === 'marriage') {
+                spouseMap[fromId] = toId;
+                spouseMap[toId] = fromId;
+              }
+            }
+          });
+
+          nodesJson.data.forEach(n => {
+            n.parentIds = parentMap[n.id] || [];
+            n.parent_ids = n.parentIds;
+            n.spouseId = spouseMap[n.id] || null;
+            n.spouse_id = n.spouseId;
+            n.spouseOf = n.spouseId;
+          });
+        }
+
         // Rebuild CLANS
         const newClans = {};
         clansJson.data.forEach(c => {
