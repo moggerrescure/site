@@ -91,6 +91,9 @@ function serializeNode(n) {
         posX: n.posX,
         posY: n.posY,
         generation: n.generation,
+        years: n.birthDate
+            ? `${n.birthDate.getUTCFullYear()}–${n.deathDate ? n.deathDate.getUTCFullYear() : ''}`
+            : '',
         profileId: n.profile ? n.profile.id : null,
         profileSlug: n.profile ? n.profile.slug : null,
         createdAt: n.createdAt,

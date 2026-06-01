@@ -760,7 +760,7 @@ router.delete('/family-trees/:id', requireAuth,
 );
 
 /* ── Clans ── */
-router.get('/family-clans', requireAuth, wrap(async (req, res) => {
+router.get('/family-clans', optionalAuth, wrap(async (req, res) => {
     const treeId = req.query.treeId;
     if (!treeId) return err(res, 400, 'treeId required');
     const data = await familyService.listClans(treeId, req.user);
@@ -783,7 +783,7 @@ router.delete('/family-clans/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 /* ── Nodes ── */
-router.get('/family-nodes', requireAuth, wrap(async (req, res) => {
+router.get('/family-nodes', optionalAuth, wrap(async (req, res) => {
     const treeId = req.query.treeId;
     if (!treeId) return err(res, 400, 'treeId required');
     const tree = await familyService.getTree(treeId, req.user);
@@ -806,7 +806,7 @@ router.delete('/family-nodes/:id', requireAuth, wrap(async (req, res) => {
 }));
 
 /* ── Connections ── */
-router.get('/family-connections', requireAuth, wrap(async (req, res) => {
+router.get('/family-connections', optionalAuth, wrap(async (req, res) => {
     const treeId = req.query.treeId;
     if (!treeId) return err(res, 400, 'treeId required');
     const tree = await familyService.getTree(treeId, req.user);

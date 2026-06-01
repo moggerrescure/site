@@ -1715,10 +1715,14 @@
     if (!legend) return;
     try {
       const r = await fetch(`${BASE}/api/family-clans?treeId=${encodeURIComponent(currentTreeId)}`);
-      if (r.status === 403) {
-        const user = typeof API !== 'undefined' ? API.getUser() : null;
-        if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
-          window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+      if (r.status === 403 || r.status === 404) {
+        if (currentTreeId !== 'default') {
+          const user = typeof API !== 'undefined' ? API.getUser() : null;
+          if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
+            window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          } else {
+            window.location.replace("family-tree.html");
+          }
           return;
         }
       }
@@ -1936,14 +1940,34 @@
       );
     }
 
-    /* Клик по карточке — соединение */
+    /* Клик по карточке — соединение / подсветка / страница памяти */
+    const dynamicClickTimers = {};
     container.querySelectorAll('.tree-node').forEach(nodeEl =>
       nodeEl.addEventListener('click', e => {
         if (e.target.closest('.tree-node-ctrl')) return;
         const nid = nodeEl.dataset.id;
-        if (!handleNodeConnectionClick(nodeEl, nid)) {
-          const lnk = nodeEl.querySelector('.tree-node__link');
-          if (lnk) { e.preventDefault(); window.location.href = lnk.href; }
+        if (handleNodeConnectionClick(nodeEl, nid)) return;
+
+        if (dynamicClickTimers[nid]) {
+          clearTimeout(dynamicClickTimers[nid]);
+          delete dynamicClickTimers[nid];
+          
+          const node = allNodes.find(n => n.id === nid);
+          const linked = node ? (node.linked_profile_id || node.linkedProfileId) : null;
+          if (linked) {
+            window.location.href = `person.html?id=${encodeURIComponent(linked)}`;
+          } else if (window.openRelativePopup) {
+            window.openRelativePopup(nid);
+          }
+        } else {
+          dynamicClickTimers[nid] = setTimeout(() => {
+            delete dynamicClickTimers[nid];
+            if (highlightedDynamicId === nid) {
+              clearHighlightDynamic();
+            } else {
+              highlightDynamicNode(nid);
+            }
+          }, 260);
         }
       })
     );
@@ -1973,7 +1997,7 @@
             <strong>${clan.name}</strong>
             <span>${name}</span>
             ${timelineHtml}
-            ${node.linked_profile_id || node.linkedProfileId ? `<span class="tree-tooltip__hint">Двойной клик → страница памяти</span>` : ''}
+            ${node.linked_profile_id || node.linkedProfileId ? `<span class="tree-tooltip__hint">Двойной клик → страница памяти</span>` : `<span class="tree-tooltip__hint">Двойной клик → события родственника</span>`}
           </div>`;
         tooltip.style.opacity = '1';
         tooltip.style.left    = ev.clientX + 14 + 'px';
@@ -1989,6 +2013,48 @@
         tooltip.style.opacity = '0';
       });
     });
+
+    // Dynamic Search Input Setup
+    const searchInput = document.getElementById('tree-search-input');
+    if (searchInput) {
+      const freshInput = searchInput.cloneNode(true);
+      searchInput.replaceWith(freshInput);
+      freshInput.addEventListener('input', e => {
+        const q = e.target.value.toLowerCase().trim();
+        if (!q) {
+          if (highlightedDynamicId) {
+            highlightDynamicNode(highlightedDynamicId);
+          } else {
+            clearHighlightDynamic();
+          }
+          return;
+        }
+
+        container.classList.add('has-highlight');
+        container.querySelectorAll('.tree-node').forEach(el => {
+          const nid = el.dataset.id;
+          const node = allNodes.find(n => n.id === nid);
+          const name = node ? (node.full_name || node.fullName || '').toLowerCase() : '';
+          const years = node ? (node.years || '').toLowerCase() : '';
+          const matches = name.includes(q) || years.includes(q);
+
+          el.classList.remove('tree-node--dim', 'tree-node--active');
+          if (matches) {
+            el.classList.add('tree-node--active');
+          } else {
+            el.classList.add('tree-node--dim');
+          }
+        });
+
+        const svg = container.querySelector('.tree-dynamic-svg');
+        if (svg) {
+          svg.querySelectorAll('path').forEach(p => {
+            p.classList.remove('thread-path--active');
+            p.classList.add('thread-path--dim');
+          });
+        }
+      });
+    }
   }
 
   /* ── SVG нити — линии идут ОТ НИЗА карточек ── */
@@ -2368,10 +2434,14 @@
   async function loadNodes() {
     try {
       const r = await fetch(`${BASE}/api/family-nodes?treeId=${encodeURIComponent(currentTreeId)}`);
-      if (r.status === 403) {
-        const user = typeof API !== 'undefined' ? API.getUser() : null;
-        if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
-          window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+      if (r.status === 403 || r.status === 404) {
+        if (currentTreeId !== 'default') {
+          const user = typeof API !== 'undefined' ? API.getUser() : null;
+          if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
+            window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          } else {
+            window.location.replace("family-tree.html");
+          }
           return [];
         }
       }
