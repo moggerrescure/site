@@ -13,8 +13,7 @@ const VERIFIED_DIRS = [
   '8937f345-a84b-497b-a539-095f1ef41fa1',
   '3c2d5c98-9ff9-4543-8b37-d5b197b25e8c',
   '8c0cdbeb-391b-4815-8999-7bb19de17ea7',
-  '70edde20-506a-4adb-b774-135a83abba2c',
-  'aba154b2-a966-4c49-a0c4-baec5ebb1193'
+  'c5176868-bdbc-4704-b57d-1ce71e40b39d'
 ];
 
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -118,7 +117,14 @@ async function main() {
   
   const filtered = allImages.filter(img => {
     const name = img.name.toLowerCase();
-    const isTempMedia = img.path.toLowerCase().includes('.tempmediastorage'); // ignore temp UI snaps
+    const pStr = img.path.toLowerCase();
+    const isTempMedia = pStr.includes('.tempmediastorage'); // ignore temp UI snaps
+    
+    // Strictly exclude user's uploaded screenshots in current conversation folder
+    if (pStr.includes('c5176868-bdbc-4704-b57d-1ce71e40b39d') && name.includes('media__')) {
+      return false;
+    }
+    
     if (img.size < 30000) return false; // filter out tiny artifacts
     return !excludes.some(ex => name.includes(ex)) && !isTempMedia;
   });
@@ -232,11 +238,11 @@ async function main() {
 
   let totalFiles = 0;
 
-  // Prepare full fallback lists to keep era boundaries strictly intact
+  // Prepare full fallback lists to keep era boundaries strictly intact, falling back to vintage if modern is exhausted
   const allVintageMales = vintageMales;
   const allVintageFemales = vintageFemales;
-  const allModernMales = boys.concat(modernMales);
-  const allModernFemales = girls.concat(modernFemales);
+  const allModernMales = boys.concat(modernMales).concat(vintageMales);
+  const allModernFemales = girls.concat(modernFemales).concat(vintageFemales);
 
   // Process and style images 1:1
   for (const p of PEOPLE) {
@@ -250,9 +256,15 @@ async function main() {
         ? popUnique(vintageMales, allVintageMales) 
         : popUnique(vintageFemales, allVintageFemales);
     } else if (gen === 2) {
-      src1 = isM 
-        ? popUnique(vintageMales, allVintageMales) 
-        : popUnique(vintageFemales, allVintageFemales);
+      if (p.deceased) {
+        src1 = isM 
+          ? popUnique(vintageMales, allVintageMales) 
+          : popUnique(vintageFemales, allVintageFemales);
+      } else {
+        src1 = isM 
+          ? popUnique(modernMales, allModernMales) 
+          : popUnique(modernFemales, allModernFemales);
+      }
     } else if (gen === 3) {
       src1 = isM 
         ? popUnique(modernMales, allModernMales) 
@@ -325,8 +337,7 @@ async function processImage(srcPath, destPath, gen, type, key) {
     }
     img = img.linear(1.15, -15);
   } else if (gen === 2) {
-    img = img.modulate({ saturation: 0.75, brightness: 1.02 })
-             .tint({ r: 125, g: 110, b: 85 }); // 70s fading color tint
+    img = img.modulate({ saturation: 0.6, brightness: 1.05 }); // 70s fading color effect without duotone tint
   } else if (gen === 3) {
     img = img.modulate({ saturation: 1.25, brightness: 1.05 }); // 90s polaroid saturation
   } else {

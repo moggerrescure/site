@@ -26,10 +26,12 @@ const currentTreeId = urlParams.get('tree') || 'default';
     if (!path) return '';
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
     if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
-      return BASE + path;
+      const fullUrl = BASE + path;
+      return fullUrl.includes('/uploads/') ? fullUrl + '?v=5' : fullUrl;
     }
     if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
-      return BASE + '/' + path;
+      const fullUrl = BASE + '/' + path;
+      return fullUrl.includes('/uploads/') ? fullUrl + '?v=5' : fullUrl;
     }
     return path;
   };

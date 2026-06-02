@@ -146,10 +146,12 @@ const API = (() => {
       const devPrefix = isLocalDev ? 'http://localhost:3000' : '';
       // Same-origin: /uploads/, /bot-data/, /images/ отдаются тем же хостом через Caddy. В dev-режиме берем с порта 3000.
       if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {
-        return devPrefix + path;
+        const fullUrl = devPrefix + path;
+        return fullUrl.includes('/uploads/') ? fullUrl + '?v=5' : fullUrl;
       }
       if (path.startsWith('uploads/') || path.startsWith('bot-data/') || path.startsWith('images/')) {
-        return devPrefix + '/' + path;
+        const fullUrl = devPrefix + '/' + path;
+        return fullUrl.includes('/uploads/') ? fullUrl + '?v=5' : fullUrl;
       }
       return path;
     },

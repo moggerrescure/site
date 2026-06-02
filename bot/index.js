@@ -15,8 +15,7 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 if (!ADMIN_CHAT_ID) {
-  console.error('ADMIN_CHAT_ID не задан в .env (нужен для пересылки поддержки)');
-  process.exit(1);
+  console.warn('WARNING: ADMIN_CHAT_ID не задан в .env (нужен для пересылки поддержки). Реле поддержки отключено.');
 }
 
 const bot = new Telegraf(BOT_TOKEN);
@@ -72,6 +71,9 @@ bot.on('message', async (ctx) => {
   }
 
   try {
+    if (!ADMIN_CHAT_ID) {
+      return ctx.reply('Служба поддержки временно недоступна.', Markup.removeKeyboard());
+    }
     await relayFromUserToAdmin(ctx, bot, ADMIN_CHAT_ID);
     await ctx.reply('Ваше сообщение отправлено в поддержку. Мы ответим вам в этом чате.', Markup.removeKeyboard());
   } catch (e) {
