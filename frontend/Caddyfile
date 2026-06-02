@@ -4,6 +4,8 @@
 
 	# === API → backend ===
 	handle /api/* {
+		# Приватность: API не должно попадать в индекс/ИИ-обучение
+		header X-Robots-Tag "noindex, nofollow"
 		reverse_proxy backend:3000
 	}
 
@@ -20,6 +22,8 @@
 
 	# === Загруженные файлы профилей (proxy → backend express.static) ===
 	handle /uploads/* {
+		# Приватность: фото (в т.ч. непубличных профилей) не индексируем
+		header X-Robots-Tag "noindex"
 		reverse_proxy backend:3000
 	}
 

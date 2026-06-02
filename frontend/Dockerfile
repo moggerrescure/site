@@ -11,6 +11,7 @@ WORKDIR /srv
 
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY *.html /srv/
+COPY llms.txt /srv/llms.txt
 COPY js /srv/js
 COPY styles /srv/styles
 COPY images /srv/images

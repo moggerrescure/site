@@ -11,7 +11,21 @@
  * поменяй PROFILE_URL_TEMPLATE ниже.
  */
 
-const PROFILE_URL_TEMPLATE = (baseUrl, slug) => `${baseUrl}/profile/${encodeURIComponent(slug)}`;
+// ВАЖНО: публичная каноническая страница памяти — это /p/<slug> (SSR Open Graph + редирект
+// на person.html). Раньше тут был /profile/<slug> — несуществующий URL → 404 в выдаче.
+const PROFILE_URL_TEMPLATE = (baseUrl, slug) => `${baseUrl}/p/${encodeURIComponent(slug)}`;
+
+// Публичные статические страницы для индексации (служебные/приватные НЕ включаем).
+// changefreq/priority — подсказки для краулеров.
+const STATIC_PATHS = [
+    { path: '/memory.html',      changefreq: 'daily',   priority: '0.9' },
+    { path: '/family-tree.html', changefreq: 'weekly',  priority: '0.7' },
+    { path: '/timeline.html',    changefreq: 'weekly',  priority: '0.6' },
+    { path: '/about.html',       changefreq: 'monthly', priority: '0.7' },
+    { path: '/faq.html',         changefreq: 'monthly', priority: '0.7' },
+    { path: '/privacy.html',     changefreq: 'yearly',  priority: '0.3' },
+    { path: '/terms.html',       changefreq: 'yearly',  priority: '0.3' },
+];
 
 /**
  * XML-эскейп для значений внутри <loc>, <lastmod> и т.д.
@@ -69,6 +83,18 @@ function buildSitemap({ baseUrl, profiles }) {
         '  </url>'
     );
 
+    // Публичные статические страницы
+    for (const s of STATIC_PATHS) {
+        urls.push(
+            '  <url>\n' +
+            `    <loc>${xmlEscape(base + s.path)}</loc>\n` +
+            `    <lastmod>${rootLastmod}</lastmod>\n` +
+            `    <changefreq>${s.changefreq}</changefreq>\n` +
+            `    <priority>${s.priority}</priority>\n` +
+            '  </url>'
+        );
+    }
+
     // Профили
     for (const p of profiles || []) {
         if (!p || !p.slug) continue;
@@ -94,17 +120,42 @@ function buildSitemap({ baseUrl, profiles }) {
 }
 
 /**
- * robots.txt c указанием Sitemap.
+ * robots.txt.
+ *
+ * Стратегия:
+ *  - Пускаем поисковые и ИИ-краулеры (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, CCBot)
+ *    на ПУБЛИЧНЫЙ контент — это нужно, чтобы попадать в ИИ-выдачу (AI Overviews / ChatGPT / Perplexity).
+ *  - Запрещаем всем /api/, /uploads/ и служебные/приватные страницы (admin, audit, trash, legacy,
+ *    смена пароля) — чтобы непубличные данные не утекали в индекс/обучение.
+ *  - Непубличные страницы памяти дополнительно помечаются noindex в SSR (см. ogRenderer).
  */
+const DISALLOWED_PATHS = [
+    '/api/',
+    '/uploads/',
+    '/admin.html',
+    '/audit.html',
+    '/trash.html',
+    '/legacy-contact.html',
+    '/forgot-password.html',
+    '/reset-password.html',
+];
+
+// ИИ-краулеры, которым явно разрешаем публичный контент.
+const AI_BOTS = ['GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-Web', 'PerplexityBot', 'Google-Extended', 'CCBot', 'Applebot-Extended'];
+
 function buildRobotsTxt(baseUrl) {
     const base = normalizeBaseUrl(baseUrl);
-    return (
-        'User-agent: *\n' +
-        'Allow: /\n' +
-        'Disallow: /api/\n' +
-        'Disallow: /uploads/\n' +
-        `Sitemap: ${base}/sitemap.xml\n`
-    );
+    const disallow = DISALLOWED_PATHS.map((p) => `Disallow: ${p}`).join('\n');
+
+    const blocks = [];
+    // Общий блок для всех
+    blocks.push(`User-agent: *\nAllow: /\n${disallow}`);
+    // Явные блоки для ИИ-ботов (тот же доступ: публичное — да, служебное — нет)
+    for (const bot of AI_BOTS) {
+        blocks.push(`User-agent: ${bot}\nAllow: /\n${disallow}`);
+    }
+
+    return blocks.join('\n\n') + `\n\nSitemap: ${base}/sitemap.xml\n`;
 }
 
 module.exports = { buildSitemap, buildRobotsTxt, normalizeBaseUrl };
