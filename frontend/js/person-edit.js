@@ -734,40 +734,52 @@
     }
 
     async function sendChatRequest(contextData) {
-      addThinkingIndicator();
-      
-      const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
-      try {
-        const res = await fetch(`${base}/api/ai/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: messages,
-            context: contextData
-          })
-        });
-        
-        const json = await res.json();
-        removeThinkingIndicator();
+  addThinkingIndicator();
 
-        if (json.ok) {
-          if (json.chatResponse) {
-            addMessage('assistant', json.chatResponse);
-          }
-          if (json.proposedText) {
-            addPreviewBox(json.proposedText);
-          }
-          return json;
-        } else {
-          addMessage('assistant', '⚠️ Произошла ошибка при генерации. Пожалуйста, попробуйте еще раз.');
-          return null;
-        }
-      } catch (err) {
-        removeThinkingIndicator();
-        addMessage('assistant', '⚠️ Не удалось связаться с ИИ. Проверьте соединение с сервером.');
-        return null;
-      }
+  // Доп. контекст: имя и даты человека со страницы — помогает ИИ писать точнее
+  const personName = document.querySelector('.person-header__name')?.textContent?.trim() || '';
+  const personDates = document.querySelector('.person-header__dates')?.textContent?.trim() || '';
+  const fullContext = Object.assign({ name: personName, dates: personDates }, contextData || {});
+
+  const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  try {
+    const res = await fetch(`${base}/api/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: messages,
+        context: fullContext
+      })
+    });
+
+    const json = await res.json().catch(() => ({}));
+    removeThinkingIndicator();
+
+    // Антирерол: 3 генерации, затем минута кулдауна
+    if (res.status === 429) {
+      const sec = json.retryAfter || 60;
+      addMessage('assistant', `⏳ Слишком много генераций подряд. Подождите ${sec} сек. и попробуйте снова.`);
+      return null;
     }
+
+    if (res.ok && json.ok) {
+      if (json.chatResponse) {
+        addMessage('assistant', json.chatResponse);
+      }
+      if (json.proposedText) {
+        addPreviewBox(json.proposedText);
+      }
+      return json;
+    } else {
+      addMessage('assistant', '⚠️ ' + (json.error || 'Произошла ошибка при генерации. Пожалуйста, попробуйте еще раз.'));
+      return null;
+    }
+  } catch (err) {
+    removeThinkingIndicator();
+    addMessage('assistant', '⚠️ Не удалось связаться с ИИ. Проверьте соединение с сервером.');
+    return null;
+  }
+}
 
     // --- Scenario 1 Screens ---
     function showScenario1InitialState() {

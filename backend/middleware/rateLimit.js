@@ -81,10 +81,32 @@ const authGeneralLimiter = rateLimit({
     keyGenerator: (req) => getClientIp(req),
     handler: rateLimitHandler,
 });
-
+/**
+ * AI-генерация: 3 запроса за 60 сек, затем ~минута кулдауна (защита от «рерола»).
+ * Ключ — по пользователю (если залогинен), иначе по IP.
+ * Неуспешные ответы (5xx/429/ошибки ИИ) не считаются за попытку.
+ */
+const aiGenerationLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 минута
+    max: process.env.NODE_ENV === 'development' ? 1000 : 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipFailedRequests: true,
+    keyGenerator: (req) => {
+        const uid = req.user && req.user.id;
+        return uid ? `ai:u:${uid}` : `ai:ip:${getClientIp(req)}`;
+    },
+    handler: (req, res, next, options) => {
+        rateLimitHandler(req, res, next, {
+            ...options,
+            message: 'Слишком много генераций подряд. Подождите минуту и попробуйте снова.',
+        });
+    },
+});
 module.exports = {
     loginLimiter,
     registerLimiter,
     authGeneralLimiter,
+    aiGenerationLimiter, // <— добавлено
     getClientIp,
 };

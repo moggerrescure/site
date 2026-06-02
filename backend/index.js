@@ -120,6 +120,8 @@ app.get('/robots.txt', (req, res) => {
 
 // __PASSWORD_RESET_MOUNT__
 app.use("/api/auth", require("./routes/password-reset"));
+// __AI_MOUNT__
+app.use('/api/ai', require('./routes/ai'));
 app.use('/api', router);
 
 /* ─── Static: uploads ─────────────────────────────────── */
