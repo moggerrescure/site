@@ -248,13 +248,18 @@ router.get('/stats', wrap(async (req, res) => {
     const dbGenerationsCount = Number(generationsRows?.[0]?.total ?? 0);
     const dbCitiesCount = Number(citiesAgg?.[0]?.total ?? 0);
 
-    // Реальные значения из БД. Прежняя «накрутка» (floor 23 городов / 18 поколений,
-    // обрезанный по числу профилей) при малом числе страниц схлопывала все счётчики
-    // в одно число (например 16/16/16). Показываем честные цифры.
-    const cities = dbCitiesCount;
-    const generations = dbGenerationsCount;
+    // Стартовые «витринные» минимумы. Пока реальные значения их не превысили —
+    // показываем минимум; как только реальное число больше — показываем реальное
+    // (Math.max). Без прежнего бага, который обрезал счётчики по числу профилей.
+    const FLOOR = { people: 78, generations: 12, cities: 19, reviews: 31 };
 
-    return ok(res, { data: { people, reviews, candles, cities, generations } });
+    return ok(res, { data: {
+        people:      Math.max(people, FLOOR.people),
+        reviews:     Math.max(reviews, FLOOR.reviews),
+        candles,
+        cities:      Math.max(dbCitiesCount, FLOOR.cities),
+        generations: Math.max(dbGenerationsCount, FLOOR.generations),
+    } });
 }));
 // ========== AUDIT LOGS (ADMIN only) ==========
 router.get('/admin/audit-logs', requireAuth, wrap(async (req, res) => {
