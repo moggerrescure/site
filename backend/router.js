@@ -246,16 +246,13 @@ router.get('/stats', wrap(async (req, res) => {
       ) per_owner
     `);
     const dbGenerationsCount = Number(generationsRows?.[0]?.total ?? 0);
-    
-    // Cities logic: minimum/default 23, approx 35% of memory pages, capped by total pages, transition to real DB count when exceeded.
-    const peopleCount = people;
     const dbCitiesCount = Number(citiesAgg?.[0]?.total ?? 0);
-    const calculatedValue = Math.min(peopleCount, Math.max(23, Math.round(peopleCount * 0.35)));
-    const cities = Math.max(dbCitiesCount, calculatedValue);
 
-    // Generations logic: minimum/default 18, approx 35% of memory pages, capped by total pages, transition to real DB count when exceeded.
-    const calculatedGenValue = Math.min(peopleCount, Math.max(18, Math.round(peopleCount * 0.35)));
-    const generations = Math.max(dbGenerationsCount, calculatedGenValue);
+    // Реальные значения из БД. Прежняя «накрутка» (floor 23 городов / 18 поколений,
+    // обрезанный по числу профилей) при малом числе страниц схлопывала все счётчики
+    // в одно число (например 16/16/16). Показываем честные цифры.
+    const cities = dbCitiesCount;
+    const generations = dbGenerationsCount;
 
     return ok(res, { data: { people, reviews, candles, cities, generations } });
 }));
