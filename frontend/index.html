@@ -135,7 +135,178 @@
           </div>
         </div>
       </div>
-      
+    </div>
+  </section>
+
+  <!-- AI ASSISTANT — снимаем страх «это сложно» -->
+  <section class="aibio" id="ai-assistant">
+    <div class="aibio__inner">
+      <div class="aibio__text">
+        <span class="aibio__eyebrow">✦ ИИ-помощник на сайте</span>
+        <h2 class="aibio__title">Кажется, что это сложно?<br/><em>На самом деле — нет.</em></h2>
+        <p class="aibio__lead">
+          Не нужно быть писателем. На странице памяти нажмите <strong>«AI»</strong>,
+          расскажите пару фактов о близком — помощник соберёт тёплую биографию.
+          Прямо в браузере, <strong>даже с телефона</strong>.
+        </p>
+
+        <ul class="aibio__steps">
+          <li class="aibio__step">
+            <span class="aibio__step-ic" aria-hidden="true">📱</span>
+            <span class="aibio__step-txt"><b>Прямо с телефона</b> — в браузере, без приложений.</span>
+          </li>
+          <li class="aibio__step">
+            <span class="aibio__step-ic" aria-hidden="true">✦</span>
+            <span class="aibio__step-txt"><b>Нажимаете «AI»</b> и пишете пару фактов или диктуете — помощник оформит текст.</span>
+          </li>
+          <li class="aibio__step">
+            <span class="aibio__step-ic" aria-hidden="true">✓</span>
+            <span class="aibio__step-txt"><b>Вставляете в страницу.</b> Любое слово можно поправить.</span>
+          </li>
+        </ul>
+
+        <a href="memory.html" class="btn btn--primary aibio__cta">Создать страницу памяти</a>
+        <p class="aibio__note">Бесплатно · в браузере · с телефона или компьютера</p>
+      </div>
+
+      <div class="aibio__visual">
+        <div class="mockup-viewport">
+          <div class="ai-mockup">
+
+            <!-- 3D Perspective-matched Floor Shadow -->
+            <div class="floor-shadow"></div>
+
+            <!-- FLOATING ELEMENT 3: Curved Dashed Flow Arrow -->
+            <svg class="flow-arrow" viewBox="0 0 360 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(230, 207, 134, 0.85)" />
+                  <stop offset="100%" stop-color="rgba(200, 168, 75, 0.2)" />
+                </linearGradient>
+                <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#c8a84b" />
+                </marker>
+              </defs>
+              <path d="M 235 295 C 295 330, 290 410, 230 455" stroke="url(#arrowGrad)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrowhead)" />
+            </svg>
+
+            <!-- 3D Smartphone Frame -->
+            <div class="phone-3d-wrap">
+              <div class="phone-body">
+                <!-- Dynamic Notch Pill sitting cleanly in front -->
+                <div class="phone-notch"></div>
+
+                <!-- Screen Element with Injected original HTML -->
+                <div class="phone-screen">
+                  <div class="memui">
+
+                    <div class="memui__bar">
+                      <span class="memui__back">‹</span>
+                      <span class="memui__brand"><img src="assets-v2/logo-tree-cut.png" alt="" class="memui__logo-img" />QR-Память</span>
+                      <span class="memui__editmode">СОЗДАТЬ СТРАНИЦУ</span>
+                    </div>
+
+                    <div class="memui__page">
+                      <div class="memui__person">
+                        <img src="uploads/avatar_nadezhda.webp" alt="Надежда Корнеева" class="memui__portrait" />
+                        <span class="memui__name">Надежда Корнеева</span>
+                        <span class="memui__dates">1937 — 2015</span>
+                      </div>
+                      <div class="memui__field">
+                        <span class="memui__field-label">Биография</span>
+                        <div class="memui__textarea">
+                          <span class="memui__placeholder">Несколько тёплых слов о близком…</span>
+                          <button type="button" class="memui__ai">AI</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="aiui" role="dialog" aria-label="ИИ-помощник «Память»">
+                      <span class="aiui__grip" aria-hidden="true"></span>
+                      <div class="aiui__head">✨ ИИ-помощник «Память»</div>
+                      <div class="aiui__chat">
+                        <div class="aiui__bubble aiui__bubble--bot">Расскажите про близкого — я соберу для вас тёплую историю.</div>
+                        <div class="aiui__bubble aiui__bubble--user">сельская учительница, пекла хлеб на всю улицу, знала всех соседей</div>
+                        <div class="aiui__card">
+                          <span class="aiui__card-badge">✦ Вариант биографии</span>
+                          Надежда Корнеева полвека учила детей в сельской школе и пекла хлеб на всю улицу. Тёплая и хлопотливая, она знала каждого соседа по имени и для каждого находила доброе слово.
+                        </div>
+                      </div>
+                      <div class="aiui__actions">
+                        <span class="aiui__btn aiui__btn--primary">Вставить в страницу</span>
+                        <span class="aiui__btn">Сделать теплее</span>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- FLOATING ELEMENT 1: Glassmorphic Voice Message Pill -->
+            <div class="voice-pill">
+              <div class="play-btn">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <div class="waveform">
+                <div class="wave-bar active" style="height: 10px;"></div>
+                <div class="wave-bar active" style="height: 14px;"></div>
+                <div class="wave-bar active" style="height: 8px;"></div>
+                <div class="wave-bar active" style="height: 18px;"></div>
+                <div class="wave-bar active" style="height: 12px;"></div>
+                <div class="wave-bar active" style="height: 22px;"></div>
+                <div class="wave-bar active" style="height: 15px;"></div>
+                <div class="wave-bar active" style="height: 9px;"></div>
+                <div class="wave-bar" style="height: 13px;"></div>
+                <div class="wave-bar" style="height: 20px;"></div>
+                <div class="wave-bar" style="height: 10px;"></div>
+                <div class="wave-bar" style="height: 15px;"></div>
+                <div class="wave-bar" style="height: 7px;"></div>
+              </div>
+              <div class="duration">00:32 / 02:18</div>
+            </div>
+
+            <!-- FLOATING ELEMENT 2: Sparkling Star Graphic -->
+            <div class="sparkle-wrap">
+              <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="url(#goldGrad)" />
+                <defs>
+                  <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#e6cf86" />
+                    <stop offset="100%" stop-color="#c8a84b" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            <!-- FLOATING ELEMENT 4: Telegram / Messenger Premium Notification Card -->
+            <div class="notif-card">
+              <div class="notif-avatar">
+                <span class="avatar-text">QR</span>
+              </div>
+              <div class="notif-content">
+                <div class="notif-header">
+                  <span class="notif-title">QR-Память</span>
+                  <span class="notif-time">19:48</span>
+                </div>
+                <div class="notif-body">
+                  <span class="notif-text">Она пекла потрясающий хлеб на всю улицу и знала каждого соседа по имени...</span>
+                  <div class="notif-badge">1</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES PRESENTATION SHOWCASE (PART 2) -->
+  <section class="showcase" id="features-showcase-2" style="padding-top:0;">
+    <div class="showcase__inner">
       <!-- 02 · Древо семьи -->
       <div class="showcase__item showcase__item--reverse">
         <div class="showcase__text">
@@ -196,87 +367,7 @@
     </div>
   </section>
 
-  <!-- AI ASSISTANT — снимаем страх «это сложно» -->
-  <section class="aibio" id="ai-assistant">
-    <div class="aibio__inner">
-      <div class="aibio__text">
-        <span class="aibio__eyebrow">✦ ИИ-помощник на сайте</span>
-        <h2 class="aibio__title">Кажется, что это сложно?<br/><em>На самом деле — нет.</em></h2>
-        <p class="aibio__lead">
-          Не нужно быть писателем. На странице памяти нажмите <strong>«AI»</strong>,
-          расскажите пару фактов о близком — помощник соберёт тёплую биографию.
-          Прямо в браузере, <strong>даже с телефона</strong>.
-        </p>
 
-        <ul class="aibio__steps">
-          <li class="aibio__step">
-            <span class="aibio__step-ic" aria-hidden="true">📱</span>
-            <span class="aibio__step-txt"><b>Прямо с телефона</b> — в браузере, без приложений.</span>
-          </li>
-          <li class="aibio__step">
-            <span class="aibio__step-ic" aria-hidden="true">✦</span>
-            <span class="aibio__step-txt"><b>Нажимаете «AI»</b> и пишете пару фактов — помощник оформит текст.</span>
-          </li>
-          <li class="aibio__step">
-            <span class="aibio__step-ic" aria-hidden="true">✓</span>
-            <span class="aibio__step-txt"><b>Вставляете в страницу.</b> Любое слово можно поправить.</span>
-          </li>
-        </ul>
-
-        <a href="memory.html" class="btn btn--primary aibio__cta">Создать страницу памяти</a>
-        <p class="aibio__note">Бесплатно · в браузере · с телефона или компьютера</p>
-      </div>
-
-      <div class="aibio__visual">
-        <div class="phone" aria-label="Редактирование страницы памяти с ИИ-помощником прямо на сайте">
-          <div class="phone__notch"></div>
-          <div class="phone__screen">
-            <div class="memui">
-
-              <div class="memui__bar">
-                <span class="memui__back">‹</span>
-                <span class="memui__brand">QR-Память</span>
-                <span class="memui__editmode">СОЗДАТЬ СТРАНИЦУ</span>
-              </div>
-
-              <div class="memui__page">
-                <div class="memui__person">
-                  <span class="memui__portrait" aria-hidden="true"></span>
-                  <span class="memui__name">Надежда Корнеева</span>
-                  <span class="memui__dates">1937 — 2015</span>
-                </div>
-                <div class="memui__field">
-                  <span class="memui__field-label">Биография</span>
-                  <div class="memui__textarea">
-                    <span class="memui__placeholder">Несколько тёплых слов о близком…</span>
-                    <button type="button" class="memui__ai">AI</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="aiui" role="dialog" aria-label="ИИ-помощник «Память»">
-                <span class="aiui__grip" aria-hidden="true"></span>
-                <div class="aiui__head">✨ ИИ-помощник «Память»</div>
-                <div class="aiui__chat">
-                  <div class="aiui__bubble aiui__bubble--bot">Расскажите про близкого — я соберу для вас тёплую историю.</div>
-                  <div class="aiui__bubble aiui__bubble--user">сельская учительница, пекла хлеб на всю улицу, знала всех соседей</div>
-                  <div class="aiui__card">
-                    <span class="aiui__card-badge">✦ Вариант биографии</span>
-                    Надежда Корнеева полвека учила детей в сельской школе и пекла хлеб на всю улицу. Тёплая и хлопотливая, она знала каждого соседа по имени и для каждого находила доброе слово.
-                  </div>
-                </div>
-                <div class="aiui__actions">
-                  <span class="aiui__btn aiui__btn--primary">Вставить в страницу</span>
-                  <span class="aiui__btn">Сделать теплее</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <!-- FEATURED PERSON — живая карточка с цитатой -->
   <section class="featured-person" id="featured-person">

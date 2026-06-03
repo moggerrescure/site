@@ -8,35 +8,41 @@
 .aibio{
   position:relative;
   z-index:2;
-  padding:120px 32px;
+  padding:100px 32px;
 }
 .aibio__inner{
-  max-width:1180px;
+  max-width:1050px;
   margin:0 auto;
-  display:grid;
-  grid-template-columns:1.05fr .95fr;
-  gap:72px;
+  display:flex;
   align-items:center;
+  justify-content:space-between;
+  gap:56px;
+}
+.aibio__text{
+  max-width:480px;
+  text-align:left;
+  flex:1;
 }
 
 /* ── Левая колонка: текст ── */
 .aibio__eyebrow{
-  display:inline-block;
+  display:block;
   font-family:var(--font-ui);
-  font-size:12px;
-  font-weight:600;
-  letter-spacing:.24em;
+  font-size:11px;
+  font-weight:300;
+  letter-spacing:0.22em;
   text-transform:uppercase;
-  color:var(--gold-light);
-  margin-bottom:18px;
+  color:var(--gold);
+  margin-bottom:12px;
 }
 .aibio__title{
   font-family:var(--font-display, 'Playfair Display', serif);
-  font-size:clamp(26px,2.9vw,38px);
-  line-height:1.14;
-  letter-spacing:-.012em;
-  color:#f3ecd9;
-  margin:0 0 18px;
+  font-size:clamp(26px, 4vw, 34px);
+  font-weight:400;
+  line-height:1.2;
+  letter-spacing:-0.01em;
+  color:var(--cream);
+  margin:0 0 20px;
   text-wrap:balance;
 }
 .aibio__title em{
@@ -46,12 +52,12 @@
 .aibio__lead{
   font-family:var(--font-body, 'Lora', serif);
   font-size:16px;
-  line-height:1.72;
-  color:#cbc0a8;
-  max-width:46ch;
-  margin:0 0 28px;
+  font-weight:300;
+  line-height:1.75;
+  color:var(--cream-dim);
+  margin:0 0 24px;
 }
-.aibio__lead strong{ color:#e7dcc2; font-weight:600; }
+.aibio__lead strong{ color:var(--white); font-weight:600; }
 
 /* ── Шаги-успокоение ── */
 .aibio__steps{
@@ -104,42 +110,365 @@
   justify-content:center;
   perspective:1600px;
 }
-.phone{
-  position:relative;
-  width:340px;
-  height:680px;
-  border-radius:46px;
-  padding:13px;
-  background:linear-gradient(155deg,#2a2620,#100e0a 60%);
+
+/* ════════════════════════════════════════════
+   3D SMARTPHONE MOCKUP — Premium Visual Integration
+   ════════════════════════════════════════════ */
+.mockup-viewport {
+  --gold-main: #c8a84b;
+  --gold-light: #e6cf86;
+  --gold-dark: #806524;
+  --gold-deep: #4a3a14;
+  --bg-black-matte: #141210;
+  --bg-black-deep: #0e0d0b;
+  --glass-bg: rgba(20, 18, 16, 0.85);
+  --glass-border: rgba(200, 168, 75, 0.4);
+  --phone-w: 230px;
+  --phone-h: 490px;
+
+  width: 100%;
+  max-width: 380px;
+  height: 600px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.ai-mockup {
+  width: 360px;
+  height: 580px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+  perspective: 1200px;
+}
+
+/* Floor Shadow mimicking 3D tilt */
+.floor-shadow {
+  position: absolute;
+  width: 280px;
+  height: 70px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 70%);
+  bottom: 25px;
+  left: 30px;
+  transform: rotateZ(-14deg);
+  filter: blur(15px);
+  pointer-events: none;
+  animation: shadowPulse 7s ease-in-out infinite;
+}
+
+/* 3D Phone Wrapper */
+.phone-3d-wrap {
+  position: absolute;
+  width: var(--phone-w);
+  height: var(--phone-h);
+  transform-style: preserve-3d;
+  z-index: 10;
+}
+
+/* Modern Smartphone with Premium Gold Rim & Matte Black Body */
+.phone-body {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-black-matte);
+  border-radius: 36px;
+  border: 1.5px solid var(--gold-main);
+  padding: 10px; /* Outer Bezel Width */
+  position: relative;
+  transform-style: preserve-3d;
+  /* Precise 3D Rotation matching the diagonal angle of the reference */
+  transform: rotateX(23deg) rotateY(15deg) rotateZ(-16deg);
+  /* Extruded metallic gold layers for realistic depth + drop shadow */
   box-shadow:
-    0 50px 110px rgba(0,0,0,.62),
-    0 0 0 1px rgba(200,168,75,.14),
-    inset 0 1px 0 rgba(255,247,210,.08);
-  transform:rotateY(-13deg) rotateX(3deg) rotateZ(1deg);
-  transform-style:preserve-3d;
-  transition:transform .7s cubic-bezier(.22,1,.36,1);
+    -1px 1px 0px #9d7f34,
+    -2px 2px 0px #8a6e29,
+    -3px 3px 0px #70581e,
+    -4px 4px 0px #5c4716,
+    -5px 5px 0px #40310c,
+    -18px 24px 45px rgba(0, 0, 0, 0.85);
+  animation: gentleFloat 7s ease-in-out infinite;
 }
-.aibio__visual:hover .phone{
-  transform:rotateY(-6deg) rotateX(1.5deg);
+
+/* Phone Notch / Camera Pill */
+.phone-notch {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateZ(2px);
+  width: 75px;
+  height: 14px;
+  background: var(--bg-black-deep);
+  border-radius: 10px;
+  border: 1px solid rgba(200, 168, 75, 0.15);
+  z-index: 200;
+  pointer-events: none;
 }
-.phone__notch{
-  position:absolute;
-  top:13px; left:50%;
-  transform:translateX(-50%);
-  width:128px; height:26px;
-  background:#0a0907;
-  border-radius:0 0 16px 16px;
-  z-index:5;
+
+/* Screen container clipping content to the rounded screen area */
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border-radius: 27px;
+  overflow: hidden;
+  position: relative;
+  clip-path: inset(0 0 0 0 round 27px);
+  -webkit-clip-path: inset(0 0 0 0 round 27px);
+  z-index: 10;
 }
-.phone__screen{
-  position:relative;
-  width:100%; height:100%;
-  border-radius:34px;
-  overflow:hidden;
-  background:#0e0d0b;
-  display:flex;
-  flex-direction:column;
+
+/* FLOATING ELEMENT 1: Voice Message Pill */
+.voice-pill {
+  position: absolute;
+  top: 45px;
+  right: 5px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 26px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.65);
+  z-index: 100;
+  transform-style: preserve-3d;
+  transform: translateZ(90px) rotateX(10deg) rotateY(-5deg) rotateZ(-3deg);
+  animation: pillFloat 7s ease-in-out infinite;
 }
+
+/* Voice Pill UI Parts */
+.play-btn {
+  width: 26px;
+  height: 26px;
+  background: var(--gold-main);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 3px 8px rgba(200, 168, 75, 0.3);
+}
+
+.play-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: var(--bg-black-deep);
+  margin-left: 2px; /* Visual optical alignment */
+}
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+}
+
+.wave-bar {
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(200, 168, 75, 0.3);
+}
+
+.wave-bar.active {
+  background: var(--gold-light);
+}
+
+.duration {
+  font-size: 10.5px;
+  color: var(--gold-light);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+
+/* FLOATING ELEMENT 2: Sparkle Star Icon */
+.sparkle-wrap {
+  position: absolute;
+  top: 235px;
+  right: 50px;
+  z-index: 90;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  animation: sparkleAnim 4s ease-in-out infinite;
+}
+
+.sparkle-icon {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 6px rgba(230, 207, 134, 0.7));
+}
+
+/* FLOATING ELEMENT 3: Dashed Curved Arrow */
+.flow-arrow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* FLOATING ELEMENT 4: Notification Card */
+.notif-card {
+  position: absolute;
+  bottom: 70px;
+  left: 12px;
+  width: 285px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+  z-index: 110;
+  transform-style: preserve-3d;
+  transform: translateZ(150px) rotateX(10deg) rotateY(-5deg) rotateZ(-2deg);
+  animation: cardFloat 7s ease-in-out infinite;
+}
+
+/* Notification Avatar with QR Text inside */
+.notif-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-black-deep), var(--bg-black-matte));
+  border: 1.5px solid var(--gold-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px rgba(200, 168, 75, 0.15);
+}
+
+.avatar-text {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--gold-light);
+  letter-spacing: 0.5px;
+}
+
+/* Notification Text Mechanics */
+.notif-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0; /* Ensures truncation works */
+}
+
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.notif-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.2px;
+}
+
+.notif-time {
+  font-size: 9px;
+  color: rgba(230, 207, 134, 0.6);
+  font-weight: 400;
+}
+
+.notif-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.notif-text {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+/* Notification Unread Circle */
+.notif-badge {
+  width: 16px;
+  height: 16px;
+  background: var(--gold-main);
+  color: var(--bg-black-deep);
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(200, 168, 75, 0.4);
+}
+
+/* GENTLE FLOATING KEYFRAMES */
+@keyframes gentleFloat {
+  0%, 100% {
+    transform: rotateX(23deg) rotateY(15deg) rotateZ(-16deg) translateY(0);
+  }
+  50% {
+    transform: rotateX(23deg) rotateY(15deg) rotateZ(-16deg) translateY(-8px);
+  }
+}
+
+@keyframes shadowPulse {
+  0%, 100% {
+    transform: scale(1) rotateZ(-14deg);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(0.92) rotateZ(-14deg);
+    opacity: 0.5;
+  }
+}
+
+@keyframes pillFloat {
+  0%, 100% {
+    transform: translateZ(90px) rotateX(10deg) rotateY(-5deg) rotateZ(-3deg) translateY(0);
+  }
+  50% {
+    transform: translateZ(90px) rotateX(10deg) rotateY(-5deg) rotateZ(-3deg) translateY(-5px);
+  }
+}
+
+@keyframes cardFloat {
+  0%, 100% {
+    transform: translateZ(150px) rotateX(10deg) rotateY(-5deg) rotateZ(-2deg) translateY(0);
+  }
+  50% {
+    transform: translateZ(150px) rotateX(10deg) rotateY(-5deg) rotateZ(-2deg) translateY(4px);
+  }
+}
+
+@keyframes sparkleAnim {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.18) rotate(15deg);
+    opacity: 1;
+  }
+}
+
 
 /* ── экран: сайт в правке ── */
 .memui{
@@ -161,7 +490,20 @@
   position:relative; z-index:2;
 }
 .memui__back{ color:var(--gold-light); font-size:22px; line-height:1; }
-.memui__brand{ font-family:"Libre Baskerville",Georgia,serif; font-size:14px; color:#e7dcc2; }
+.memui__brand {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: 13px;
+  color: #e7dcc2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.memui__logo-img {
+  height: 18px;
+  width: auto;
+  display: block;
+  filter: brightness(1.1) saturate(1.05) drop-shadow(0 1px 4px rgba(200, 168, 75, 0.28));
+}
 .memui__editmode{
   font-family:var(--font-ui); font-size:11px; font-weight:600;
   letter-spacing:.06em; text-transform:uppercase;
@@ -178,6 +520,7 @@
 }
 .memui__portrait{
   width:64px; height:64px; border-radius:50%;
+  object-fit: cover;
   background:radial-gradient(circle at 50% 35%, #2a2620, #15120d);
   border:1px solid rgba(200,168,75,.3);
   box-shadow:inset 0 1px 0 rgba(255,247,210,.1);
@@ -290,27 +633,36 @@
 }
 
 /* ── Адаптив ── */
-@media (max-width:920px){
+@media (max-width:850px){
+  .aibio{ padding:50px 20px; }
   .aibio__inner{
-    grid-template-columns:1fr;
-    gap:30px;
-    justify-items:center;
+    flex-direction:column;
     text-align:center;
+    gap:36px;
   }
-  .aibio__text{ display:flex; flex-direction:column; align-items:center; }
-  .aibio__lead{ text-align:center; margin-bottom:20px; }
-  .aibio__steps{ text-align:left; gap:11px; margin-bottom:24px; }
+  .aibio__text{
+    max-width:100%;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .aibio__lead{
+    text-align:center;
+    margin-bottom:20px;
+  }
+  .aibio__steps{
+    text-align:left;
+    gap:11px;
+    margin-bottom:24px;
+  }
   .aibio__step-ic{ width:34px; height:34px; font-size:15px; }
   .aibio__step-txt{ font-size:14px; padding-top:6px; }
-  .phone{
-    width:248px; height:516px;
-    transform:rotateY(-8deg) rotateX(2deg);
+  .aibio__visual {
+    margin-top: 50px; /* Push down the 3D phone mockup to clear the floating voice pill */
   }
-  .aibio__visual:hover .phone{ transform:rotateY(-4deg); }
 }
 @media (max-width:768px){
-  .aibio{ padding:44px 20px; }
-  .aibio__inner{ gap:14px; }
   /* на телефоне оставляем заголовок + лид + наклонённый мокап — как на референсе */
   .aibio__steps{ display:none; }
   .aibio__note{ display:none; }
@@ -320,18 +672,23 @@
   .aibio__lead{ font-size:13.5px; line-height:1.5; margin-bottom:14px; max-width:40ch; }
   /* наклонённый и уменьшенный мокап */
   .aibio__visual{ perspective:1500px; }
-  .phone{
-    width:216px; height:448px;
-    transform:rotate(-10deg) rotateY(-14deg) rotateX(4deg);
-  }
-  .aibio__visual:hover .phone{ transform:rotate(-6deg) rotateY(-9deg); }
 }
 @media (max-width:400px){
   .aibio{ padding:36px 18px; }
   .aibio__title{ font-size:19px; }
   .aibio__lead{ font-size:13px; margin-bottom:12px; }
-  .phone{
-    width:196px; height:406px;
-    transform:rotate(-10deg) rotateY(-13deg) rotateX(4deg);
+}
+
+/* Downscale wrapper smoothly to prevent 3D elements cropping on mobile viewports */
+@media (max-width: 480px) {
+  .ai-mockup {
+    transform: scale(0.82);
+    transform-origin: center center;
+  }
+}
+@media (max-width: 360px) {
+  .ai-mockup {
+    transform: scale(0.72);
+    transform-origin: center center;
   }
 }
