@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>QR-Память — мобильный просмотр</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:22px;
+    padding:40px 16px 64px;
+    background:
+      radial-gradient(circle at 50% 0%, #1a1812, #0b0a08 60%);
+    font-family:'Inter',system-ui,sans-serif;
+    color:#cbc0a8;
+  }
+  .head{ text-align:center; }
+  .head h1{
+    font-family:'Libre Baskerville',Georgia,serif;
+    font-size:20px; color:#e7dcc2; margin:0 0 6px; font-weight:400;
+  }
+  .head p{ margin:0; font-size:13px; letter-spacing:.04em; color:rgba(201,191,168,.55); }
+
+  .device{
+    position:relative;
+    width:392px;
+    height:812px;
+    flex-shrink:0;
+    border-radius:54px;
+    padding:14px;
+    background:linear-gradient(155deg,#2a2620,#100e0a 60%);
+    box-shadow:
+      0 50px 120px rgba(0,0,0,.6),
+      0 0 0 1px rgba(200,168,75,.16),
+      inset 0 1px 0 rgba(255,247,210,.08);
+  }
+  .device::before{
+    content:'';
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:140px; height:28px; background:#0a0907;
+    border-radius:0 0 18px 18px; z-index:3;
+  }
+  .device__screen{
+    position:relative;
+    width:100%; height:100%;
+    border-radius:42px;
+    overflow:hidden;
+    background:#0e0d0b;
+  }
+  iframe{
+    display:block;
+    width:390px;
+    height:100%;
+    border:0;
+    background:#0e0d0b;
+  }
+  .hint{
+    font-size:12px; letter-spacing:.05em;
+    color:rgba(201,191,168,.4);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Мобильный просмотр</h1>
+    <p>Так сайт выглядит на смартфоне · 390&nbsp;px</p>
+  </div>
+  <div class="device">
+    <div class="device__screen">
+      <iframe src="../index.html" title="QR-Память — мобильная версия"></iframe>
+    </div>
+  </div>
+  <p class="hint">Прокручивайте внутри рамки ↑↓</p>
+</body>
+</html>

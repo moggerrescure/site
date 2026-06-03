@@ -1,0 +1,343 @@
+/* ═══════════════════════════════════════════════════════════
+   POLISH.CSS — слой UI/UX-полировки поверх main + responsive.
+   Не меняет блочную структуру. Подключается ПОСЛЕДНИМ.
+   Откат: удалить <link ... polish.css> из index.html.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Глобальные мелочи ── */
+::selection{ background:rgba(200,168,75,.28); color:#fff; }
+html{ scroll-behavior:smooth; }
+body{ -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+
+/* Доступность: видимый фокус в фирменном золоте */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.nav__link:focus-visible{
+  outline:2px solid rgba(226,201,126,.75);
+  outline-offset:3px;
+  border-radius:6px;
+}
+
+/* ── NAV ── */
+.nav{ backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+.nav.is-scrolled{ box-shadow:0 10px 30px rgba(0,0,0,.45); }
+.nav__link{ letter-spacing:.07em; transition:color .28s ease; }
+
+/* ── HERO типографика ── */
+.hero__title{ text-wrap:balance; }
+.hero__eyebrow{ letter-spacing:.3em; }
+.hero__subtitle{
+  color:#cbc0a8;
+  line-height:1.85;
+}
+
+/* ── Кнопки: мягче радиус, живее ховер, аккуратный actiVE ── */
+.btn{
+  border-radius:10px;
+  font-weight:500;
+  letter-spacing:.06em;
+  transition:transform .25s cubic-bezier(.4,0,.2,1),
+             box-shadow .25s cubic-bezier(.4,0,.2,1),
+             background .25s, border-color .25s, color .25s;
+}
+.btn--primary{
+  box-shadow:0 6px 26px rgba(200,168,75,.26);
+}
+.btn--primary:hover{
+  transform:translateY(-2px);
+  box-shadow:0 12px 38px rgba(200,168,75,.4);
+}
+.btn:active{ transform:translateY(0) scale(.99); }
+.btn--ghost{ border-radius:10px; }
+
+/* ── Заголовки секций ── */
+.section-title{ text-wrap:balance; }
+.section-title::after{ height:2px; }
+
+/* ── STATS: чуть мягче и «дороже» ── */
+.stats__title{
+  font-family:"Libre Baskerville",Georgia,serif;
+  font-size:clamp(22px,2.6vw,30px);
+  font-weight:400;
+  color:#ece1c6;
+  text-align:center;
+  letter-spacing:.005em;
+  margin:0 auto 26px;
+}
+.stats__title::after{
+  content:'';
+  display:block;
+  width:48px; height:1px;
+  margin:16px auto 0;
+  background:linear-gradient(90deg,transparent,var(--gold-light),transparent);
+}
+.stats__inner{
+  border-radius:16px;
+  padding:34px 44px;
+  background:rgba(255,255,255,.028);
+  box-shadow:0 24px 60px rgba(0,0,0,.28);
+  backdrop-filter:blur(6px);
+}
+.stat__num{ text-shadow:0 0 30px rgba(200,168,75,.18); }
+
+/* ── SHOWCASE: ритм, читаемость, «продуктовые» рамки ── */
+.showcase__item{ gap:64px; align-items:center; }
+.showcase__tag{ letter-spacing:.18em; }
+.showcase__name{ line-height:1.2; letter-spacing:-.012em; text-wrap:balance; }
+.showcase__desc{ color:#cbc0a8; line-height:1.78; max-width:46ch; }
+.showcase__inline-link{
+  color:var(--gold-light);
+  text-decoration:none;
+  border-bottom:1px solid rgba(200,168,75,.4);
+  transition:border-color .25s, color .25s;
+}
+.showcase__inline-link:hover{ color:#f3ecd9; border-color:var(--gold-light); }
+
+/* ── Стрелка-проводник вниз перед шагами ── */
+.showcase__flow{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  margin:2px 0 50px;
+}
+.showcase__flow-line{
+  width:1px;
+  height:72px;
+  background:linear-gradient(180deg, transparent, rgba(200,168,75,.75));
+}
+.showcase__flow-arrow{
+  width:11px; height:11px;
+  margin-top:-7px;
+  border-right:1px solid var(--gold-light);
+  border-bottom:1px solid var(--gold-light);
+  transform:rotate(45deg);
+}
+
+/* Рамка вокруг превью-изображений — выглядит как карточка продукта */
+.feature-image-container{
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid rgba(200,168,75,.16);
+  box-shadow:0 30px 70px rgba(0,0,0,.5);
+  transition:transform .5s cubic-bezier(.4,0,.2,1), box-shadow .5s, border-color .5s;
+}
+.showcase__item:hover .feature-image-container{
+  transform:translateY(-6px);
+  border-color:rgba(200,168,75,.3);
+  box-shadow:0 40px 90px rgba(0,0,0,.6);
+}
+
+/* Ссылки-стрелки: плавный отъезд */
+.feature-card__link::after{ transition:margin-left .28s cubic-bezier(.4,0,.2,1); }
+.feature-card__link:hover::after{ margin-left:12px; }
+
+/* ── LAST ADDED: карточки людей ── */
+.last-added .person-card{ border-radius:16px; transition:transform .4s cubic-bezier(.4,0,.2,1), border-color .35s, box-shadow .35s; }
+.last-added .person-card:hover{ transform:translateY(-6px); box-shadow:0 26px 64px rgba(0,0,0,.55); }
+.last-added .person-card__name{ letter-spacing:-.01em; }
+
+/* ── FEATURED PERSON ── */
+.featured-person__card{ border-radius:18px; }
+
+/* ── Цитата ── */
+.pullquote{ line-height:1.55; }
+
+/* ═══════════════════════════════════════════════
+   PULLQUOTE — мемориальный акцент «Пока мы помним…»
+   ═══════════════════════════════════════════════ */
+.quote-section{ padding:120px 32px; position:relative; overflow:hidden; }
+/* мягкое тёплое свечение за словами */
+.quote-section::after{
+  content:'';
+  position:absolute; left:50%; top:54%;
+  transform:translate(-50%,-50%);
+  width:min(720px,86%); height:300px;
+  background:radial-gradient(ellipse at center, rgba(200,168,75,.12), rgba(200,168,75,.04) 45%, transparent 72%);
+  filter:blur(22px);
+  pointer-events:none; z-index:0;
+}
+.quote-section__inner{ position:relative; z-index:1; max-width:860px; }
+
+.pullquote{
+  font-size:clamp(26px,3.4vw,40px);
+  line-height:1.5;
+  letter-spacing:.004em;
+  color:#ece1c6;
+  text-shadow:0 1px 26px rgba(200,168,75,.16);
+  text-wrap:balance;
+  max-width:18ch;
+  margin-inline:auto;
+}
+/* крупные изящные кавычки */
+.pullquote__mark{
+  font-size:1.5em;
+  line-height:0;
+  color:rgba(200,168,75,.5);
+  vertical-align:-.32em;
+}
+/* линия-завершение под цитатой */
+.quote-section__inner::after{
+  content:'';
+  display:block;
+  width:72px; height:1px;
+  margin:40px auto 0;
+  background:linear-gradient(90deg,transparent,var(--gold-light),transparent);
+  opacity:.7;
+}
+
+@media (max-width:768px){
+  .quote-section{ padding:84px 22px; }
+  .pullquote{ max-width:14ch; }
+  .pullquote__mark{ font-size:1.3em; }
+}
+
+/* ── FOOTER: ровнее и спокойнее ── */
+.footer__nav-link,
+.footer__copy{ transition:color .25s ease; }
+
+/* ═══════════════════════════════════════════════
+   LOGO — заголовочный шрифт «QR-Память»
+   ═══════════════════════════════════════════════ */
+.nav__logo-script{
+  font-family:"Libre Baskerville",Georgia,serif;
+  font-size:24px;
+  letter-spacing:.005em;
+}
+
+/* ═══════════════════════════════════════════════
+   NAV — мобильная шапка: бургер в угол, лого мельче
+   ═══════════════════════════════════════════════ */
+@media (max-width:768px){
+  :root{ --nav-h:62px; }
+  .nav__inner{ padding:0 18px; }
+  .nav__logo{ gap:9px; }
+  .nav__logo img{ height:36px; }
+  .nav__logo-script{ font-size:17px; }
+  /* бургер прижимаем к правому краю */
+  .nav__burger{
+    margin-left:auto;
+    margin-right:8px;
+    width:42px; height:42px;
+  }
+  /* выпадающее меню стартует под уменьшенной шапкой */
+  .nav__links{ top:var(--nav-h); }
+}
+
+/* ═══════════════════════════════════════════════
+   FOOTER — сбалансированная сетка, без «разъезда»
+   ═══════════════════════════════════════════════ */
+.footer__top{
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:48px;
+  padding:60px 40px 40px;
+}
+/* левая колонка — бренд + слоган */
+.footer__logo-wrap{ display:flex; flex-direction:column; gap:12px; max-width:none; }
+.footer__logo{
+  font-family:"Libre Baskerville",Georgia,serif;
+  font-size:26px; color:var(--gold-light); margin-bottom:0;
+  letter-spacing:.005em; line-height:1;
+}
+/* красивый слоган: микро-капс, золото, разрядка, тонкая линия слева */
+.footer__tagline{
+  font-family:var(--font-ui);
+  font-size:11px;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.26em;
+  line-height:1.85;
+  color:var(--gold-dim);
+  white-space:normal;
+  max-width:360px;
+  position:relative;
+  padding-left:34px;
+}
+.footer__tagline::before{
+  content:'';
+  position:absolute; left:0; top:.62em;
+  width:24px; height:1px;
+  background:linear-gradient(90deg,var(--gold-light),transparent);
+}
+
+/* центр — навигация по центру колонки */
+.footer__nav{
+  justify-self:end;
+  justify-content:flex-end;
+  flex-wrap:nowrap;
+  gap:10px 26px;
+  padding-top:0;
+}
+.footer__nav-link{
+  letter-spacing:.05em;
+  position:relative;
+  padding-bottom:3px;
+  white-space:nowrap;
+}
+.footer__nav-link::after{
+  content:''; position:absolute; left:0; right:100%; bottom:0;
+  height:1px; background:var(--gold-light);
+  transition:right .3s cubic-bezier(.4,0,.2,1);
+}
+.footer__nav-link:hover::after{ right:0; }
+
+/* правая колонка — курсивная эхо-цитата у правого края */
+.footer__quote{
+  display:none;
+}
+
+/* нижняя строка — © слева, слоган справа */
+.footer__bottom .footer__inner{
+  flex-direction:row;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.footer__copy{ letter-spacing:.03em; }
+
+@media (max-width:760px){
+  .footer__top{
+    grid-template-columns:1fr;
+    justify-items:center;
+    text-align:center;
+    gap:26px;
+    padding:44px 24px 32px;
+  }
+  .footer__logo-wrap{ align-items:center; }
+  .footer__tagline{ padding-left:0; max-width:34ch; }
+  .footer__tagline::before{ display:none; }
+  .footer__nav{ justify-self:center; justify-content:center; flex-wrap:wrap; }
+  .footer__bottom .footer__inner{ flex-direction:column; justify-content:center; text-align:center; gap:8px; }
+}
+
+/* ═══════════════════════════════════════════════
+   МОБАЙЛ — комфорт и тап-зоны (структуру не трогаем)
+   ═══════════════════════════════════════════════ */
+@media (max-width:768px){
+  /* Тап-таргеты не меньше 48px */
+  .btn{ min-height:48px; display:inline-flex; align-items:center; justify-content:center; }
+  .nav__link{ min-height:48px; display:flex; align-items:center; }
+
+  /* Воздух между секциями — ровнее ритм */
+  .showcase__item{ gap:28px; }
+  .showcase{ padding-left:18px; padding-right:18px; }
+
+  /* Заголовки чуть плотнее и читаемее */
+  .hero__subtitle{ line-height:1.65; }
+  .section-title{ line-height:1.18; }
+
+  /* Карточки — крупнее радиус, мягче тени */
+  .stats__inner{ border-radius:14px; padding:24px 18px; }
+  .last-added .person-card{ border-radius:14px; }
+
+  /* Превью-картинки — аккуратная рамка и на мобиле */
+  .feature-image-container{ border-radius:14px; }
+}
+
+@media (max-width:430px){
+  .btn{ width:100%; }
+  .hero__actions{ flex-direction:column; }
+  .hero__actions .btn{ width:100%; }
+}

@@ -1,0 +1,319 @@
+/* ═══════════════════════════════════════════════════════════
+   AI-ASSISTANT.CSS — секция «ИИ-помощник» + мокап Telegram-бота.
+   Снимает страх «составить страницу сложно».
+   Откат: удалить <link ... ai-assistant.css> из index.html
+          и саму <section class="aibio"> .
+   ═══════════════════════════════════════════════════════════ */
+
+.aibio{
+  position:relative;
+  z-index:2;
+  padding:120px 32px;
+}
+.aibio__inner{
+  max-width:1180px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  gap:72px;
+  align-items:center;
+}
+
+/* ── Левая колонка: текст ── */
+.aibio__eyebrow{
+  display:inline-block;
+  font-family:var(--font-ui);
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  color:var(--gold-light);
+  margin-bottom:18px;
+}
+.aibio__title{
+  font-family:var(--font-display, 'Playfair Display', serif);
+  font-size:clamp(26px,2.9vw,38px);
+  line-height:1.14;
+  letter-spacing:-.012em;
+  color:#f3ecd9;
+  margin:0 0 18px;
+  text-wrap:balance;
+}
+.aibio__title em{
+  font-style:italic;
+  color:var(--gold-light);
+}
+.aibio__lead{
+  font-family:var(--font-body, 'Lora', serif);
+  font-size:16px;
+  line-height:1.72;
+  color:#cbc0a8;
+  max-width:46ch;
+  margin:0 0 28px;
+}
+.aibio__lead strong{ color:#e7dcc2; font-weight:600; }
+
+/* ── Шаги-успокоение ── */
+.aibio__steps{
+  list-style:none;
+  margin:0 0 36px;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.aibio__step{
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+}
+.aibio__step-ic{
+  flex-shrink:0;
+  width:40px; height:40px;
+  display:grid; place-items:center;
+  border-radius:50%;
+  font-size:18px;
+  color:var(--gold-light);
+  background:radial-gradient(circle at 50% 35%, rgba(200,168,75,.16), rgba(200,168,75,.04));
+  border:1px solid rgba(200,168,75,.28);
+  box-shadow:inset 0 1px 0 rgba(255,247,210,.12);
+}
+.aibio__step-txt{
+  font-family:var(--font-body, 'Lora', serif);
+  font-size:15px;
+  line-height:1.5;
+  color:#b9ad93;
+  padding-top:8px;
+}
+.aibio__step-txt b{ color:#e7dcc2; font-weight:600; }
+
+.aibio__cta{ margin-top:4px; }
+.aibio__note{
+  font-family:var(--font-ui);
+  font-size:13px;
+  letter-spacing:.04em;
+  color:rgba(201,191,168,.5);
+  margin:16px 0 0;
+}
+
+/* ════════════════════════════════════════════
+   PHONE MOCKUP — сайт в режиме правки страницы памяти
+   ════════════════════════════════════════════ */
+.aibio__visual{
+  display:flex;
+  justify-content:center;
+  perspective:1600px;
+}
+.phone{
+  position:relative;
+  width:340px;
+  height:680px;
+  border-radius:46px;
+  padding:13px;
+  background:linear-gradient(155deg,#2a2620,#100e0a 60%);
+  box-shadow:
+    0 50px 110px rgba(0,0,0,.62),
+    0 0 0 1px rgba(200,168,75,.14),
+    inset 0 1px 0 rgba(255,247,210,.08);
+  transform:rotateY(-13deg) rotateX(3deg) rotateZ(1deg);
+  transform-style:preserve-3d;
+  transition:transform .7s cubic-bezier(.22,1,.36,1);
+}
+.aibio__visual:hover .phone{
+  transform:rotateY(-6deg) rotateX(1.5deg);
+}
+.phone__notch{
+  position:absolute;
+  top:13px; left:50%;
+  transform:translateX(-50%);
+  width:128px; height:26px;
+  background:#0a0907;
+  border-radius:0 0 16px 16px;
+  z-index:5;
+}
+.phone__screen{
+  position:relative;
+  width:100%; height:100%;
+  border-radius:34px;
+  overflow:hidden;
+  background:#0e0d0b;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── экран: сайт в правке ── */
+.memui{
+  position:relative;
+  width:100%; height:100%;
+  display:flex; flex-direction:column;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(200,168,75,.06), transparent 45%),
+    #0e0d0b;
+}
+
+/* верхняя панель */
+.memui__bar{
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:46px 18px 12px;
+  background:linear-gradient(180deg,#1a1813,#141210);
+  border-bottom:1px solid rgba(200,168,75,.1);
+  position:relative; z-index:2;
+}
+.memui__back{ color:var(--gold-light); font-size:22px; line-height:1; }
+.memui__brand{ font-family:"Libre Baskerville",Georgia,serif; font-size:14px; color:#e7dcc2; }
+.memui__editmode{
+  font-family:var(--font-ui); font-size:11px; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--gold-light);
+  padding:4px 10px; border-radius:20px;
+  background:rgba(200,168,75,.12); border:1px solid rgba(200,168,75,.3);
+}
+
+/* страница памяти */
+.memui__page{ flex:1; padding:22px 18px; }
+.memui__person{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  text-align:center; margin-bottom:22px;
+}
+.memui__portrait{
+  width:64px; height:64px; border-radius:50%;
+  background:radial-gradient(circle at 50% 35%, #2a2620, #15120d);
+  border:1px solid rgba(200,168,75,.3);
+  box-shadow:inset 0 1px 0 rgba(255,247,210,.1);
+}
+.memui__name{ font-family:"Libre Baskerville",Georgia,serif; font-size:18px; color:#f1ead7; }
+.memui__dates{ font-family:var(--font-ui); font-size:12px; letter-spacing:.08em; color:var(--gold-light); }
+
+.memui__field-label{
+  display:block;
+  font-family:var(--font-ui); font-size:11px; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:rgba(201,191,168,.55); margin-bottom:8px;
+}
+.memui__textarea{
+  position:relative;
+  min-height:92px;
+  border-radius:12px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(200,168,75,.28);
+  box-shadow:0 0 0 3px rgba(200,168,75,.06);
+  padding:12px 14px;
+}
+.memui__placeholder{
+  font-family:var(--font-body,'Lora',serif);
+  font-size:13px; color:rgba(201,191,168,.4); font-style:italic;
+}
+.memui__ai{
+  position:absolute; right:10px; bottom:10px;
+  width:34px; height:34px;
+  border:none; border-radius:9px;
+  font-family:var(--font-ui); font-size:12px; font-weight:700; letter-spacing:.04em;
+  color:#1a1712;
+  background:linear-gradient(135deg,#e6cf86,#c8a84b);
+  box-shadow:0 4px 14px rgba(200,168,75,.4);
+  cursor:pointer;
+}
+
+/* всплывающий ИИ-помощник (bottom sheet) */
+.aiui{
+  position:absolute; left:0; right:0; bottom:0;
+  height:62%;
+  display:flex; flex-direction:column;
+  padding:10px 16px 18px;
+  background:linear-gradient(180deg,#1b1813,#131110);
+  border-top:1px solid rgba(200,168,75,.22);
+  border-radius:22px 22px 0 0;
+  box-shadow:0 -24px 50px rgba(0,0,0,.5);
+  z-index:3;
+}
+.aiui__grip{
+  width:38px; height:4px; border-radius:4px;
+  background:rgba(200,168,75,.35);
+  margin:0 auto 12px;
+}
+.aiui__head{
+  font-family:var(--font-ui); font-size:14px; font-weight:600;
+  color:#f1ead7; text-align:center; margin-bottom:14px;
+}
+.aiui__chat{
+  flex:1; overflow:hidden;
+  display:flex; flex-direction:column; gap:9px;
+}
+.aiui__bubble{
+  max-width:88%;
+  padding:9px 13px; border-radius:14px;
+  font-family:var(--font-ui); font-size:13px; line-height:1.5;
+}
+.aiui__bubble--bot{
+  align-self:flex-start;
+  background:#241f17; color:#ddd3bf;
+  border-bottom-left-radius:5px;
+}
+.aiui__bubble--user{
+  align-self:flex-end;
+  background:linear-gradient(160deg,#caa84b,#a98a35);
+  color:#1c1710; border-bottom-right-radius:5px;
+}
+.aiui__card{
+  position:relative;
+  background:linear-gradient(165deg,#251f14,#1b1711);
+  border:1px solid rgba(200,168,75,.3);
+  border-radius:14px;
+  padding:28px 14px 13px;
+  font-family:var(--font-body,'Lora',serif);
+  font-size:13px; line-height:1.6; color:#e3d8bf;
+}
+.aiui__card-badge{
+  position:absolute; top:9px; left:14px;
+  font-family:var(--font-ui); font-size:9.5px; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+  color:var(--gold-light);
+}
+.aiui__actions{
+  flex-shrink:0;
+  display:flex; gap:7px; margin-top:10px;
+}
+.aiui__btn{
+  flex:1; text-align:center;
+  font-family:var(--font-ui); font-size:11px; font-weight:500;
+  padding:8px 6px; border-radius:9px;
+  color:#cdbf9f;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(200,168,75,.22);
+}
+.aiui__btn--primary{
+  color:#1a1712; font-weight:600;
+  background:linear-gradient(135deg,#e6cf86,#c8a84b);
+  border-color:transparent;
+  box-shadow:0 6px 18px rgba(200,168,75,.3);
+}
+
+/* ── Адаптив ── */
+@media (max-width:920px){
+  .aibio__inner{
+    grid-template-columns:1fr;
+    gap:30px;
+    justify-items:center;
+    text-align:center;
+  }
+  .aibio__text{ display:flex; flex-direction:column; align-items:center; }
+  .aibio__lead{ text-align:center; margin-bottom:20px; }
+  .aibio__steps{ text-align:left; gap:11px; margin-bottom:24px; }
+  .aibio__step-ic{ width:34px; height:34px; font-size:15px; }
+  .aibio__step-txt{ font-size:14px; padding-top:6px; }
+  .phone{
+    width:248px; height:516px;
+    transform:rotateY(-8deg) rotateX(2deg);
+  }
+  .aibio__visual:hover .phone{ transform:rotateY(-4deg); }
+}
+@media (max-width:768px){
+  .aibio{ padding:60px 22px; }
+  /* на телефоне оставляем заголовок + лид + мокап — как на референсе */
+  .aibio__steps{ display:none; }
+  .aibio__lead{ margin-bottom:24px; }
+}
+@media (max-width:400px){
+  .phone{ width:232px; height:484px; }
+}
