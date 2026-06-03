@@ -309,11 +309,29 @@
   .aibio__visual:hover .phone{ transform:rotateY(-4deg); }
 }
 @media (max-width:768px){
-  .aibio{ padding:60px 22px; }
-  /* на телефоне оставляем заголовок + лид + мокап — как на референсе */
+  .aibio{ padding:44px 20px; }
+  .aibio__inner{ gap:14px; }
+  /* на телефоне оставляем заголовок + лид + наклонённый мокап — как на референсе */
   .aibio__steps{ display:none; }
-  .aibio__lead{ margin-bottom:24px; }
+  .aibio__note{ display:none; }
+  /* шрифт компактнее, чтобы текст + мокап влезли на один экран */
+  .aibio__eyebrow{ font-size:11px; margin-bottom:10px; }
+  .aibio__title{ font-size:clamp(20px,5.4vw,25px); line-height:1.16; margin-bottom:10px; }
+  .aibio__lead{ font-size:13.5px; line-height:1.5; margin-bottom:14px; max-width:40ch; }
+  /* наклонённый и уменьшенный мокап */
+  .aibio__visual{ perspective:1500px; }
+  .phone{
+    width:216px; height:448px;
+    transform:rotate(-10deg) rotateY(-14deg) rotateX(4deg);
+  }
+  .aibio__visual:hover .phone{ transform:rotate(-6deg) rotateY(-9deg); }
 }
 @media (max-width:400px){
-  .phone{ width:232px; height:484px; }
+  .aibio{ padding:36px 18px; }
+  .aibio__title{ font-size:19px; }
+  .aibio__lead{ font-size:13px; margin-bottom:12px; }
+  .phone{
+    width:196px; height:406px;
+    transform:rotate(-10deg) rotateY(-13deg) rotateX(4deg);
+  }
 }
