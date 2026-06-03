@@ -211,6 +211,7 @@
       const val = bioEl.textContent.trim();
       bioEl.outerHTML = `<div class="edit-textarea-wrapper">
         <textarea class="edit-textarea" data-field="bio" placeholder="Краткий текст о человеке — эпитафия, несколько тёплых слов...">${escHtml(val)}</textarea>
+        <button type="button" class="ai-voice-btn" title="Голосовой ИИ-помощник">🎙️</button>
         <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
       </div>`;
     }
@@ -244,6 +245,7 @@
         const cleanVal = isAutoText ? '' : val;
         textEl.innerHTML = `<div class="edit-textarea-wrapper">
           <textarea class="edit-textarea" data-block="${key}" data-field="text" placeholder="${hint}">${escHtml(cleanVal)}</textarea>
+          <button type="button" class="ai-voice-btn" title="Голосовой ИИ-помощник">🎙️</button>
           <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
         </div>`;
       }
@@ -279,6 +281,7 @@
       const val = q.textContent.trim();
       q.outerHTML = `<div class="edit-textarea-wrapper">
         <textarea class="edit-textarea edit-textarea--quote" data-field="quote" data-index="${i}">${escHtml(val)}</textarea>
+        <button type="button" class="ai-voice-btn" title="Голосовой ИИ-помощник">🎙️</button>
         <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
       </div>`;
     });
@@ -346,6 +349,7 @@
         <div class="bio-block__text">
           <div class="edit-textarea-wrapper">
             <textarea class="edit-textarea" data-block="${form.dataset.block}" data-field="text" placeholder="Текст блока..."></textarea>
+            <button type="button" class="ai-voice-btn" title="Голосовой ИИ-помощник">🎙️</button>
             <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
           </div>
         </div>
@@ -375,6 +379,7 @@
     quote.innerHTML = `
       <div class="edit-textarea-wrapper">
         <textarea class="edit-textarea edit-textarea--quote" data-field="quote" placeholder="Введите цитату..."></textarea>
+        <button type="button" class="ai-voice-btn" title="Голосовой ИИ-помощник">🎙️</button>
         <button type="button" class="ai-assistant-btn" title="AI помощник">AI</button>
       </div>
       <button type="button" class="edit-insert-btn edit-insert-btn--delete">🗑 Удалить</button>
@@ -634,7 +639,7 @@
     }
   }
 
-  // Event delegation to catch clicks on AI assistant buttons (both static and dynamic)
+  // Event delegation to catch clicks on AI assistant and voice assistant buttons (both static and dynamic)
   document.body.addEventListener('click', (e) => {
     if (e.target && e.target.classList.contains('ai-assistant-btn')) {
       const wrapper = e.target.closest('.edit-textarea-wrapper');
@@ -642,8 +647,518 @@
       const textarea = wrapper.querySelector('textarea');
       if (!textarea) return;
       openAiAssistantModal(textarea);
+    } else if (e.target && e.target.classList.contains('ai-voice-btn')) {
+      const wrapper = e.target.closest('.edit-textarea-wrapper');
+      if (!wrapper) return;
+      const textarea = wrapper.querySelector('textarea');
+      if (!textarea) return;
+      openAiVoiceModal(textarea);
     }
   });
+
+  /* ── AI Voice Assistant Popup Modal ── */
+  function openAiVoiceModal(textarea) {
+    const originalText = textarea.value.trim();
+    const field = textarea.dataset.block || textarea.dataset.field || 'text';
+    
+    // Check if the overlay already exists
+    let overlay = document.querySelector('.ai-overlay');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.className = 'ai-overlay';
+    
+    overlay.innerHTML = `
+      <div class="ai-modal">
+        <button class="ai-modal__close" title="Закрыть">✕</button>
+        <div class="ai-modal__header">
+          <h3 class="ai-modal__title">🎙️ Голосовой ввод ИИ</h3>
+        </div>
+        <div class="ai-modal__body" id="ai-voice-body"></div>
+        <div class="ai-modal__footer" id="ai-voice-footer"></div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const voiceBody = overlay.querySelector('#ai-voice-body');
+    const voiceFooter = overlay.querySelector('#ai-voice-footer');
+    const closeBtn = overlay.querySelector('.ai-modal__close');
+
+    // Initialize Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isRecording = false;
+    let finalTranscript = '';
+    let voiceMessages = [];
+    let lastProposedText = '';
+    let timerInterval = null;
+    let recordStartTime = 0;
+    const MAX_RECORD_TIME_MS = 3 * 60 * 1000; // 3 minutes maximum
+    const CIRCLE_CIRCUMFERENCE = 276.46; // 2 * PI * 44
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ru-RU';
+      recognition.interimResults = true;
+      recognition.continuous = true;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        recordStartTime = Date.now();
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateProgress, 100);
+        updateRecordingUI(true);
+      };
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        const box = voiceBody.querySelector('.ai-voice-transcript-box');
+        if (box) {
+          box.textContent = finalTranscript + interimTranscript;
+          box.scrollTop = box.scrollHeight;
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        const statusTextEl = voiceBody.querySelector('.ai-voice-status-text');
+        if (statusTextEl) {
+          if (event.error === 'not-allowed') {
+            statusTextEl.textContent = 'Доступ к микрофону заблокирован';
+            statusTextEl.classList.remove('ai-voice-status-text--listening');
+          } else {
+            statusTextEl.textContent = 'Ошибка ввода: ' + event.error;
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        updateRecordingUI(false);
+      };
+    }
+
+    // Cleanup & Close Handlers
+    function cleanup() {
+      if (recognition && isRecording) {
+        try { recognition.stop(); } catch(e){}
+      }
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      overlay.remove();
+    }
+
+    closeBtn.addEventListener('click', cleanup);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup();
+    });
+
+    // Start in phase 1 (Recording)
+    showPhase1Recording();
+
+    // --- PHASE 1: Recording UI ---
+    function showPhase1Recording() {
+      finalTranscript = '';
+      
+      voiceBody.innerHTML = `
+        <div class="ai-voice-container">
+          <div class="ai-voice-mic-wrapper">
+            <button class="ai-voice-mic-circle" id="ai-mic-trigger">🎙️</button>
+            <svg class="ai-voice-progress-svg" width="96" height="96" viewBox="0 0 96 96">
+              <circle class="ai-voice-progress-bg" cx="48" cy="48" r="44" stroke-width="4" fill="transparent" />
+              <circle class="ai-voice-progress-bar" cx="48" cy="48" r="44" stroke-width="4" fill="transparent" stroke-dasharray="276.46" stroke-dashoffset="276.46" stroke-linecap="round" />
+            </svg>
+            <div class="ai-voice-mic-pulse-ring"></div>
+          </div>
+          <h4 class="ai-voice-status-text" id="ai-voice-status">Нажмите на микрофон, чтобы говорить</h4>
+          
+          <div class="ai-voice-waves-container">
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+            <div class="ai-voice-wave-bar"></div>
+          </div>
+
+          <div class="ai-voice-transcript-box" id="ai-voice-live-transcript"></div>
+          <p class="ai-voice-instruction">Скажите вашу историю или воспоминание в микрофон.</p>
+        </div>
+      `;
+
+      voiceFooter.innerHTML = `
+        <div class="ai-action-buttons">
+          <button class="ai-btn ai-btn--secondary" id="ai-btn-voice-cancel">Отмена</button>
+          <button class="ai-btn ai-btn--primary" id="ai-btn-voice-done" disabled>⏹️ Готово</button>
+        </div>
+      `;
+
+      const micBtn = voiceBody.querySelector('#ai-mic-trigger');
+      const doneBtn = voiceFooter.querySelector('#ai-btn-voice-done');
+      const cancelBtn = voiceFooter.querySelector('#ai-btn-voice-cancel');
+
+      if (!recognition) {
+        const statusEl = voiceBody.querySelector('#ai-voice-status');
+        statusEl.textContent = 'Голосовой ввод не поддерживается вашим браузером';
+        micBtn.disabled = true;
+        micBtn.style.opacity = '0.5';
+        const box = voiceBody.querySelector('#ai-voice-live-transcript');
+        box.innerHTML = '<span style="color: #ff6666;">Используйте Google Chrome или Safari для работы голосового ввода.</span>';
+      }
+
+      micBtn.addEventListener('click', () => {
+        if (!recognition) return;
+        if (isRecording) {
+          recognition.stop();
+        } else {
+          finalTranscript = '';
+          const box = voiceBody.querySelector('#ai-voice-live-transcript');
+          if (box) box.textContent = '';
+          try {
+            recognition.start();
+          } catch(e) {
+            console.error('Failed to start recognition', e);
+          }
+        }
+      });
+
+      doneBtn.addEventListener('click', () => {
+        if (recognition && isRecording) {
+          recognition.stop();
+        }
+        const text = voiceBody.querySelector('#ai-voice-live-transcript').textContent.trim();
+        showPhase2Verification(text);
+      });
+
+      cancelBtn.addEventListener('click', cleanup);
+    }
+
+    function updateRecordingUI(active) {
+      const micBtn = voiceBody.querySelector('#ai-mic-trigger');
+      const statusEl = voiceBody.querySelector('#ai-voice-status');
+      const doneBtn = voiceFooter.querySelector('#ai-btn-voice-done');
+
+      if (!micBtn || !statusEl) return;
+
+      if (active) {
+        micBtn.classList.add('ai-voice-mic-circle--listening');
+        statusEl.textContent = 'Слушаю вас...';
+        statusEl.classList.add('ai-voice-status-text--listening');
+        if (doneBtn) doneBtn.disabled = false;
+      } else {
+        micBtn.classList.remove('ai-voice-mic-circle--listening');
+        statusEl.textContent = 'Запись остановлена. Нажмите Готово.';
+        statusEl.classList.remove('ai-voice-status-text--listening');
+        
+        // Reset progress bar on stop
+        const progressBar = voiceBody.querySelector('.ai-voice-progress-bar');
+        if (progressBar) {
+          progressBar.style.strokeDashoffset = CIRCLE_CIRCUMFERENCE;
+        }
+      }
+    }
+
+    function updateProgress() {
+      if (!isRecording) return;
+      const elapsed = Date.now() - recordStartTime;
+      const pct = Math.min(elapsed / MAX_RECORD_TIME_MS, 1);
+      const offset = CIRCLE_CIRCUMFERENCE - (pct * CIRCLE_CIRCUMFERENCE);
+      
+      const progressBar = voiceBody.querySelector('.ai-voice-progress-bar');
+      if (progressBar) {
+        progressBar.style.strokeDashoffset = offset;
+      }
+      
+      const statusEl = voiceBody.querySelector('#ai-voice-status');
+      if (statusEl) {
+        const remainingMs = Math.max(MAX_RECORD_TIME_MS - elapsed, 0);
+        const remainingSecs = Math.ceil(remainingMs / 1000);
+        const mins = Math.floor(remainingSecs / 60);
+        const secs = remainingSecs % 60;
+        const formattedSecs = secs < 10 ? '0' + secs : secs;
+        statusEl.textContent = `Слушаю вас... (${mins}:${formattedSecs})`;
+      }
+      
+      if (elapsed >= MAX_RECORD_TIME_MS) {
+        if (recognition && isRecording) {
+          recognition.stop();
+        }
+      }
+    }
+
+    // --- PHASE 2: Verification UI ---
+    function showPhase2Verification(text) {
+      voiceBody.innerHTML = `
+        <div class="ai-initial-panel">
+          <div class="ai-initial-panel__icon">📝</div>
+          <h4 style="font-family: var(--font-display); font-size: 18px; color: var(--gold-light); margin-bottom: 0px; text-align: center;">Правильно ли записан текст?</h4>
+          <div class="ai-initial-panel__text" style="text-align: center; margin-bottom: 12px;">
+            Вы можете отредактировать распознанный текст ниже, если заметили неточности.
+          </div>
+          <textarea class="edit-textarea" id="ai-voice-verify-text" placeholder="Здесь будет записанный текст..." style="width: 100%; min-height: 120px; font-size: 14px; line-height: 1.6;">${escHtml(text)}</textarea>
+        </div>
+      `;
+
+      voiceFooter.innerHTML = `
+        <div class="ai-action-buttons">
+          <button class="ai-btn ai-btn--secondary" id="ai-btn-voice-retry">🎙️ Записать заново</button>
+          <button class="ai-btn ai-btn--primary" id="ai-btn-voice-verify-next">Да, всё верно →</button>
+        </div>
+      `;
+
+      const verifyTextarea = voiceBody.querySelector('#ai-voice-verify-text');
+      const retryBtn = voiceFooter.querySelector('#ai-btn-voice-retry');
+      const nextBtn = voiceFooter.querySelector('#ai-btn-voice-verify-next');
+
+      retryBtn.addEventListener('click', () => {
+        showPhase1Recording();
+      });
+
+      nextBtn.addEventListener('click', () => {
+        const editedText = verifyTextarea.value.trim();
+        if (!editedText) {
+          alert('Пожалуйста, введите или наговорите текст.');
+          return;
+        }
+        showPhase3BeautifyPrompt(editedText);
+      });
+    }
+
+    // --- PHASE 3: Beautify Choice UI ---
+    function showPhase3BeautifyPrompt(verifiedText) {
+      voiceBody.innerHTML = `
+        <div class="ai-initial-panel" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+          <div class="ai-initial-panel__icon" style="font-size: 42px; margin-bottom: 5px;">✨</div>
+          <h4 style="font-family: var(--font-display); font-size: 19px; color: var(--gold-light); margin: 0;">Сделать текст красивее?</h4>
+          <div class="ai-initial-panel__text" style="max-width: 90%; line-height: 1.6; color: rgba(255,255,255,0.75);">
+            ИИ может исправить речевые ошибки, придать тексту красивый, гладкий, уважительный литературный слог, сохраняя все детали вашей истории.
+          </div>
+          <div class="ai-preview-box" style="text-align: left; width: 100%; max-height: 100px; overflow-y: auto; font-size: 13.5px; border-color: rgba(200, 168, 75, 0.2);">
+            ${escHtml(verifiedText)}
+          </div>
+        </div>
+      `;
+
+      voiceFooter.innerHTML = `
+        <div class="ai-action-buttons" style="width: 100%; display: flex; gap: 10px;">
+          <button class="ai-btn ai-btn--secondary" id="ai-btn-voice-skip-beautify" style="flex: 1;">Нет, вставить как есть</button>
+          <button class="ai-btn ai-btn--primary" id="ai-btn-voice-beautify" style="flex: 1;">✨ Сделать красивее</button>
+        </div>
+      `;
+
+      const skipBtn = voiceFooter.querySelector('#ai-btn-voice-skip-beautify');
+      const beautifyBtn = voiceFooter.querySelector('#ai-btn-voice-beautify');
+
+      skipBtn.addEventListener('click', () => {
+        textarea.value = verifiedText;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        cleanup();
+      });
+
+      beautifyBtn.addEventListener('click', async () => {
+        voiceMessages = [
+          { role: 'user', content: `Пожалуйста, улучши этот текст (сделай его более связным, грамотным, красивым и литературным), сохраняя все факты:\n\n${verifiedText}` }
+        ];
+        showPhase4BeautifyLoading(verifiedText);
+      });
+    }
+
+    // --- PHASE 4: Loading Screen ---
+    function showPhase4BeautifyLoading(verifiedText) {
+      voiceBody.innerHTML = `
+        <div class="ai-initial-panel" style="text-align: center; padding: 30px 10px;">
+          <div class="ai-thinking" style="font-size: 16px; justify-content: center; display: flex; align-items: center; gap: 8px;">
+            ИИ делает текст красивее
+            <div class="ai-thinking__dots">
+              <div class="ai-thinking__dot"></div>
+              <div class="ai-thinking__dot"></div>
+              <div class="ai-thinking__dot"></div>
+            </div>
+          </div>
+          <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 15px;">Это займёт всего несколько секунд...</p>
+        </div>
+      `;
+      voiceFooter.innerHTML = '';
+
+      triggerBeautifyRequest(verifiedText);
+    }
+
+    async function triggerBeautifyRequest(verifiedText) {
+      const personName = document.querySelector('.person-header__name')?.textContent?.trim() || '';
+      const personDates = document.querySelector('.person-header__dates')?.textContent?.trim() || '';
+      const fullContext = { name: personName, dates: personDates, originalText: verifiedText, field: field };
+
+      const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+      try {
+        const res = await fetch(`${base}/api/ai/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: voiceMessages,
+            context: fullContext
+          })
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          const sec = json.retryAfter || 60;
+          alert(`⏳ Слишком много генераций. Подождите ${sec} секунд.`);
+          showPhase3BeautifyPrompt(verifiedText);
+          return;
+        }
+
+        if (res.ok && json.ok) {
+          const polishedText = json.proposedText || json.chatResponse || '';
+          // Push assistant response to conversational messages
+          voiceMessages.push({ role: 'assistant', content: polishedText });
+          showPhase5ReviewPolished(verifiedText, polishedText);
+        } else {
+          alert('Ошибка ИИ: ' + (json.error || 'Не удалось обработать текст.'));
+          showPhase3BeautifyPrompt(verifiedText);
+        }
+      } catch (err) {
+        alert('Не удалось связаться с сервером: ' + err.message);
+        showPhase3BeautifyPrompt(verifiedText);
+      }
+    }
+
+    // --- PHASE 5: Review & Refinement UI ---
+    function showPhase5ReviewPolished(verifiedText, polishedText) {
+      lastProposedText = polishedText;
+
+      voiceBody.innerHTML = `
+        <div class="ai-voice-diff-container">
+          <div class="ai-voice-diff-item">
+            <div class="ai-voice-diff-label">🎙️ Было записано:</div>
+            <div class="ai-voice-diff-text" style="opacity: 0.75; font-size: 13px;">${escHtml(verifiedText)}</div>
+          </div>
+          
+          <div class="ai-voice-diff-item" style="border-color: rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.02);">
+            <div class="ai-voice-diff-label" style="color: #10b981;">✨ Вариант от ИИ:</div>
+            <textarea class="edit-textarea" id="ai-voice-polished-text" style="width: 100%; min-height: 100px; font-size: 13.5px; line-height: 1.6; margin-top: 5px; padding: 8px; border-color: rgba(16, 185, 129, 0.3);">${escHtml(polishedText)}</textarea>
+          </div>
+        </div>
+      `;
+
+      voiceFooter.innerHTML = `
+        <div class="ai-footer-refinement" style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+          <div class="ai-input-row" style="display: flex; gap: 6px;">
+            <textarea class="ai-textarea" id="ai-voice-chat-input" placeholder="Хотите подправить? (например: 'сделай короче', 'убери упоминание Москвы')"></textarea>
+            <button class="ai-btn ai-btn--send" id="ai-btn-voice-refine-send" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
+          <div class="ai-action-buttons">
+            <button class="ai-btn ai-btn--secondary" id="ai-btn-voice-back-to-original">⬅️ К оригиналу</button>
+            <button class="ai-btn ai-btn--primary" id="ai-btn-voice-apply">💾 Вставить текст</button>
+          </div>
+        </div>
+      `;
+
+      const polishedTextarea = voiceBody.querySelector('#ai-voice-polished-text');
+      const refineInput = voiceFooter.querySelector('#ai-voice-chat-input');
+      const refineSendBtn = voiceFooter.querySelector('#ai-btn-voice-refine-send');
+      const backBtn = voiceFooter.querySelector('#ai-btn-voice-back-to-original');
+      const applyBtn = voiceFooter.querySelector('#ai-btn-voice-apply');
+
+      // Enable send button based on text
+      refineInput.addEventListener('input', () => {
+        refineSendBtn.disabled = !refineInput.value.trim();
+      });
+
+      backBtn.addEventListener('click', () => {
+        showPhase2Verification(verifiedText);
+      });
+
+      applyBtn.addEventListener('click', () => {
+        const finalVal = polishedTextarea.value.trim();
+        textarea.value = finalVal;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        cleanup();
+      });
+
+      async function handleRefinement() {
+        const query = refineInput.value.trim();
+        if (!query) return;
+
+        refineInput.value = '';
+        refineSendBtn.disabled = true;
+
+        // Push refinement instruction to conversation history
+        voiceMessages.push({ role: 'user', content: query });
+        
+        // Show loading spinner
+        voiceBody.innerHTML = `
+          <div class="ai-initial-panel" style="text-align: center; padding: 35px 10px;">
+            <div class="ai-thinking" style="font-size: 16px; justify-content: center; display: flex; align-items: center; gap: 8px;">
+              ИИ переписывает текст
+              <div class="ai-thinking__dots">
+                <div class="ai-thinking__dot"></div>
+                <div class="ai-thinking__dot"></div>
+                <div class="ai-thinking__dot"></div>
+              </div>
+            </div>
+            <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 15px;">Пожелание: "${escHtml(query)}"</p>
+          </div>
+        `;
+        voiceFooter.innerHTML = '';
+
+        const personName = document.querySelector('.person-header__name')?.textContent?.trim() || '';
+        const personDates = document.querySelector('.person-header__dates')?.textContent?.trim() || '';
+        const fullContext = { name: personName, dates: personDates, originalText: verifiedText, field: field };
+
+        const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+        try {
+          const res = await fetch(`${base}/api/ai/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: voiceMessages,
+              context: fullContext
+            })
+          });
+
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.ok) {
+            const nextPolished = json.proposedText || json.chatResponse || '';
+            voiceMessages.push({ role: 'assistant', content: nextPolished });
+            showPhase5ReviewPolished(verifiedText, nextPolished);
+          } else {
+            alert('Ошибка ИИ: ' + (json.error || 'Не удалось применить правку.'));
+            showPhase5ReviewPolished(verifiedText, polishedText);
+          }
+        } catch (err) {
+          alert('Не удалось связаться с сервером: ' + err.message);
+          showPhase5ReviewPolished(verifiedText, polishedText);
+        }
+      }
+
+      refineSendBtn.addEventListener('click', handleRefinement);
+      refineInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleRefinement();
+        }
+      });
+    }
+  }
 
   /* ── AI Assistant Popup Modal ── */
   function openAiAssistantModal(textarea) {

@@ -1,5 +1,8 @@
 FROM node:24-slim AS base
 
+ENV PRISMA_ENGINES_MIRROR=https://npmmirror.com/mirrors/prisma
+ENV SHARP_DIST_BASE_URL=https://npmmirror.com/mirrors/sharp
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
@@ -8,11 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --omit=dev --no-audit --prefer-offline
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set maxsockets 1 && \
+    npm config set fetch-retry-mintimeout 100000 && \
+    npm config set fetch-retry-maxtimeout 600000 && \
+    npm install --omit=dev --no-package-lock --no-audit --prefer-offline
 
 COPY prisma ./prisma
 # Pin Prisma CLI на ту же версию, что @prisma/client в package.json (6.19.3)
-RUN npx -y prisma@6.19.3 generate
+RUN npx prisma generate
 
 COPY . .
 
@@ -21,4 +28,4 @@ RUN mkdir -p uploads
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["sh", "-c", "test -d node_modules/@aws-sdk/client-s3 || (echo '[boot] Installing @aws-sdk on first run...' && npm install --omit=dev --no-save --no-audit --prefer-offline @aws-sdk/client-s3@^3.1055.0 @aws-sdk/lib-storage@^3.1055.0); npx -y prisma@6.19.3 migrate deploy && node index.js"]
+CMD ["sh", "-c", "test -d node_modules/@aws-sdk/client-s3 || (echo '[boot] Installing @aws-sdk on first run...' && npm install --omit=dev --no-save --no-audit --prefer-offline @aws-sdk/client-s3@^3.1055.0 @aws-sdk/lib-storage@^3.1055.0); npx prisma migrate deploy && node index.js"]

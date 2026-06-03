@@ -1,15 +1,21 @@
-FROM node:24-alpine
+FROM node:24-slim
 
-# OpenSSL нужен Prisma engine на Alpine
-RUN apk add --no-cache openssl
+ENV PRISMA_ENGINES_MIRROR=https://npmmirror.com/mirrors/prisma
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 1. Манифесты — отдельным слоем для кэша npm ci
+# 1. Манифесты — отдельным слоем
 COPY bot/package*.json ./
-
-# 2. Зависимости
-RUN npm ci --omit=dev
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set maxsockets 1 && \
+    npm config set fetch-retry-mintimeout 100000 && \
+    npm config set fetch-retry-maxtimeout 600000 && \
+    npm install --omit=dev --no-package-lock --no-audit --prefer-offline
 
 # 3. Код бота (благодаря .dockerignore сюда не попадёт node_modules)
 COPY bot/ .
@@ -18,6 +24,6 @@ COPY bot/ .
 COPY backend/prisma ./prisma
 
 # 5. Генерация клиента — ПОСЛЕДНИМ шагом, чтобы никакой COPY не затёр .prisma/client
-RUN npx -y prisma@6.19.3 generate
+RUN npx prisma generate
 
 CMD ["node", "index.js"]
