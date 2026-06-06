@@ -421,20 +421,12 @@
     const sortedGenIndices = Object.keys(gens).map(Number).sort((a,b) => a-b);
     if (sortedGenIndices.length === 0) return;
 
-    const firstGenIdx = sortedGenIndices[0];
-    gens[firstGenIdx] = groupSpousesDynamic(gens[firstGenIdx]);
-
-    for (let i = 1; i < sortedGenIndices.length; i++) {
-      const g = sortedGenIndices[i];
-      const prevG = sortedGenIndices[i - 1];
-      const prevPeople = gens[prevG] || [];
-      const parentIndices = {};
-      prevPeople.forEach((p, idx) => { parentIndices[p.id] = idx; });
-
+    // Build parent/child maps dynamically
+    const parentsOf = {};
+    const childrenOf = {};
+    sortedGenIndices.forEach(g => {
       const people = gens[g] || [];
-      const weights = {};
-
-      people.forEach((p, idx) => {
+      people.forEach(p => {
         let pids = [];
         try {
           if (p.parent_ids) {
@@ -447,36 +439,122 @@
         }
         if (!Array.isArray(pids)) pids = [];
 
-        let weight = 0, count = 0;
-        pids.forEach(pid => {
-          if (parentIndices[pid] !== undefined) {
-            weight += parentIndices[pid];
+        parentsOf[p.id] = pids;
+        pids.forEach(parentId => {
+          if (!childrenOf[parentId]) childrenOf[parentId] = [];
+          if (!childrenOf[parentId].includes(p.id)) {
+            childrenOf[parentId].push(p.id);
+          }
+        });
+      });
+    });
+
+    // Helper to get unit weights in bottom-to-top pass
+    function getBottomUpUnitWeight(unit, prevPeopleIndices) {
+      let sum = 0;
+      let count = 0;
+      unit.forEach(p => {
+        const parents = parentsOf[p.id] || [];
+        parents.forEach(pid => {
+          const idx = prevPeopleIndices[pid];
+          if (idx !== undefined) {
+            sum += idx;
             count++;
           }
         });
-        weights[p.id] = count > 0 ? weight / count : idx;
       });
+      return count > 0 ? sum / count : null;
+    }
 
-      const paired = new Set();
+    // Helper to get unit weights in top-to-bottom pass
+    function getTopDownUnitWeight(unit, nextPeopleIndices) {
+      let sum = 0;
+      let count = 0;
+      unit.forEach(p => {
+        const children = childrenOf[p.id] || [];
+        children.forEach(cid => {
+          const idx = nextPeopleIndices[cid];
+          if (idx !== undefined) {
+            sum += idx;
+            count++;
+          }
+        });
+      });
+      return count > 0 ? sum / count : null;
+    }
+
+    function getGenerationUnitsLocal(people) {
+      const units = [];
+      const visited = new Set();
       people.forEach(p => {
-        if (paired.has(p.id)) return;
+        if (visited.has(p.id)) return;
+        visited.add(p.id);
         const spouseId = p.spouse_id || p.spouseId;
-        if (spouseId && !paired.has(spouseId)) {
+        if (spouseId) {
           const spouse = people.find(sp => sp.id === spouseId);
           if (spouse) {
-            const w1 = weights[p.id] !== undefined ? weights[p.id] : 0;
-            const w2 = weights[spouse.id] !== undefined ? weights[spouse.id] : 0;
-            const avg = (w1 + w2) / 2;
-            weights[p.id] = avg - 0.1;
-            weights[spouse.id] = avg + 0.1;
-            paired.add(p.id);
-            paired.add(spouseId);
+            visited.add(spouse.id);
+            const pIdx = people.indexOf(p);
+            const sIdx = people.indexOf(spouse);
+            if (pIdx < sIdx) {
+              units.push([p, spouse]);
+            } else {
+              units.push([spouse, p]);
+            }
+          } else {
+            units.push([p]);
           }
+        } else {
+          units.push([p]);
         }
       });
+      return units;
+    }
 
-      people.sort((a, b) => (weights[a.id] ?? 0) - (weights[b.id] ?? 0));
-      gens[g] = groupSpousesDynamic(people);
+    // Run 15 iterations of Sugiyama-style barycentric layout adjustment
+    const iterations = 15;
+    for (let iter = 0; iter < iterations; iter++) {
+      // Bottom-up pass
+      for (let i = 1; i < sortedGenIndices.length; i++) {
+        const g = sortedGenIndices[i];
+        const prevG = sortedGenIndices[i - 1];
+        const prevPeople = gens[prevG] || [];
+        const prevPeopleIndices = {};
+        prevPeople.forEach((p, idx) => { prevPeopleIndices[p.id] = idx; });
+
+        const units = getGenerationUnitsLocal(gens[g] || []);
+        units.forEach((unit, uIdx) => {
+          const w = getBottomUpUnitWeight(unit, prevPeopleIndices);
+          unit._weight = w !== null ? w : (uIdx * 10);
+        });
+
+        units.sort((a, b) => a._weight - b._weight);
+
+        const flat = [];
+        units.forEach(unit => flat.push(...unit));
+        gens[g] = flat;
+      }
+
+      // Top-down pass
+      for (let i = sortedGenIndices.length - 2; i >= 0; i--) {
+        const g = sortedGenIndices[i];
+        const nextG = sortedGenIndices[i + 1];
+        const nextPeople = gens[nextG] || [];
+        const nextPeopleIndices = {};
+        nextPeople.forEach((p, idx) => { nextPeopleIndices[p.id] = idx; });
+
+        const units = getGenerationUnitsLocal(gens[g] || []);
+        units.forEach((unit, uIdx) => {
+          const w = getTopDownUnitWeight(unit, nextPeopleIndices);
+          unit._weight = w !== null ? w : (uIdx * 10);
+        });
+
+        units.sort((a, b) => a._weight - b._weight);
+
+        const flat = [];
+        units.forEach(unit => flat.push(...unit));
+        gens[g] = flat;
+      }
     }
   }
 

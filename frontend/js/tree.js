@@ -98,50 +98,111 @@ const currentTreeId = urlParams.get('tree') || 'default';
 
   /* ── BARYCENTRIC LAYOUT SORTING ── */
   function sortGenerationPeople(generations) {
-    generations[0].people = groupSpouses(generations[0].people);
-    for (let g = 1; g < generations.length; g++) {
-      const prevGen = generations[g - 1];
-      const prevPeople = prevGen.people;
-      const parentIndices = {};
-      prevPeople.forEach((p, idx) => { parentIndices[p.id] = idx; });
-      const childrenMap = prevGen.childrenMap || {};
-      const parentOfPerson = {};
-      Object.entries(childrenMap).forEach(([parentId, childIds]) => {
-        childIds.forEach(cid => {
-          if (!parentOfPerson[cid]) parentOfPerson[cid] = [];
-          parentOfPerson[cid].push(parentId);
-        });
-      });
-      const people = generations[g].people;
-      const weights = {};
-      people.forEach((p, idx) => {
-        const parents = parentOfPerson[p.id] || [];
-        let weight = 0, count = 0;
+    const numGens = generations.length;
+    if (numGens <= 1) return;
+
+    // Helper to get unit weights in bottom-to-top pass
+    function getBottomUpUnitWeight(unit, prevPeopleIndices) {
+      let sum = 0;
+      let count = 0;
+      unit.forEach(p => {
+        const parents = parentsOf[p.id] || [];
         parents.forEach(pid => {
-          if (parentIndices[pid] !== undefined) {
-            weight += parentIndices[pid];
+          const idx = prevPeopleIndices[pid];
+          if (idx !== undefined) {
+            sum += idx;
             count++;
           }
         });
-        weights[p.id] = count > 0 ? weight / count : idx;
       });
-      const paired = new Set();
-      people.forEach(p => {
-        if (p.spouseOf && !paired.has(p.id) && !paired.has(p.spouseOf)) {
-          const spouse = people.find(sp => sp.id === p.spouseOf);
-          if (spouse) {
-            const w1 = weights[p.id] !== undefined ? weights[p.id] : 0;
-            const w2 = weights[spouse.id] !== undefined ? weights[spouse.id] : 0;
-            const avg = (w1 + w2) / 2;
-            weights[p.id] = avg - 0.1;
-            weights[spouse.id] = avg + 0.1;
-            paired.add(p.id);
-            paired.add(spouse.id);
-          }
-        }
-      });
-      generations[g].people.sort((a, b) => weights[a.id] - weights[b.id]);
+      return count > 0 ? sum / count : null;
     }
+
+    // Helper to get unit weights in top-to-bottom pass
+    function getTopDownUnitWeight(unit, nextPeopleIndices) {
+      let sum = 0;
+      let count = 0;
+      unit.forEach(p => {
+        const children = childrenOf[p.id] || [];
+        children.forEach(cid => {
+          const idx = nextPeopleIndices[cid];
+          if (idx !== undefined) {
+            sum += idx;
+            count++;
+          }
+        });
+      });
+      return count > 0 ? sum / count : null;
+    }
+
+    // Run 15 iterations of Sugiyama-style barycentric layout adjustment
+    const iterations = 15;
+    for (let iter = 0; iter < iterations; iter++) {
+      // 1. Bottom-up pass: sort g = 1 to max based on g - 1
+      for (let g = 1; g < numGens; g++) {
+        const prevPeople = generations[g - 1].people;
+        const prevPeopleIndices = {};
+        prevPeople.forEach((p, idx) => { prevPeopleIndices[p.id] = idx; });
+
+        const units = getGenerationUnits(generations[g].people);
+        units.forEach((unit, uIdx) => {
+          const w = getBottomUpUnitWeight(unit, prevPeopleIndices);
+          unit._weight = w !== null ? w : (uIdx * 10);
+        });
+
+        units.sort((a, b) => a._weight - b._weight);
+
+        const flat = [];
+        units.forEach(unit => flat.push(...unit));
+        generations[g].people = flat;
+      }
+
+      // 2. Top-down pass: sort g = max - 2 down to 0 based on g + 1
+      for (let g = numGens - 2; g >= 0; g--) {
+        const nextPeople = generations[g + 1].people;
+        const nextPeopleIndices = {};
+        nextPeople.forEach((p, idx) => { nextPeopleIndices[p.id] = idx; });
+
+        const units = getGenerationUnits(generations[g].people);
+        units.forEach((unit, uIdx) => {
+          const w = getTopDownUnitWeight(unit, nextPeopleIndices);
+          unit._weight = w !== null ? w : (uIdx * 10);
+        });
+
+        units.sort((a, b) => a._weight - b._weight);
+
+        const flat = [];
+        units.forEach(unit => flat.push(...unit));
+        generations[g].people = flat;
+      }
+    }
+  }
+
+  function getGenerationUnits(people) {
+    const units = [];
+    const visited = new Set();
+    people.forEach(p => {
+      if (visited.has(p.id)) return;
+      visited.add(p.id);
+      if (p.spouseOf) {
+        const spouse = people.find(sp => sp.id === p.spouseOf);
+        if (spouse) {
+          visited.add(spouse.id);
+          const pIdx = people.indexOf(p);
+          const sIdx = people.indexOf(spouse);
+          if (pIdx < sIdx) {
+            units.push([p, spouse]);
+          } else {
+            units.push([spouse, p]);
+          }
+        } else {
+          units.push([p]);
+        }
+      } else {
+        units.push([p]);
+      }
+    });
+    return units;
   }
 
   function groupSpouses(people) {
