@@ -2078,4 +2078,191 @@
         color: rgba(255, 255, 255, 0.9);
       }
 
+/* ════════════════════════════════════════════════════════════════
+   EDITOR POLISH — Design Engineering pass (принципы Emil Kowalski)
+   Режим редактирования страницы памяти. Цели:
+   • кнопки AI/🎙️ не перекрывают текст и едины со стилем темы
+   • точки вставки «+ Блок / + Цитата» читаются как кнопки
+   • тактильный отклик (scale на :active), корректные кривые/тайминги (<300ms)
+   • hover-эффекты только на мыши; уважение prefers-reduced-motion
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  /* Сильные кастомные кривые (встроенные CSS-easing слишком слабые) */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --edit-dur-press: 140ms;
+  --edit-dur-ui: 200ms;
+}
+
+/* ── 1. AI / 🎙️ — компактный тулбар под полем, без наложения на текст ── */
+.edit-textarea-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end; /* кнопки прижаты вправо во второй строке */
+  align-items: center;
+}
+.edit-textarea-wrapper .edit-textarea {
+  flex: 1 1 100%;            /* поле занимает всю первую строку */
+  padding: 10px 14px;        /* сброс прежнего padding-right:76px */
+}
+.edit-textarea-wrapper .ai-voice-btn,
+.edit-textarea-wrapper .ai-assistant-btn {
+  position: static;          /* убираем absolute поверх текста */
+  top: auto;
+  right: auto;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(200, 168, 75, 0.10);
+  border: 1px solid rgba(200, 168, 75, 0.32);
+  color: var(--gold-light, #e6cf86);
+  box-shadow: none;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0.55;             /* ненавязчиво в покое */
+  cursor: pointer;
+  transition: opacity var(--edit-dur-ui) var(--ease-out-strong),
+              background-color var(--edit-dur-ui) var(--ease-out-strong),
+              border-color var(--edit-dur-ui) var(--ease-out-strong),
+              transform var(--edit-dur-press) var(--ease-out-strong);
+}
+.edit-textarea-wrapper .ai-voice-btn {
+  padding: 0 10px;
+  font-size: 13px;
+}
+/* раскрываем кнопки при фокусе/наведении на поле */
+.edit-textarea-wrapper:hover .ai-voice-btn,
+.edit-textarea-wrapper:hover .ai-assistant-btn,
+.edit-textarea-wrapper:focus-within .ai-voice-btn,
+.edit-textarea-wrapper:focus-within .ai-assistant-btn {
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .edit-textarea-wrapper .ai-voice-btn:hover,
+  .edit-textarea-wrapper .ai-assistant-btn:hover {
+    background: rgba(200, 168, 75, 0.20);
+    border-color: var(--gold, #c8a84b);
+  }
+}
+.edit-textarea-wrapper .ai-voice-btn:active,
+.edit-textarea-wrapper .ai-assistant-btn:active {
+  transform: scale(0.96); /* тактильный отклик на нажатие */
+}
+
+/* ── 2. Панели вставки «+ Блок / + Цитата» — читаемая точка вставки ── */
+.edit-insert-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  position: relative;
+  opacity: 0.6;
+  transition: opacity var(--edit-dur-ui) var(--ease-out-strong);
+}
+.edit-insert-panel::before { /* тонкая линия-разделитель за кнопками */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200, 168, 75, 0.22), transparent);
+  z-index: 0;
+}
+.edit-insert-panel:hover { opacity: 1; }
+.edit-insert-panel .edit-insert-btn { position: relative; z-index: 1; }
+
+.edit-insert-btn {
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(200, 168, 75, 0.45); /* solid вместо dashed — читается как кнопка */
+  background: rgba(20, 16, 10, 0.85);          /* непрозрачный фон поверх линии */
+  color: var(--gold-light);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color var(--edit-dur-ui) var(--ease-out-strong),
+              border-color var(--edit-dur-ui) var(--ease-out-strong),
+              color var(--edit-dur-ui) var(--ease-out-strong),
+              transform var(--edit-dur-press) var(--ease-out-strong);
+}
+.edit-insert-btn:hover { /* база (в т.ч. touch): без «залипающего» scale */
+  background: rgba(200, 168, 75, 0.16);
+  border-color: var(--gold);
+  transform: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .edit-insert-btn:hover { transform: translateY(-1px); } /* лёгкий лифт на мыши */
+}
+.edit-insert-btn:active { transform: scale(0.97); }
+
+/* ── 3. Кнопки удаления — единый стиль и отклик ── */
+.edit-insert-btn--delete {
+  margin-top: 14px;
+  background: rgba(40, 14, 14, 0.7);
+}
+.edit-block-delete {
+  transition: opacity var(--edit-dur-ui) var(--ease-out-strong),
+              background-color var(--edit-dur-ui) var(--ease-out-strong),
+              border-color var(--edit-dur-ui) var(--ease-out-strong),
+              transform var(--edit-dur-press) var(--ease-out-strong);
+}
+.edit-block-delete:active { transform: scale(0.97); }
+
+/* ── 4. Загрузка фото — понятная зона/кнопка ── */
+.bio-block__photo--empty-edit {
+  transition: border-color var(--edit-dur-ui) var(--ease-out-strong),
+              background-color var(--edit-dur-ui) var(--ease-out-strong);
+}
+@media (hover: hover) and (pointer: fine) {
+  .bio-block__photo--empty-edit:hover {
+    border-color: rgba(200, 168, 75, 0.55);
+    background: rgba(200, 168, 75, 0.07);
+  }
+}
+.bio-block__photo--empty-edit .edit-photo-upload { /* центрируем кнопку внутри пустого слота */
+  position: static;
+  transform: none;
+}
+.edit-photo-upload__btn,
+.edit-gallery-add__btn {
+  transition: background-color var(--edit-dur-ui) var(--ease-out-strong),
+              border-color var(--edit-dur-ui) var(--ease-out-strong),
+              transform var(--edit-dur-press) var(--ease-out-strong);
+}
+.edit-photo-upload__btn:active,
+.edit-gallery-add__btn:active { transform: scale(0.97); }
+
+/* ── Доступность: меньше движения при prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .edit-insert-btn,
+  .edit-textarea-wrapper .ai-voice-btn,
+  .edit-textarea-wrapper .ai-assistant-btn,
+  .edit-photo-upload__btn,
+  .edit-gallery-add__btn,
+  .edit-block-delete {
+    transition-property: opacity, background-color, border-color, color;
+  }
+  .edit-insert-btn:active,
+  .edit-insert-btn:hover,
+  .edit-textarea-wrapper .ai-voice-btn:active,
+  .edit-textarea-wrapper .ai-assistant-btn:active,
+  .edit-photo-upload__btn:active,
+  .edit-gallery-add__btn:active,
+  .edit-block-delete:active { transform: none; }
+}
+
 

@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css?v=14" />
   <link rel="stylesheet" href="styles/responsive.css?v=14" />
-  <link rel="stylesheet" href="styles/tree.css?v=14" />
+  <link rel="stylesheet" href="styles/tree.css?v=16" />
   <script src="js/counters.js?v=1" data-counters></script>
 </head>
 <body class="tree-page">
@@ -69,6 +69,7 @@
 
   <!-- Панель инструментов — появляется только в edit mode -->
   <div class="tree-toolbar" id="tree-toolbar" style="display:none">
+    <span class="tree-toolbar__hint">Перетащите карточку — поменять её местами с соседом · вытащите из ряда — разорвать связи</span>
     <button class="tree-tool" id="tree-new-btn" title="Добавить ветвь">🌿 Ветвь</button>
     <button class="tree-tool" id="tree-create-btn" title="Создать новое дерево">🌳 Новое дерево</button>
     <button class="tree-tool" id="tree-connect-btn" title="Соединить карточки">🔗 Связать</button>
@@ -142,7 +143,7 @@
   <script src="js/api.js?v=14"></script>
   <script src="js/auth-ui.js?v=14"></script>
   <script src="js/tree.js?v=14"></script>
-  <script src="js/tree-edit.js?v=14"></script>
+  <script src="js/tree-edit.js?v=17"></script>
   <script src="js/reveal.js?v=14"></script>
   <script src="js/nav.js?v=14"></script>
   <script src="js/transitions.js?v=14"></script>

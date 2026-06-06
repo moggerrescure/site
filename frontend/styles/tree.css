@@ -2895,3 +2895,100 @@ body.tree-page { overflow-x: hidden; }
 .rp-events::-webkit-scrollbar-thumb:hover {
   background: rgba(200, 168, 75, 0.5);
 }
+
+/* ════════════════════════════════════════════════════════════════
+   TREE EDIT TOOLBAR — панель «сверху по центру» (Design Engineering)
+   Десктоп: фиксированная pill-панель по центру сверху, единый стиль
+   с темой, тактильный отклик. display управляется JS (inline-стиль).
+   Мобайл: нижняя панель (правило в @media max-width:560 выше) — не трогаем.
+   ════════════════════════════════════════════════════════════════ */
+@media (min-width: 561px) {
+  .tree-toolbar {
+    position: fixed;
+    top: auto;
+    bottom: 22px;            /* панель прямо под деревом, всегда на виду */
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+    z-index: 60;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(16, 12, 8, 0.92);
+    border: 1px solid rgba(200, 168, 75, 0.28);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 -6px 34px rgba(0, 0, 0, 0.45);
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* Подсказка-режим в панели (на всю ширину, над кнопками) */
+.tree-toolbar__hint {
+  flex: 0 0 100%;
+  order: -1;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  color: var(--cream-dim);
+  margin-bottom: 2px;
+  opacity: 0.9;
+}
+
+/* Кнопки панели — единый стиль с темой + тактильность (на десктопе и мобайле) */
+.tree-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(200, 168, 75, 0.28);
+  background: rgba(200, 168, 75, 0.06);
+  color: var(--cream);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: background-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+              color 200ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tree-tool:hover {
+    background: rgba(200, 168, 75, 0.14);
+    border-color: var(--gold);
+    color: var(--gold-light);
+    transform: translateY(-1px);
+  }
+}
+.tree-tool:active { transform: scale(0.97); }
+.tree-tool--exit {
+  border-color: rgba(255, 120, 120, 0.32);
+  color: #ffb4b4;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tree-tool--exit:hover {
+    background: rgba(255, 80, 80, 0.12);
+    border-color: #ff7a7a;
+    color: #ffd0d0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tree-tool { transition-property: background-color, border-color, color; }
+  .tree-tool:active, .tree-tool:hover { transform: none; }
+}
+
+/* ── Перетаскиваемые карточки в редакторе дерева (связи рвутся при перетаскивании) ── */
+.tree-node--draggable { cursor: grab; touch-action: none; }
+.tree-node--draggable:active { cursor: grabbing; }
+.tree-node--dragging {
+  z-index: 50 !important;
+  cursor: grabbing;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.5));
+}
+@media (prefers-reduced-motion: reduce) {
+  .tree-node--dragging { filter: none; }
+}

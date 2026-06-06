@@ -271,7 +271,7 @@
       delBtn.className = 'edit-block-delete';
       delBtn.innerHTML = '🗑 Удалить блок';
       delBtn.addEventListener('click', () => {
-        if (confirm('Удалить этот блок?')) block.remove();
+        if (confirm('Удалить этот блок?')) animateRemove(block);
       });
       block.appendChild(delBtn);
     });
@@ -291,6 +291,71 @@
 
     // Добавляем кнопку «+ Фото в галерею»
     addGalleryUploadBtn();
+  }
+
+  /* ── Плавные анимации добавления/удаления карточек (GSAP) ──
+     Принципы Emil Kowalski: ease-out на входе, выход быстрее входа,
+     старт не из scale(0), длительности <300–450ms, уважение reduced-motion. */
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // Появление новой карточки: соседи плавно расступаются (height+opacity+scale)
+  function animateInsert(el) {
+    if (!el) return;
+    if (typeof gsap === 'undefined' || prefersReducedMotion()) {
+      const f = el.querySelector('.edit-input, .edit-textarea');
+      if (f) setTimeout(() => f.focus({ preventScroll: true }), 0);
+      return;
+    }
+    const cs = getComputedStyle(el);
+    const target = {
+      height: el.offsetHeight,
+      paddingTop: cs.paddingTop,
+      paddingBottom: cs.paddingBottom,
+      marginTop: cs.marginTop,
+      marginBottom: cs.marginBottom,
+      opacity: 1,
+      scale: 1
+    };
+    gsap.set(el, { overflow: 'hidden' });
+    gsap.fromTo(el,
+      { height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0, opacity: 0, scale: 0.985, transformOrigin: 'top center' },
+      Object.assign({}, target, {
+        duration: 0.42,
+        ease: 'power3.out',
+        clearProps: 'height,overflow,opacity,transform,paddingTop,paddingBottom,marginTop,marginBottom'
+      })
+    );
+    // лёгкий каскад внутренних полей
+    const inner = el.querySelectorAll('.edit-input, .edit-textarea-wrapper, .bio-block__photo, .edit-insert-btn--delete');
+    if (inner.length) {
+      gsap.from(inner, { opacity: 0, y: 8, duration: 0.32, stagger: 0.05, ease: 'power2.out', delay: 0.1, clearProps: 'opacity,transform' });
+    }
+    // фокус на первое поле — сразу можно печатать (без рывка прокрутки)
+    const firstField = el.querySelector('.edit-input, .edit-textarea');
+    if (firstField) setTimeout(() => firstField.focus({ preventScroll: true }), 140);
+  }
+
+  // Удаление карточки: схлопывание (выход быстрее входа)
+  function animateRemove(el, after) {
+    if (!el) return;
+    const done = () => { el.remove(); if (typeof after === 'function') after(); };
+    if (typeof gsap === 'undefined' || prefersReducedMotion()) { done(); return; }
+    gsap.set(el, { overflow: 'hidden' });
+    gsap.to(el, {
+      height: 0, paddingTop: 0, paddingBottom: 0, marginTop: 0, marginBottom: 0,
+      opacity: 0, scale: 0.985, transformOrigin: 'top center',
+      duration: 0.26,
+      ease: 'power2.in',
+      onComplete: done
+    });
+  }
+
+  // Появление загруженного фото
+  function animatePhotoIn(img) {
+    if (!img || typeof gsap === 'undefined' || prefersReducedMotion()) return;
+    gsap.fromTo(img, { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'power3.out', clearProps: 'opacity,transform' });
   }
 
   /* ── Кнопки вставки между блоками ── */
@@ -365,10 +430,11 @@
     const delBtn = document.createElement('button');
     delBtn.className = 'edit-insert-btn edit-insert-btn--delete';
     delBtn.textContent = '🗑 Удалить блок';
-    delBtn.addEventListener('click', () => form.remove());
+    delBtn.addEventListener('click', () => animateRemove(form));
     form.appendChild(delBtn);
 
     panel.after(form);
+    animateInsert(form);
   }
 
   function insertNewQuote(panel, position) {
@@ -385,8 +451,9 @@
       <button type="button" class="edit-insert-btn edit-insert-btn--delete">🗑 Удалить</button>
     `;
 
-    quote.querySelector('.edit-insert-btn--delete').addEventListener('click', () => quote.remove());
+    quote.querySelector('.edit-insert-btn--delete').addEventListener('click', () => animateRemove(quote));
     panel.after(quote);
+    animateInsert(quote);
   }
 
   /* ── Кнопка добавления фото в галерею ── */
@@ -460,6 +527,12 @@
       const newTotal = currentCount + uploadedUrls.length;
       btn.textContent = `📷 Добавить фото в галерею (${newTotal}/10)`;
 
+      // лёгкое подтверждение загрузки
+      if (typeof gsap !== 'undefined' && !prefersReducedMotion()) {
+        gsap.fromTo(btn, { scale: 1 }, { scale: 1.05, duration: 0.13, ease: 'power2.out', yoyo: true, repeat: 1, clearProps: 'transform' });
+        gsap.from(status, { opacity: 0, y: 6, duration: 0.3, ease: 'power2.out' });
+      }
+
       if (newTotal >= 10) {
         input.disabled = true;
         btn.style.opacity = '0.5';
@@ -517,6 +590,7 @@
           container.insertBefore(img, container.firstChild);
         }
         img.src = json.url;
+        animatePhotoIn(img);
 
         // Сохраняем URL в data-атрибут для сбора при сохранении
         container.dataset.uploadedUrl = json.url;

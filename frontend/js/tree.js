@@ -101,6 +101,28 @@ const currentTreeId = urlParams.get('tree') || 'default';
     const numGens = generations.length;
     if (numGens <= 1) return;
 
+    const getClanName = (p) => {
+      const clanId = p.clan_id || p.clanId;
+      if (!clanId) return '';
+      if (typeof CLANS !== 'undefined' && CLANS[clanId]) return CLANS[clanId].name || '';
+      return '';
+    };
+
+    function getClanWeight(p) {
+      const name = getClanName(p).toLowerCase();
+      if (name.includes('волков')) return 0;
+      if (name.includes('морозов')) return 1;
+      if (name.includes('соколов')) return 2;
+      if (name.includes('петров')) return 3;
+      return 4;
+    }
+
+    function getUnitClanWeight(unit) {
+      let sum = 0;
+      unit.forEach(p => { sum += getClanWeight(p); });
+      return sum / unit.length;
+    }
+
     // Helper to get unit weights in bottom-to-top pass
     function getBottomUpUnitWeight(unit, prevPeopleIndices) {
       let sum = 0;
@@ -135,6 +157,33 @@ const currentTreeId = urlParams.get('tree') || 'default';
       return count > 0 ? sum / count : null;
     }
 
+    function arrangeSinglesToEdges(sortedUnits, childrenOf) {
+      const mainUnits = [];
+      const leftSingles = [];
+      const rightSingles = [];
+
+      const midIdx = sortedUnits.length / 2;
+      sortedUnits.forEach((unit, idx) => {
+        const p = unit[0];
+        const isSingle = unit.length === 1 && 
+                         !p.spouseId && 
+                         !p.spouseOf && 
+                         !p.spouse_id &&
+                         (!childrenOf[p.id] || childrenOf[p.id].length === 0);
+        if (isSingle) {
+          if (idx < midIdx) {
+            leftSingles.push(unit);
+          } else {
+            rightSingles.push(unit);
+          }
+        } else {
+          mainUnits.push(unit);
+        }
+      });
+
+      return [...leftSingles, ...mainUnits, ...rightSingles];
+    }
+
     // Run 15 iterations of Sugiyama-style barycentric layout adjustment
     const iterations = 15;
     for (let iter = 0; iter < iterations; iter++) {
@@ -147,13 +196,20 @@ const currentTreeId = urlParams.get('tree') || 'default';
         const units = getGenerationUnits(generations[g].people);
         units.forEach((unit, uIdx) => {
           const w = getBottomUpUnitWeight(unit, prevPeopleIndices);
-          unit._weight = w !== null ? w : (uIdx * 10);
+          unit._weight = w !== null ? w : (getUnitClanWeight(unit) * 1000 + uIdx);
         });
 
-        units.sort((a, b) => a._weight - b._weight);
+        units.sort((a, b) => {
+          const clanDiff = getUnitClanWeight(a) - getUnitClanWeight(b);
+          if (Math.abs(clanDiff) < 0.001) {
+            return a._weight - b._weight;
+          }
+          return clanDiff;
+        });
+        const partitioned = arrangeSinglesToEdges(units, childrenOf);
 
         const flat = [];
-        units.forEach(unit => flat.push(...unit));
+        partitioned.forEach(unit => flat.push(...unit));
         generations[g].people = flat;
       }
 
@@ -166,16 +222,29 @@ const currentTreeId = urlParams.get('tree') || 'default';
         const units = getGenerationUnits(generations[g].people);
         units.forEach((unit, uIdx) => {
           const w = getTopDownUnitWeight(unit, nextPeopleIndices);
-          unit._weight = w !== null ? w : (uIdx * 10);
+          unit._weight = w !== null ? w : (getUnitClanWeight(unit) * 1000 + uIdx);
         });
 
-        units.sort((a, b) => a._weight - b._weight);
+        units.sort((a, b) => {
+          const clanDiff = getUnitClanWeight(a) - getUnitClanWeight(b);
+          if (Math.abs(clanDiff) < 0.001) {
+            return a._weight - b._weight;
+          }
+          return clanDiff;
+        });
+        const partitioned = arrangeSinglesToEdges(units, childrenOf);
 
         const flat = [];
-        units.forEach(unit => flat.push(...unit));
+        partitioned.forEach(unit => flat.push(...unit));
         generations[g].people = flat;
       }
     }
+
+    const gen0Units = getGenerationUnits(generations[0].people);
+    gen0Units.sort((a, b) => getUnitClanWeight(a) - getUnitClanWeight(b));
+    const flat0 = [];
+    gen0Units.forEach(u => flat0.push(...u));
+    generations[0].people = flat0;
   }
 
   function getGenerationUnits(people) {
@@ -608,7 +677,7 @@ const currentTreeId = urlParams.get('tree') || 'default';
             const fromId = c.fromNodeId || c.nodeA;
             const toId = c.toNodeId || c.nodeB;
             if (fromId && toId) {
-              if (typeLower === 'parent') {
+              if (typeLower === 'parent' || typeLower === 'kinship') {
                 if (!parentMap[toId]) parentMap[toId] = [];
                 parentMap[toId].push(fromId);
               } else if (typeLower === 'spouse' || typeLower === 'marriage') {

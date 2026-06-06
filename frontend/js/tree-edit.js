@@ -449,6 +449,29 @@
       });
     });
 
+    const getClanName = (p) => {
+      const clanId = p.clan_id || p.clanId;
+      if (!clanId) return '';
+      if (typeof CLANS !== 'undefined' && CLANS[clanId]) return CLANS[clanId].name || '';
+      if (clansCache && clansCache[clanId]) return clansCache[clanId].name || '';
+      return '';
+    };
+
+    function getClanWeight(p) {
+      const name = getClanName(p).toLowerCase();
+      if (name.includes('волков')) return 0;
+      if (name.includes('морозов')) return 1;
+      if (name.includes('соколов')) return 2;
+      if (name.includes('петров')) return 3;
+      return 4;
+    }
+
+    function getUnitClanWeight(unit) {
+      let sum = 0;
+      unit.forEach(p => { sum += getClanWeight(p); });
+      return sum / unit.length;
+    }
+
     // Helper to get unit weights in bottom-to-top pass
     function getBottomUpUnitWeight(unit, prevPeopleIndices) {
       let sum = 0;
@@ -511,6 +534,33 @@
       return units;
     }
 
+    function arrangeSinglesToEdges(sortedUnits, childrenOf) {
+      const mainUnits = [];
+      const leftSingles = [];
+      const rightSingles = [];
+
+      const midIdx = sortedUnits.length / 2;
+      sortedUnits.forEach((unit, idx) => {
+        const p = unit[0];
+        const isSingle = unit.length === 1 && 
+                         !p.spouseId && 
+                         !p.spouseOf && 
+                         !p.spouse_id &&
+                         (!childrenOf[p.id] || childrenOf[p.id].length === 0);
+        if (isSingle) {
+          if (idx < midIdx) {
+            leftSingles.push(unit);
+          } else {
+            rightSingles.push(unit);
+          }
+        } else {
+          mainUnits.push(unit);
+        }
+      });
+
+      return [...leftSingles, ...mainUnits, ...rightSingles];
+    }
+
     // Run 15 iterations of Sugiyama-style barycentric layout adjustment
     const iterations = 15;
     for (let iter = 0; iter < iterations; iter++) {
@@ -525,13 +575,20 @@
         const units = getGenerationUnitsLocal(gens[g] || []);
         units.forEach((unit, uIdx) => {
           const w = getBottomUpUnitWeight(unit, prevPeopleIndices);
-          unit._weight = w !== null ? w : (uIdx * 10);
+          unit._weight = w !== null ? w : (getUnitClanWeight(unit) * 1000 + uIdx);
         });
 
-        units.sort((a, b) => a._weight - b._weight);
+        units.sort((a, b) => {
+          const clanDiff = getUnitClanWeight(a) - getUnitClanWeight(b);
+          if (Math.abs(clanDiff) < 0.001) {
+            return a._weight - b._weight;
+          }
+          return clanDiff;
+        });
+        const partitioned = arrangeSinglesToEdges(units, childrenOf);
 
         const flat = [];
-        units.forEach(unit => flat.push(...unit));
+        partitioned.forEach(unit => flat.push(...unit));
         gens[g] = flat;
       }
 
@@ -546,15 +603,31 @@
         const units = getGenerationUnitsLocal(gens[g] || []);
         units.forEach((unit, uIdx) => {
           const w = getTopDownUnitWeight(unit, nextPeopleIndices);
-          unit._weight = w !== null ? w : (uIdx * 10);
+          unit._weight = w !== null ? w : (getUnitClanWeight(unit) * 1000 + uIdx);
         });
 
-        units.sort((a, b) => a._weight - b._weight);
+        units.sort((a, b) => {
+          const clanDiff = getUnitClanWeight(a) - getUnitClanWeight(b);
+          if (Math.abs(clanDiff) < 0.001) {
+            return a._weight - b._weight;
+          }
+          return clanDiff;
+        });
+        const partitioned = arrangeSinglesToEdges(units, childrenOf);
 
         const flat = [];
-        units.forEach(unit => flat.push(...unit));
+        partitioned.forEach(unit => flat.push(...unit));
         gens[g] = flat;
       }
+    }
+
+    const oldestGen = sortedGenIndices[0];
+    if (oldestGen !== undefined) {
+      const gen0Units = getGenerationUnitsLocal(gens[oldestGen] || []);
+      gen0Units.sort((a, b) => getUnitClanWeight(a) - getUnitClanWeight(b));
+      const flat0 = [];
+      gen0Units.forEach(u => flat0.push(...u));
+      gens[oldestGen] = flat0;
     }
   }
 
@@ -1891,7 +1964,7 @@
 
     localConns.forEach(c => {
       const typeLower = String(c.type).toLowerCase();
-      if (typeLower === 'parent') {
+      if (typeLower === 'parent' || typeLower === 'kinship') {
         if (!parentMap[c.b]) parentMap[c.b] = [];
         parentMap[c.b].push(c.a);
       } else if (typeLower === 'spouse' || typeLower === 'marriage') {
@@ -2025,6 +2098,7 @@
     container.querySelectorAll('.tree-node').forEach(nodeEl =>
       nodeEl.addEventListener('click', e => {
         if (e.target.closest('.tree-node-ctrl')) return;
+        if (_nodeDragJustHappened) return; // не реагируем на клик сразу после перетаскивания
         const nid = nodeEl.dataset.id;
         if (handleNodeConnectionClick(nodeEl, nid)) return;
 
@@ -2135,6 +2209,9 @@
         }
       });
     }
+
+    /* Перетаскивание карточек (edit mode) — связи рвутся при перетаскивании */
+    attachNodeDragging(container);
   }
 
   /* ── SVG нити — линии идут ОТ НИЗА карточек ── */
@@ -2192,15 +2269,32 @@
 
     const combined = [...list, ...autoConns];
 
+    // Дедупликация: одна линия на пару узлов в каждой категории (брак / родство).
+    // Иначе сохранённая связь ('spouse') и авто-связь ('marriage') одной пары
+    // рисуются дважды → визуальное «задвоение» линий (заметно при зуме).
+    const _seenPairs = new Set();
+    const deduped = combined.filter(conn => {
+      if (!conn || conn.a == null || conn.b == null) return false;
+      const cat = /spouse|marriage|брак/i.test(String(conn.type)) ? 'm' : 'k';
+      const key = [String(conn.a), String(conn.b)].sort().join('|') + ':' + cat;
+      if (_seenPairs.has(key)) return false;
+      _seenPairs.add(key);
+      return true;
+    });
+
+    // Гарантируем единственный svg-слой (на случай дублей от прошлых перерисовок).
+    const _existingSvgs = container.querySelectorAll(':scope > .tree-dynamic-svg');
+    for (let i = 1; i < _existingSvgs.length; i++) _existingSvgs[i].remove();
+
     let svg = container.querySelector('.tree-dynamic-svg');
-    if (!combined.length) {
+    if (!deduped.length) {
       if (svg) svg.innerHTML = '';
       return;
     }
 
     if (!svg) {
       svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.className = 'tree-dynamic-svg';
+      svg.setAttribute('class', 'tree-dynamic-svg'); // ВАЖНО: у SVG .className не задаёт атрибут class → querySelector('.tree-dynamic-svg') не находил svg и каждый перерисов создавал НОВЫЙ слой (задвоение линий)
       svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible;';
       if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
       container.insertBefore(svg, container.firstChild);
@@ -2221,7 +2315,7 @@
       return clan ? clan.color : '#c8a84b';
     };
 
-    combined.forEach(conn => {
+    deduped.forEach(conn => {
       const elA = container.querySelector(`[data-id="${conn.a}"]`);
       const elB = container.querySelector(`[data-id="${conn.b}"]`);
       if (!elA || !elB) return;
@@ -2322,6 +2416,8 @@
         diamond.setAttribute('stroke-width', '1');
         diamond.style.opacity = '0';
         diamond.style.transition = 'opacity 0.5s 1.2s';
+        diamond.setAttribute('data-a', conn.a);
+        diamond.setAttribute('data-b', conn.b);
         svg.appendChild(diamond);
         requestAnimationFrame(() => requestAnimationFrame(() => { diamond.style.opacity = '1'; }));
       } else {
@@ -2374,12 +2470,190 @@
 
   /* Анимация рисования линии */
   function animateDraw(path) {
+    if (_skipThreadAnim) return; // мгновенно: линия уже видна, без эффекта прорисовки (для перетаскивания)
     requestAnimationFrame(() => {
       const len = path.getTotalLength ? path.getTotalLength() : 500;
       path.style.strokeDasharray  = len;
       path.style.strokeDashoffset = len;
       path.style.transition = `stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)`;
       requestAnimationFrame(() => { path.style.strokeDashoffset = '0'; });
+    });
+  }
+
+  /* ════════════════════════════════════════════
+     ПЕРЕТАСКИВАНИЕ КАРТОЧЕК — связи рвутся (Draggable)
+     ════════════════════════════════════════════ */
+  let _nodeDragJustHappened = false;
+  let _skipThreadAnim = false; // при перетаскивании рисуем линии мгновенно (без долгого draw-in)
+  let _redrawRAF = 0;
+
+  function _treePrefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /* Разорвать ВСЕ связи узла: убрать линии (с анимацией) + почистить
+     данные у самого узла и у партнёров, чтобы авто-линии не вернулись. */
+  async function detachNodeAllConnections(nodeId) {
+    const container = document.getElementById('tree-dynamic') || document.getElementById('tree-wrapper');
+    const node = allNodes.find(n => n.id === nodeId);
+
+    // 1. Анимация разрыва: гасим и убираем линии/ромб этого узла
+    if (container) {
+      const svg = container.querySelector('.tree-dynamic-svg');
+      if (svg) {
+        const parts = svg.querySelectorAll(`[data-a="${nodeId}"], [data-b="${nodeId}"]`);
+        if (parts.length) {
+          if (typeof gsap !== 'undefined' && !_treePrefersReducedMotion()) {
+            gsap.to(parts, { opacity: 0, duration: 0.28, ease: 'power2.in', stagger: 0.02,
+              onComplete: () => parts.forEach(p => p.remove()) });
+          } else {
+            parts.forEach(p => p.remove());
+          }
+        }
+      }
+    }
+
+    // 2. Собираем партнёров (по соединениям и по полям узлов)
+    const partners = new Set();
+    const conns = getLocalConnections();
+    conns.forEach(c => { if (c.a === nodeId) partners.add(c.b); else if (c.b === nodeId) partners.add(c.a); });
+    if (node) {
+      const sp = node.spouse_id || node.spouseId; if (sp) partners.add(sp);
+      getParentIds(node).forEach(pid => partners.add(pid));
+    }
+    allNodes.forEach(n => {
+      if (getParentIds(n).includes(nodeId)) partners.add(n.id);
+      if ((n.spouse_id || n.spouseId) === nodeId) partners.add(n.id);
+    });
+
+    // 3. Удаляем локальные соединения этого узла (+ сервер)
+    const remaining = [];
+    conns.forEach(c => {
+      if (c.a === nodeId || c.b === nodeId) {
+        if (c.id) fetch(`${BASE}/api/family-connections/${c.id}`, { method: 'DELETE' }).catch(() => {});
+      } else {
+        remaining.push(c);
+      }
+    });
+    saveLocalConnections(remaining);
+
+    // 4. Чистим родственные поля у самого узла
+    if (node) {
+      node.spouse_id = null; node.spouseId = null; node.spouseOf = null;
+      setParentIds(node, []);
+      try { await saveNodeUpdates(node); } catch (_) {}
+    }
+    // 5. Чистим ссылки на узел у партнёров
+    for (const pid of partners) {
+      const p = allNodes.find(n => n.id === pid);
+      if (!p) continue;
+      let changed = false;
+      if ((p.spouse_id || p.spouseId) === nodeId) { p.spouse_id = null; p.spouseId = null; p.spouseOf = null; changed = true; }
+      const pids = getParentIds(p);
+      if (pids.includes(nodeId)) { setParentIds(p, pids.filter(x => x !== nodeId)); changed = true; }
+      if (changed) { try { await saveNodeUpdates(p); } catch (_) {} }
+    }
+
+    if (typeof syncTimelineAndStats === 'function') { try { syncTimelineAndStats(); } catch (_) {} }
+  }
+
+  /* Перерисовать связи в динамическом дереве (после обмена/разрыва) */
+  function _treeRedrawConnections() {
+    const dc = document.getElementById('tree-dynamic') || document.getElementById('tree-wrapper');
+    if (dc) { try { drawCustomConnections(dc, getLocalConnections()); } catch (_) {} }
+  }
+  /* Перерисовка с тротлингом по кадрам (чтобы линии плавно следовали без перегруза) */
+  function _treeRedrawThrottled() {
+    if (_redrawRAF) return;
+    _redrawRAF = requestAnimationFrame(() => { _redrawRAF = 0; _treeRedrawConnections(); });
+  }
+
+  /* Поменять местами два DOM-узла в одном родителе */
+  function _domSwap(a, b) {
+    const aParent = a.parentNode, bParent = b.parentNode;
+    if (!aParent || !bParent) return;
+    const aSibling = a.nextSibling === b ? a : a.nextSibling;
+    bParent.insertBefore(a, b);
+    aParent.insertBefore(b, aSibling);
+  }
+
+  /* Обмен карточек местами с FLIP-анимацией; линии следуют мгновенно (без мерцания) */
+  function _swapWithFlip(a, b) {
+    const cont = document.getElementById('tree-dynamic') || document.getElementById('tree-wrapper');
+    // масштаб контейнера (pan/zoom) — чтобы FLIP-смещения были корректны при любом зуме
+    const sc = cont ? ((cont.getBoundingClientRect().width / (cont.offsetWidth || 1)) || 1) : 1;
+    const aFirst = a.getBoundingClientRect();
+    const bFirst = b.getBoundingClientRect();
+    _domSwap(a, b);
+    gsap.set(a, { x: 0, y: 0, scale: 1 });
+    gsap.set(b, { x: 0, y: 0 });
+    const aLast = a.getBoundingClientRect();
+    const bLast = b.getBoundingClientRect();
+    _skipThreadAnim = true; // линии перерисовываем мгновенно во время переноса
+    const done = () => { _treeRedrawConnections(); _skipThreadAnim = false; };
+    if (_treePrefersReducedMotion()) { done(); return; }
+    gsap.fromTo(a, { x: (aFirst.left - aLast.left) / sc, y: (aFirst.top - aLast.top) / sc, scale: 1.05 },
+                   { x: 0, y: 0, scale: 1, duration: 0.42, ease: 'power3.out', onUpdate: _treeRedrawThrottled, onComplete: done });
+    gsap.fromTo(b, { x: (bFirst.left - bLast.left) / sc, y: (bFirst.top - bLast.top) / sc },
+                   { x: 0, y: 0, duration: 0.42, ease: 'power3.out' });
+  }
+
+  /* Завершение перетаскивания: обмен / разрыв при выносе / возврат на место */
+  function finishNodeDrag(card, rowEl, px, py) {
+    const prevPE = card.style.pointerEvents;
+    card.style.pointerEvents = 'none';
+    const under = (typeof px === 'number') ? document.elementFromPoint(px, py) : null;
+    card.style.pointerEvents = prevPE;
+    const targetNode = under ? under.closest('.tree-node') : null;
+    const sameRowTarget = targetNode && targetNode !== card && rowEl && rowEl.contains(targetNode);
+
+    let pulledOut = false;
+    if (rowEl && typeof py === 'number') {
+      const rr = rowEl.getBoundingClientRect();
+      const M = 46;
+      if (py < rr.top - M || py > rr.bottom + M) pulledOut = true;
+    }
+
+    if (sameRowTarget) {
+      _swapWithFlip(card, targetNode);            // меняем местами, линии перестраиваются
+    } else if (pulledOut) {
+      const id = card.dataset.id;
+      if (id) detachNodeAllConnections(id);       // вынос из ряда → связи рвутся
+      if (_treePrefersReducedMotion()) gsap.set(card, { scale: 1 });
+      else gsap.to(card, { scale: 1, duration: 0.24, ease: 'power3.out' });
+    } else {
+      gsap.to(card, { x: 0, y: 0, scale: 1, duration: 0.34, ease: 'power3.out' }); // вернуть «в рамки»
+    }
+  }
+
+  /* Делаем карточки перетаскиваемыми (только в режиме редактирования) */
+  function attachNodeDragging(container) {
+    if (!container || !isEditMode) return;
+    if (typeof gsap === 'undefined' || typeof Draggable === 'undefined') return;
+
+    container.querySelectorAll('.tree-node').forEach(nodeEl => {
+      if (nodeEl._dragBound) return;
+      nodeEl._dragBound = true;
+      nodeEl.classList.add('tree-node--draggable');
+      let rowEl = null;
+
+      Draggable.create(nodeEl, {
+        type: 'x,y',
+        dragClickables: false,      // не таскать при нажатии на кнопки-контролы
+        minimumMovement: 6,
+        zIndexBoost: false,
+        onPress: function () { rowEl = nodeEl.closest('.gen-row'); },
+        onDragStart: function () {
+          _nodeDragJustHappened = true;
+          nodeEl.classList.add('tree-node--dragging');
+          if (!_treePrefersReducedMotion()) gsap.to(nodeEl, { scale: 1.05, duration: 0.16, ease: 'power2.out' });
+        },
+        onDragEnd: function () {
+          nodeEl.classList.remove('tree-node--dragging');
+          finishNodeDrag(nodeEl, rowEl, this.pointerX, this.pointerY);
+          setTimeout(() => { _nodeDragJustHappened = false; }, 80);
+        }
+      });
     });
   }
 
@@ -3003,7 +3277,19 @@
     try {
       const r = await fetch(`${BASE}/api/timeline-events?treeId=${encodeURIComponent(currentTreeId)}&nodeId=${nodeId}`);
       const j = await r.json();
-      if (j.ok) events = j.data.filter(e => e.type !== 'birth' && e.type !== 'death');
+      if (j.ok) events = (j.data || []).filter(e => {
+        if (e.type === 'birth' || e.type === 'death') return false;
+        // Год обязателен и валиден — отсекаем «undefined»/битые записи
+        const y = parseInt(e.year, 10);
+        if (!Number.isFinite(y) || y < 1000 || y > 3000) return false;
+        const title = (e.title || '').trim();
+        if (!title) return false;
+        // Чужие события родственников: «Смерть: Ольга», «Рождение: Егор» и т.п.
+        if (/^(рожден|смерт|похорон|уход|брак|свадьб)[^:：—–]*[:：—–]\s*\S/iu.test(title)) return false;
+        // Авто-дубликаты собственных вех (рождение/смерть) — для них есть отдельные поля
+        if (/^(рождение|уход из жизни|смерть|наши дни)\.?$/iu.test(title)) return false;
+        return true;
+      });
     } catch (_) {}
 
     const overlay = document.createElement('div');
@@ -3011,7 +3297,7 @@
     overlay.id = 'relative-popup';
 
     const eventsHTML = events.length
-      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${e.year}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div>`).join('')
+      ? events.map(e => `<div class="rp-event" data-id="${e.id}"><span class="rp-event__year">${Number.isFinite(parseInt(e.year, 10)) ? e.year : ''}</span><span class="rp-event__title">${e.title}</span>${e.city ? `<span class="rp-event__city">${e.city}</span>` : ''}<button class="rp-event__del" data-eid="${e.id}" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></div>`).join('')
       : `<div class="rp-no-events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span>Нет записанных событий</span></div>`;
 
     overlay.innerHTML = `
