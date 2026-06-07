@@ -97,6 +97,7 @@
   const countEl = document.getElementById('candle-count');
   const scene   = candle?.closest('.candle-scene');
   const STORE   = 'candle_count';
+  const LIT_BY_ME = 'candle_lit_by_me';
 
   if (countEl) {
     (typeof API !== 'undefined'
@@ -106,25 +107,40 @@
   }
 
   if (candle && countEl) {
-    candle.classList.add('is-lit');
-    scene?.classList.add('is-lit');
+    const isLitByMe = localStorage.getItem(LIT_BY_ME) === 'true';
+    if (isLitByMe) {
+      candle.classList.add('is-lit');
+      scene?.classList.add('is-lit');
+    } else {
+      candle.classList.remove('is-lit');
+      scene?.classList.remove('is-lit');
+    }
 
     let busy = false;
     async function toggleCandle() {
       if (busy) return; busy = true;
       if (candle.classList.contains('is-lit')) {
+        // Потушить свечу
         candle.classList.add('is-blowing');
         scene?.classList.remove('is-lit');
+        localStorage.setItem(LIT_BY_ME, 'false');
         setTimeout(() => { candle.classList.remove('is-lit', 'is-blowing'); busy = false; }, 700);
       } else {
+        // Зажечь свечу
         candle.classList.add('is-lit');
         scene?.classList.add('is-lit');
+        localStorage.setItem(LIT_BY_ME, 'true');
         try {
           const r = await API.post('/api/candles/light');
-          if (r?.count != null) { countEl.textContent = r.count; localStorage.setItem(STORE, r.count); }
-        } catch {
+          if (r?.count != null) {
+            countEl.textContent = r.count;
+            localStorage.setItem(STORE, r.count);
+          }
+        } catch (err) {
+          console.warn('[candle] Failed to save on server, falling back to local counter:', err);
           const c = parseInt(countEl.textContent || '237') + 1;
-          countEl.textContent = c; localStorage.setItem(STORE, c);
+          countEl.textContent = c;
+          localStorage.setItem(STORE, c);
         }
         countEl.classList.remove('is-bumped');
         void countEl.offsetWidth;
