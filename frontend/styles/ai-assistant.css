@@ -8,7 +8,7 @@
 .aibio{
   position:relative;
   z-index:2;
-  padding:100px 32px;
+  padding:40px 32px;
 }
 .aibio__inner{
   max-width:1050px;
@@ -648,7 +648,7 @@
 
 /* ── Адаптив ── */
 @media (max-width:850px){
-  .aibio{ padding:50px 20px; }
+  .aibio{ padding:40px 20px; }
   .aibio__inner{
     flex-direction:column;
     text-align:center;
@@ -705,7 +705,7 @@
   .aibio__lead-mobile { display: inline; }
 }
 @media (max-width:400px){
-  .aibio{ padding:36px 18px; }
+  .aibio{ padding:40px 18px; }
   .aibio__title{ font-size:19px; }
   .aibio__lead{ font-size:13px; margin-bottom:8px; }
 }

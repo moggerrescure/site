@@ -443,7 +443,7 @@ section { position: relative; z-index: 1; }
 
 /* ── PULL QUOTE ── */
 .quote-section {
-  padding: 80px 32px;
+  padding: 40px 32px 80px;
   position: relative;
   z-index: 2;
 }
@@ -516,7 +516,7 @@ section { position: relative; z-index: 1; }
    STATS SECTION
    ═══════════════════════════════════════════════ */
 .stats {
-  padding: 40px 32px 20px;
+  padding: 40px 32px 40px;
   position: relative;
   z-index: 2;
 }
@@ -571,7 +571,7 @@ section { position: relative; z-index: 1; }
    CANDLE SECTION
    ═══════════════════════════════════════════════ */
 .candle-section {
-  padding: 100px 32px 60px;
+  padding: 40px 32px 40px;
   text-align: center;
   position: relative;
   z-index: 2;
@@ -1202,7 +1202,7 @@ section { position: relative; z-index: 1; }
    LAST ADDED SECTION
    ═══════════════════════════════════════════════ */
 .last-added {
-  padding: 80px 32px 100px;
+  padding: 80px 32px 80px;
   position: relative;
   z-index: 2;
 }
@@ -1690,7 +1690,7 @@ section { position: relative; z-index: 1; }
    FEATURED PERSON — живая карточка на главной
    ═══════════════════════════════════════════════ */
 .featured-person {
-  padding: 0 32px 80px;
+  padding: 40px 32px 80px;
   position: relative;
   z-index: 2;
 }
@@ -2463,7 +2463,7 @@ select option:hover {
 
 /* ── SHOWCASE SECTION ── */
 .showcase {
-  padding: 100px 32px;
+  padding: 80px 32px;
   position: relative;
   z-index: 2;
 }

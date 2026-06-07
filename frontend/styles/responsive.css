@@ -322,6 +322,14 @@
   .section-title {
     margin-bottom: 36px;
   }
+  .stats,
+  .showcase,
+  .featured-person,
+  .candle-section,
+  .last-added,
+  .quote-section {
+    padding: 40px 16px;
+  }
 
   /* Свеча */
   .candle-scene {
@@ -336,7 +344,7 @@
 
   /* Footer */
   .footer {
-    padding: 30px 20px;
+    padding: 40px 16px;
   }
 }
 
