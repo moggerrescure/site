@@ -652,7 +652,7 @@
   .aibio__inner{
     flex-direction:column;
     text-align:center;
-    gap:36px;
+    gap:16px;
   }
   .aibio__text{
     max-width:100%;
@@ -663,7 +663,7 @@
   }
   .aibio__lead{
     text-align:center;
-    margin-bottom:20px;
+    margin-bottom:12px;
   }
   .aibio__steps{
     text-align:left;
@@ -673,7 +673,10 @@
   .aibio__step-ic{ width:34px; height:34px; font-size:15px; }
   .aibio__step-txt{ font-size:14px; padding-top:6px; }
   .aibio__visual {
-    margin-top: 50px; /* Push down the 3D phone mockup to clear the floating voice pill */
+    margin-top: 0;
+  }
+  .mockup-viewport {
+    height: 440px;
   }
   .aibio__cta-wrapper--desktop {
     display: none;
@@ -683,7 +686,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
-    margin-top: 32px;
+    margin-top: 0;
     position: relative;
     z-index: 20;
   }
@@ -695,7 +698,7 @@
   /* шрифт компактнее, чтобы текст + мокап влезли на один экран */
   .aibio__eyebrow{ font-size:11px; margin-bottom:10px; }
   .aibio__title{ font-size:clamp(20px,5.4vw,25px); line-height:1.16; margin-bottom:10px; }
-  .aibio__lead{ font-size:13.5px; line-height:1.5; margin-bottom:14px; max-width:40ch; }
+  .aibio__lead{ font-size:13.5px; line-height:1.5; margin-bottom:8px; max-width:40ch; }
   /* наклонённый и уменьшенный мокап */
   .aibio__visual{ perspective:1500px; }
   .aibio__lead-desktop { display: none; }
@@ -704,7 +707,7 @@
 @media (max-width:400px){
   .aibio{ padding:36px 18px; }
   .aibio__title{ font-size:19px; }
-  .aibio__lead{ font-size:13px; margin-bottom:12px; }
+  .aibio__lead{ font-size:13px; margin-bottom:8px; }
 }
 
 /* Downscale wrapper smoothly to prevent 3D elements cropping on mobile viewports */
