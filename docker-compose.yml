@@ -46,6 +46,8 @@ services:
       NODE_ENV: production
       PORT: 3000
       BOT_USERNAME: ${BOT_USERNAME}
+      # Нужен бэкенду для проверки HMAC-подписи Telegram Login Widget (см. auth.js).
+      BOT_TOKEN: ${BOT_TOKEN}
     volumes:
       - uploads:/app/uploads
     expose:
@@ -83,7 +85,7 @@ services:
       - backend
     ports:
       - "80:80"
-      # - "443:443"   # раскомментировать когда появится домен
+      - "443:443"
     volumes:
       - uploads:/srv/uploads:ro
 

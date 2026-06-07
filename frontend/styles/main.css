@@ -3011,6 +3011,7 @@ select option:hover {
   border: none;
   background: transparent;
   transition: transform var(--transition);
+  touch-action: pan-y;
 }
 
 .hero-canvas-container:active {

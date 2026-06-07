@@ -85,6 +85,7 @@
       container.appendChild(renderer.domElement);
 
       controls = new THREE.OrbitControls(camera, renderer.domElement);
+      renderer.domElement.style.touchAction = 'pan-y';
       controls.enableRotate = false;
       controls.enablePan = false;
       controls.enableZoom = false; // No zoom in hero to prevent breaking layout
@@ -368,10 +369,18 @@
   function setupUIEvents() {
       window.addEventListener('resize', onWindowResize);
 
+      let startX = 0, startY = 0;
+      let isDraggingHorizontal = false;
+      let dragGestureStarted = false;
+
       const container = document.getElementById('hero-canvas-container');
       if (container) {
           container.addEventListener('pointerdown', (e) => {
               isDraggingPlate = true;
+              dragGestureStarted = false;
+              isDraggingHorizontal = false;
+              startX = e.clientX;
+              startY = e.clientY;
               previousMousePosition = { x: e.clientX, y: e.clientY };
               
               if (plateMesh) {
@@ -383,14 +392,29 @@
 
       window.addEventListener('pointermove', (e) => {
           if (isDraggingPlate && plateMesh) {
-              const deltaX = e.clientX - previousMousePosition.x;
-              const deltaY = e.clientY - previousMousePosition.y;
+              if (!dragGestureStarted) {
+                  const diffX = Math.abs(e.clientX - startX);
+                  const diffY = Math.abs(e.clientY - startY);
+                  if (diffX > 6 || diffY > 6) {
+                      dragGestureStarted = true;
+                      if (diffX > diffY) {
+                          isDraggingHorizontal = true;
+                      } else {
+                          isDraggingPlate = false; // Cancel dragging to let vertical page scroll work
+                      }
+                  }
+              }
               
-              targetRotationY += deltaX * 0.008; 
-              targetRotationX += deltaY * 0.008; 
-              
-              targetRotationX = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, targetRotationX));
-              targetRotationY = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, targetRotationY));
+              if (isDraggingHorizontal) {
+                  const deltaX = e.clientX - previousMousePosition.x;
+                  const deltaY = e.clientY - previousMousePosition.y;
+                  
+                  targetRotationY += deltaX * 0.008; 
+                  targetRotationX += deltaY * 0.008; 
+                  
+                  targetRotationX = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, targetRotationX));
+                  targetRotationY = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, targetRotationY));
+              }
 
               previousMousePosition = { x: e.clientX, y: e.clientY };
           }
@@ -398,6 +422,8 @@
 
       window.addEventListener('pointerup', () => {
           isDraggingPlate = false;
+          isDraggingHorizontal = false;
+          dragGestureStarted = false;
       });
   }
 

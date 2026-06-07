@@ -40,6 +40,11 @@ backup/predeploy_*.sql.gz
 *.bak
 *.bak.*
 
+# === Дампы БД (НЕ коммитим дампы данных с ПДн!) ===
+# Якорь "/" — только корень, чтобы не задеть backend/prisma/migrations/**/*.sql
+/db_dump.sql
+/*.sql
+
 # === Дампы кода / скрипты-копировщики ===
 project_dump.txt
 project_structure.txt

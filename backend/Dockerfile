@@ -23,9 +23,15 @@ RUN npx prisma generate
 
 COPY . .
 
-RUN mkdir -p uploads
+RUN mkdir -p uploads && chown -R node:node /app
 
 ENV NODE_ENV=production
 EXPOSE 3000
+
+# Безопасность: процесс не под root. В node:24-slim есть пользователь node (uid 1000).
+# Свежий named-volume uploads наследует владельца node из образа. Если том uploads
+# уже создавался под root — однократно выполнить:
+#   docker compose run --rm --user root backend chown -R node:node /app/uploads
+USER node
 
 CMD ["sh", "-c", "test -d node_modules/@aws-sdk/client-s3 || (echo '[boot] Installing @aws-sdk on first run...' && npm install --omit=dev --no-save --no-audit --prefer-offline @aws-sdk/client-s3@^3.1055.0 @aws-sdk/lib-storage@^3.1055.0); npx prisma migrate deploy && node index.js"]

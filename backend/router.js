@@ -46,7 +46,7 @@ const diskStorage = multer.diskStorage({
 });
 const upload = multer({
     storage: diskStorage,
-    limits: { fileSize: 200 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 64 * 1024 * 1024, files: 1 }, // было 200МБ; снижено — защита от забивания диска. mediaService всё равно режет тип/размер.
 });
 
 const uploadAnyAsSingle = (req, res, next) => {

@@ -12,7 +12,8 @@ const lastSeen = require("./middleware/lastSeen");
 const JWT_SECRET =
   process.env.JWT_SECRET || "memory-site-secret-change-in-prod";
 const JWT_EXPIRY = Number(process.env.JWT_EXPIRY_SEC) || 7 * 24 * 60 * 60;
-const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || "";
+// Имя переменной в окружении/compose — BOT_TOKEN; TG_BOT_TOKEN оставлен как алиас.
+const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN || process.env.BOT_TOKEN || "";
 
 const PBKDF2_ITER = 100_000;
 const PBKDF2_KEYLEN = 64;

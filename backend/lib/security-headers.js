@@ -19,5 +19,6 @@ module.exports = helmet({
   },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  hsts: false,
+  hsts: false, // HSTS выставляется на Caddy (там терминируется TLS) — см. Caddyfile
+
 });
