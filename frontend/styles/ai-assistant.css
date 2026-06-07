@@ -93,13 +93,27 @@
 }
 .aibio__step-txt b{ color:#e7dcc2; font-weight:600; }
 
-.aibio__cta{ margin-top:4px; }
 .aibio__note{
   font-family:var(--font-ui);
   font-size:13px;
   letter-spacing:.04em;
   color:rgba(201,191,168,.5);
   margin:16px 0 0;
+}
+.aibio__cta {
+  margin-top: 4px;
+}
+.aibio__lead-mobile {
+  display: none;
+}
+.aibio__lead-desktop {
+  display: inline;
+}
+.aibio__cta-wrapper--mobile {
+  display: none;
+}
+.aibio__cta-wrapper--desktop {
+  display: block;
 }
 
 /* ════════════════════════════════════════════
@@ -661,6 +675,18 @@
   .aibio__visual {
     margin-top: 50px; /* Push down the 3D phone mockup to clear the floating voice pill */
   }
+  .aibio__cta-wrapper--desktop {
+    display: none;
+  }
+  .aibio__cta-wrapper--mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-top: 32px;
+    position: relative;
+    z-index: 20;
+  }
 }
 @media (max-width:768px){
   /* на телефоне оставляем заголовок + лид + наклонённый мокап — как на референсе */
@@ -672,6 +698,8 @@
   .aibio__lead{ font-size:13.5px; line-height:1.5; margin-bottom:14px; max-width:40ch; }
   /* наклонённый и уменьшенный мокап */
   .aibio__visual{ perspective:1500px; }
+  .aibio__lead-desktop { display: none; }
+  .aibio__lead-mobile { display: inline; }
 }
 @media (max-width:400px){
   .aibio{ padding:36px 18px; }

@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="styles/main.css?v=14" />
   <link rel="stylesheet" href="styles/responsive.css?v=14" />
   <link rel="stylesheet" href="styles/polish.css?v=10" />
-  <link rel="stylesheet" href="styles/ai-assistant.css?v=9" />
+  <link rel="stylesheet" href="styles/ai-assistant.css?v=10" />
   <script src="js/counters.js?v=1" data-counters></script>
 </head>
 <body>
@@ -150,9 +150,14 @@
         <span class="aibio__eyebrow">✦ ИИ-помощник на сайте</span>
         <h2 class="aibio__title">Кажется, что это сложно?<br/><em>На самом деле — нет.</em></h2>
         <p class="aibio__lead">
-          Не нужно быть писателем. На странице памяти нажмите <strong>«AI»</strong>,
-          напишите ключевые факты или просто наговорите историю голосом — помощник расшифрует её и соберёт тёплую биографию.
-          Прямо в браузере, <strong>даже с телефона</strong>.
+          <span class="aibio__lead-desktop">
+            Не нужно быть писателем. На странице памяти нажмите <strong>«AI»</strong>,
+            напишите ключевые факты или просто наговорите историю голосом — помощник расшифрует её и соберёт тёплую биографию.
+            Прямо в браузере, <strong>даже с телефона</strong>.
+          </span>
+          <span class="aibio__lead-mobile">
+            Не нужно быть писателем. Напишите ключевые факты или просто наговорите историю голосом — помощник сам соберёт тёплую биографию.
+          </span>
         </p>
 
         <ul class="aibio__steps">
@@ -174,8 +179,10 @@
           </li>
         </ul>
 
-        <a href="memory.html" class="btn btn--primary aibio__cta">Создать страницу памяти</a>
-        <p class="aibio__note">Бесплатно · в браузере · с телефона или компьютера</p>
+        <div class="aibio__cta-wrapper aibio__cta-wrapper--desktop">
+          <a href="memory.html" class="btn btn--primary aibio__cta">Создать страницу памяти</a>
+          <p class="aibio__note">Бесплатно · в браузере · с телефона или компьютера</p>
+        </div>
       </div>
 
       <div class="aibio__visual">
@@ -309,6 +316,12 @@
 
           </div>
         </div>
+      </div>
+
+      <!-- Mobile CTA (placed below visual mockup) -->
+      <div class="aibio__cta-wrapper aibio__cta-wrapper--mobile">
+        <a href="memory.html" class="btn btn--primary aibio__cta">Создать страницу памяти</a>
+        <p class="aibio__note">Бесплатно · в браузере · с телефона или компьютера</p>
       </div>
     </div>
   </section>
