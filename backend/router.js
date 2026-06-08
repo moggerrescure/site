@@ -351,6 +351,7 @@ async function listHandler(req, res) {
     const visibility   = (req.query.visibility || '').toString().trim();
     const mine         = req.query.mine === '1' || req.query.mine === 'true';
     const ownerEmail   = (req.query.ownerEmail || '').toString().trim();
+    const ownerRole    = (req.query.ownerRole  || '').toString().trim();
     const hasPhoto     = req.query.hasPhoto === '1' || req.query.hasPhoto === 'true';
     const sortBy       = (req.query.sortBy     || '').toString().trim();
 
@@ -360,6 +361,7 @@ async function listHandler(req, res) {
         gender, visibility, mine,
         actor: req.user || null,
         ownerEmail,
+        ownerRole,
         hasPhoto,
         sortBy,
     });

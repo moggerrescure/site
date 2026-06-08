@@ -230,6 +230,7 @@ async function listProfiles(opts = {}) {
         mine = false,
         actor = null,
         ownerEmail = '',
+        ownerRole = '',
         hasPhoto = false,
         sortBy = 'birthDate',
     } = opts;
@@ -291,6 +292,7 @@ async function listProfiles(opts = {}) {
         if (gender) andClauses.push({ gender });
         if (mine && actor) andClauses.push({ ownerId: actor.id });
         if (ownerEmail) andClauses.push({ owner: { email: ownerEmail } });
+        if (ownerRole) andClauses.push({ owner: { role: ownerRole } });
         if (hasPhoto) andClauses.push({ coverPhotoId: { not: null } });
         // Скрыть пустые "Новая страница" заглушки из публичного списка
         if (!mine) andClauses.push({ NOT: { fullName: 'Новая страница' } });
@@ -320,6 +322,7 @@ async function listProfiles(opts = {}) {
 	const notPlaceholderSql = (!mine) ? Prisma.sql`AND p."fullName" != 'Новая страница'` : Prisma.empty;
     const mineSql  = (mine && actor) ? Prisma.sql`AND p."ownerId" = ${actor.id}` : Prisma.empty;
     const ownerEmailFilter = ownerEmail ? Prisma.sql`AND p."ownerId" IN (SELECT id FROM "User" WHERE email = ${ownerEmail})` : Prisma.empty;
+    const ownerRoleFilter  = ownerRole ? Prisma.sql`AND p."ownerId" IN (SELECT id FROM "User" WHERE role::text = ${ownerRole})` : Prisma.empty;
     const hasPhotoFilter   = hasPhoto ? Prisma.sql`AND p."coverPhotoId" IS NOT NULL` : Prisma.empty;
     const visFilter = (() => {
         if (visibilityHardFilterSql) return visibilityHardFilterSql;
@@ -355,6 +358,7 @@ async function listProfiles(opts = {}) {
           ${genderFilter}
           ${mineSql}
           ${ownerEmailFilter}
+          ${ownerRoleFilter}
           ${hasPhotoFilter}
           ${visFilter}
         ORDER BY rank DESC, p."fullName" ASC
@@ -373,6 +377,7 @@ async function listProfiles(opts = {}) {
           ${genderFilter}
           ${mineSql}
           ${ownerEmailFilter}
+          ${ownerRoleFilter}
           ${hasPhotoFilter}
           ${visFilter}
     `;

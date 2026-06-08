@@ -251,7 +251,7 @@
 
     let apiOk = false;
     if (typeof API !== 'undefined') {
-      API.get('/api/profiles?ownerEmail=11111111&hasPhoto=true&sortBy=createdAt&limit=3')
+      API.get('/api/profiles?ownerRole=ADMIN&hasPhoto=true&visibility=PUBLIC&sortBy=createdAt&limit=3')
         .then(profilesRes => {
           const profiles = profilesRes?.data || [];
           if (profiles.length) {
