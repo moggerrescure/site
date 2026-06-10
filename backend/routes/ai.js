@@ -197,13 +197,18 @@ router.post('/generate-image', optionalAuth, aiGenerationLimiter, wrap(async (re
  * resp: { ok: true, commands: Array }
  */
 router.post('/reconstruct-page', optionalAuth, aiGenerationLimiter, wrap(async (req, res) => {
-  const { text, currentBlocks } = req.body || {};
+  const { text, currentBlocks, currentHeader } = req.body || {};
   if (!text || typeof text !== 'string') {
     throw ApiError.badRequest('Нужен текст истории для анализа');
   }
 
   const cleanText = text.trim().slice(0, 15000);
   const blocks = Array.isArray(currentBlocks) ? currentBlocks : [];
+  const header = currentHeader && typeof currentHeader === 'object' ? {
+    name:  String(currentHeader.name  || '').slice(0, 200),
+    dates: String(currentHeader.dates || '').slice(0, 100),
+    city:  String(currentHeader.city  || '').slice(0, 200),
+  } : {};
 
   if (containsProfanity(cleanText)) {
     return res.json({
@@ -214,7 +219,7 @@ router.post('/reconstruct-page', optionalAuth, aiGenerationLimiter, wrap(async (
 
   let result;
   try {
-    result = await aiService.reconstructPage(cleanText, blocks);
+    result = await aiService.reconstructPage(cleanText, blocks, header);
   } catch (err) {
     console.error('[ai/reconstruct-page] error:', err.message);
     throw ApiError.internal('Не удалось проанализировать страницу через ИИ.');

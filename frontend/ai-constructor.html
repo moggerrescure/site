@@ -1129,10 +1129,12 @@
         </div>
       </div>
 
-      <!-- Панель точечной подгонки (Refinement Mapping) -->
+      <!-- Панель точечной подгонки (Refinement Mapping) — свёрнута по умолчанию -->
       <div id="refinement-panel" class="refinement-container" style="display: none;">
-        <h4 class="refinement-title">Точечная подгонка фрагментов рассказа</h4>
-        <div id="refinement-list" class="refinement-list"></div>
+        <h4 class="refinement-title" id="refinement-toggle" style="cursor:pointer; user-select:none;">
+          <span id="refinement-arrow">▸</span> Точечная подгонка фрагментов рассказа <span style="opacity:.5; font-weight:400;">(если ИИ что-то пропустил — раскройте и добавьте фразы в разделы вручную)</span>
+        </h4>
+        <div id="refinement-list" class="refinement-list" style="display: none;"></div>
       </div>
 
       <!-- Лог команд -->
@@ -2236,6 +2238,27 @@
     }
 
     // === ВЫПОЛНЕНИЕ КОМАНД И ПЕРЕСТРОЙКА DOM ===
+    // Поле шапки считается «не заполненным», если в нём заглушка или пусто
+    function isHeaderPlaceholder(field) {
+      if (field === 'name') {
+        const v = (document.getElementById('p-name')?.textContent || '').trim();
+        return !v || v === 'Имя Отчество Фамилия';
+      }
+      if (field === 'dates') {
+        const v = (document.getElementById('p-dates')?.textContent || '').trim();
+        return !v || v.includes('ГГГГ');
+      }
+      if (field === 'city') {
+        const v = (document.getElementById('p-city')?.textContent || '').trim();
+        return !v || v === 'Город';
+      }
+      if (field === 'epitaph') {
+        const v = (document.getElementById('p-bio')?.textContent || '').trim();
+        return !v || v.includes('эпитафия появится здесь');
+      }
+      return false;
+    }
+
     function executePageCommands(data) {
       if (!data || !Array.isArray(data.commands)) return;
 
@@ -2245,7 +2268,7 @@
       data.commands.forEach((cmd) => {
         const logItem = document.createElement('li');
         logItem.className = 'ai-log-item';
-        logItem.innerHTML = `<span class="log-action ${cmd.action.toLowerCase()}">[${cmd.action}]</span> <span>блок: "${cmd.key}" ${cmd.title ? `— ${cmd.title}` : ''}</span>`;
+        logItem.innerHTML = `<span class="log-action ${cmd.action.toLowerCase()}">[${cmd.action}]</span> <span>${cmd.action === 'SET_HEADER' ? 'шапка страницы' : `блок: "${cmd.key}"`} ${cmd.title ? `— ${cmd.title}` : ''}</span>`;
         aiLogList.appendChild(logItem);
 
         const existingElement = document.querySelector(`[data-key="${cmd.key}"]`);
@@ -2270,10 +2293,48 @@
             createNewBlock(cmd.key, cmd.title || 'Раздел', cmd.text);
           }
         }
+        else if (cmd.action === 'SET_HEADER') {
+          // Имя, даты, город, эпитафия из рассказа → шапка страницы.
+          // Заполняем ТОЛЬКО незаполненные поля — введённое вручную не перетираем.
+          if (cmd.name && isHeaderPlaceholder('name')) {
+            const el = document.getElementById('p-name');
+            if (el) el.textContent = cmd.name;
+          }
+          if ((cmd.born || cmd.died) && isHeaderPlaceholder('dates')) {
+            const el = document.getElementById('p-dates');
+            if (el) el.innerHTML = `${cmd.born || 'ГГГГ'} <span>—</span> ${cmd.died || 'ГГГГ'}`;
+          }
+          if (cmd.city && isHeaderPlaceholder('city')) {
+            const el = document.getElementById('p-city');
+            if (el) el.textContent = cmd.city;
+          }
+          if (cmd.epitaph && isHeaderPlaceholder('epitaph')) {
+            const el = document.getElementById('p-bio');
+            if (el) el.textContent = `«${cmd.epitaph}»`;
+          }
+        }
       });
+
+      // Подчищаем разделы, оставшиеся пустыми после обработки —
+      // ИИ не нашёл для них фактов, на странице они не нужны.
+      removeEmptyBlocks();
 
       updateZebraAlternation();
       showToast('Страница успешно перестроена ИИ!');
+    }
+
+    function removeEmptyBlocks() {
+      document.querySelectorAll('#blocks-container > .bio-block').forEach((el) => {
+        const text = (el.querySelector('.bio-block-text')?.textContent || '').trim();
+        const hasImage = !!el.querySelector('.bio-block__photo-img-wrap img');
+        if (!text && !hasImage) {
+          gsap.to(el, {
+            height: 0, opacity: 0, paddingTop: 0, paddingBottom: 0,
+            marginTop: 0, marginBottom: 0, duration: 0.3, ease: 'power2.in',
+            onComplete: () => { el.remove(); updateZebraAlternation(); updateRefinementButtons(); },
+          });
+        }
+      });
     }
 
     function createNewBlock(key, title, text) {
@@ -2352,6 +2413,9 @@
 
       refinementList.innerHTML = '';
       refinementPanel.style.display = 'block';
+      refinementList.style.display = 'none'; // свёрнуто, раскрывается кликом по заголовку
+      const arrowEl = document.getElementById('refinement-arrow');
+      if (arrowEl) arrowEl.textContent = '▸';
 
       let sentences = [];
       if (/[.!?]/.test(text)) {
@@ -2439,6 +2503,9 @@
         return;
       }
 
+      // Глушим микрофон: обработка началась — запись больше не нужна
+      if (isRecording) stopRecording();
+
       processBtn.disabled = true;
       processBtn.textContent = 'Обработка...';
 
@@ -2461,10 +2528,17 @@
             text: el.querySelector('.bio-block-text')?.textContent || ''
           }));
 
+          // Текущая шапка — чтобы ИИ заполнял только незаполненные поля
+          const currentHeader = {
+            name:  isHeaderPlaceholder('name')  ? '' : (document.getElementById('p-name')?.textContent || '').trim(),
+            dates: isHeaderPlaceholder('dates') ? '' : (document.getElementById('p-dates')?.textContent || '').trim(),
+            city:  isHeaderPlaceholder('city')  ? '' : (document.getElementById('p-city')?.textContent || '').trim(),
+          };
+
           const response = await fetch(`${API_BASE}/api/ai/reconstruct-page`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, currentBlocks })
+            body: JSON.stringify({ text, currentBlocks, currentHeader })
           });
 
           if (response.ok) {
@@ -2511,6 +2585,18 @@
         }
       );
     }
+
+    /* ═══════════ ТОЧЕЧНАЯ ПОДГОНКА: сворачивание/раскрытие ═══════════ */
+    (function initRefinementToggle() {
+      const toggle = document.getElementById('refinement-toggle');
+      const arrow = document.getElementById('refinement-arrow');
+      if (!toggle) return;
+      toggle.addEventListener('click', () => {
+        const hidden = refinementList.style.display === 'none';
+        refinementList.style.display = hidden ? 'block' : 'none';
+        if (arrow) arrow.textContent = hidden ? '▾' : '▸';
+      });
+    })();
 
     /* ═══════════ ФОТО ШАПКИ: выбор и предпросмотр ═══════════ */
     (function initAvatarUpload() {

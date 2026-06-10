@@ -466,7 +466,21 @@ async function imageGeneration(prompt, opts = {}) {
 
     const data = await res.json();
     const item = data?.data?.[0] || {};
-    return { b64: item.b64_json || null, mime: 'image/png', url: item.url || null };
+    if (item.b64_json) {
+      return { b64: item.b64_json, mime: 'image/png', url: item.url || null };
+    }
+    // Провайдер вернул только URL — скачиваем на сервере и отдаём base64,
+    // иначе фронт получит ссылку с хотлинк-защитой/коротким TTL и битую картинку.
+    if (item.url) {
+      try {
+        const img = await downloadImageAsB64(item.url, controller.signal);
+        return { ...img, url: item.url };
+      } catch (e) {
+        console.warn('[imageGeneration] не удалось скачать URL картинки, отдаю как есть:', e.message);
+        return { b64: null, mime: 'image/png', url: item.url };
+      }
+    }
+    return { b64: null, mime: 'image/png', url: null };
   } finally {
     clearTimeout(timer);
   }
