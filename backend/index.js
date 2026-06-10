@@ -189,3 +189,21 @@ require('./jobs').startCronJobs();
 
 /* ─── Graceful shutdown ───────────────────────────────── */
 async function shutdown(signal) {
+  console.log(`\n[shutdown] ${signal} received, closing...`);
+  server.close(async () => {
+    try {
+      await prisma.$disconnect();
+      console.log('[shutdown] Prisma disconnected, bye');
+      process.exit(0);
+    } catch (err) {
+      console.error('[shutdown] error:', err);
+      process.exit(1);
+    }
+  });
+  setTimeout(() => {
+    console.error('[shutdown] force exit');
+    process.exit(1);
+  }, 10000).unref();
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

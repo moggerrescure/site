@@ -4,8 +4,10 @@
    ═══════════════════════════════════════════════ */
 const API = (() => {
   // В Docker/Caddy фронт работает на стандартном порту 80/443 (same-origin).
-  // Если мы запущены на нестандартном локальном порту (например, 5500), перенаправляем API-запросы на backend (порт 3000).
-  const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443';
+  // Если мы запущены на нестандартном локальном порту (например, 5500), то используем относительные пути,
+  // так как serve_frontend.js проксирует /api/* на бэкенд. В иных случаях dev-режима (Live Server и т.д.)
+  // перенаправляем API-запросы на backend напрямую (порт 3000).
+  const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
   const BASE = isLocalDev ? 'http://localhost:3000' : '';
   const TOKEN_KEY = 'memory_jwt';
   const TIMEOUT_DEFAULT = 15000;
@@ -146,7 +148,6 @@ const API = (() => {
       if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
         return path;
       }
-      const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443';
       const devPrefix = isLocalDev ? 'http://localhost:3000' : '';
       // Same-origin: /uploads/, /bot-data/, /images/ отдаются тем же хостом через Caddy. В dev-режиме берем с порта 3000.
       if (path.startsWith('/uploads/') || path.startsWith('/bot-data/') || path.startsWith('/images/')) {

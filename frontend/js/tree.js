@@ -11,7 +11,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
 
 
-  const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  const BASE = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
   
   // Pan and Zoom State Variables
   let zoom = 1.0;
@@ -22,6 +22,16 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
   let dragStartX = 0;
   let dragStartY = 0;
   let draggableInstance;
+
+  const isDeceased = (yearsStr) => {
+    if (!yearsStr) return false;
+    const str = String(yearsStr).trim();
+    if (/[-–—]\s*$/.test(str)) return false;
+    const yearsMatched = str.match(/\d{4}/g);
+    if (yearsMatched && yearsMatched.length >= 2) return true;
+    if ((str.includes('-') || str.includes('–') || str.includes('—')) && !/[-–—]\s*$/.test(str)) return true;
+    return false;
+  };
 
   const resolveUrl = path => {
     if (!path) return '';
@@ -837,7 +847,12 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
 
       gen.people.forEach(person => {
         const clan = CLANS[person.clanId] || CLANS.ivanov;
-        const node = document.createElement('div');
+        const deceased = isDeceased(person.years);
+        const hasPage = deceased && person.personPageId;
+        const node = document.createElement(hasPage ? 'a' : 'div');
+        if (hasPage) {
+          node.href = `person.html?id=${person.personPageId}`;
+        }
         node.className = `tree-node tree-node--${gen.ageClass} tree-node--clan-${person.clanId}`;
         node.dataset.id     = person.id;
         node.dataset.clan   = person.clanId;
@@ -1392,6 +1407,7 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
   Object.entries(nodeEls).forEach(([id, el]) => {
     el.addEventListener('click', e => {
       e.stopPropagation();
+      if (el.tagName === 'A') e.preventDefault();
 
       // CONNECT MODE
       if (connectMode) {
@@ -1467,7 +1483,15 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
 
   document.addEventListener('click', e => {
     if (connectMode && !e.target.closest('.tree-node')) { exitConnectMode(); return; }
-    if (!e.target.closest('.tree-node') && !e.target.closest('.clan-legend__item')) clearHighlight();
+    if (!e.target.closest('.tree-node') && !e.target.closest('.clan-legend__item')) {
+      clearHighlight();
+      filterByClan(null);
+      const legendWrap = document.getElementById('tree-clan-legend');
+      if (legendWrap) {
+        legendWrap.querySelectorAll('[data-clan]').forEach(el =>
+          el.classList.remove('clan-legend__item--active'));
+      }
+    }
   });
 
   /* ── CONNECT BUTTON ── */
@@ -1758,10 +1782,15 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
     Object.entries(nodeEls).forEach(([id, el]) => {
       el.addEventListener('click', e => {
         e.stopPropagation();
-        if (isPanning) return;
+        if (el.tagName === 'A') e.preventDefault();
+        if (isPanning) {
+          e.preventDefault();
+          return;
+        }
 
         // CONNECT MODE
         if (connectMode) {
+          e.preventDefault();
           if (!connectFirst) {
             connectFirst = id;
             el.classList.add('connect-selected');
@@ -1921,7 +1950,15 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
 
   document.addEventListener('click', e => {
     if (connectMode && !e.target.closest('.tree-node')) { exitConnectMode(); return; }
-    if (!e.target.closest('.tree-node') && !e.target.closest('.clan-legend__item')) clearHighlight();
+    if (!e.target.closest('.tree-node') && !e.target.closest('.clan-legend__item')) {
+      clearHighlight();
+      filterByClan(null);
+      const legendWrap = document.getElementById('tree-clan-legend');
+      if (legendWrap) {
+        legendWrap.querySelectorAll('[data-clan]').forEach(el =>
+          el.classList.remove('clan-legend__item--active'));
+      }
+    }
   });
 
   window.addEventListener('load', () => {

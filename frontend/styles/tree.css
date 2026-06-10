@@ -170,6 +170,8 @@ body.tree-page { overflow-x: hidden; }
   position: relative;
   cursor: pointer;
   z-index: 1;  /* above SVG threads (z-index:0) */
+  text-decoration: none;
+  color: inherit;
 }
 
 .tree-node__frame {

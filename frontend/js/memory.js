@@ -157,30 +157,13 @@
       load();
     });
 
-    createBtn.addEventListener('click', async () => {
-      createBtn.disabled = true;
-      const originalText = createBtn.textContent;
-      createBtn.textContent = '⏳ Создаю...';
-      try {
-        const r = await API.post('/api/profiles', { fullName: 'Новая страница' });
-        const idOrSlug = r?.data?.slug || r?.data?.id || r?.slug || r?.id;
-        if (idOrSlug) {
-          window.location.href = 'person.html?id=' + encodeURIComponent(idOrSlug) + '&edit=1';
-        } else {
-          alert('Не удалось создать страницу');
-          createBtn.disabled = false;
-          createBtn.textContent = originalText;
-        }
-      } catch (e) {
-        const msg = String(e?.message || '');
-        if (msg.includes('401') || msg.toLowerCase().includes('auth')) {
-          alert('Войдите в аккаунт, чтобы создать страницу.');
-        } else {
-          alert('Ошибка: ' + (msg || 'неизвестная'));
-        }
-        createBtn.disabled = false;
-        createBtn.textContent = originalText;
+    createBtn.addEventListener('click', () => {
+      // Новый флоу: ИИ-конструктор страницы памяти (профиль создаётся при сохранении)
+      if (!API.isLoggedIn()) {
+        alert('Войдите в аккаунт, чтобы создать страницу.');
+        return;
       }
+      window.location.href = 'ai-constructor.html';
     });
   }
 

@@ -514,11 +514,76 @@ async function createProfile(input, actor, options = {}) {
     return serializeForList(created);
 }
 
+/* Ключи блоков фронта → BlockType (см. ai-constructor / person-edit) */
+const BLOCK_KEY_TO_TYPE = {
+    childhood: 'CHILDHOOD',
+    education: 'EDUCATION',
+    career:    'CAREER',
+    family:    'FAMILY',
+    hobbies:   'HOBBIES',
+    legacy:    'LEGACY',
+    custom:    'CUSTOM',
+};
+
+/**
+ * Полная замена контент-блоков профиля (вызывается из updateProfile,
+ * когда фронт прислал orderedBlocks). Пустые блоки пропускаются.
+ * Повторный не-CUSTOM тип превращается в CUSTOM (partial unique по (profileId,type)).
+ */
+async function replaceContentBlocks(profileId, orderedBlocks) {
+    await prisma.$transaction(async (tx) => {
+        await tx.contentBlock.deleteMany({ where: { profileId } });
+        const seenTypes = new Set();
+        let order = 0;
+        for (const raw of (orderedBlocks || []).slice(0, 40)) {
+            if (!raw || typeof raw !== 'object') continue;
+            const body = (raw.text || raw.body || '').toString().trim().slice(0, 8000);
+            if (!body) continue; // пустые разделы не сохраняем
+            const title = (raw.title || '').toString().trim().slice(0, 200) || null;
+
+            let type = BLOCK_KEY_TO_TYPE[(raw.key || '').toString().toLowerCase()] || 'CUSTOM';
+            if (type !== 'CUSTOM' && seenTypes.has(type)) type = 'CUSTOM';
+            seenTypes.add(type);
+
+            // Фото блока: принимаем только наши /uploads/* URL, ищем Media по url
+            let photoId = null;
+            const img = (raw.image || raw.photoUrl || '').toString().split('?')[0];
+            if (img && img.startsWith('/uploads/')) {
+                const media = await tx.media.findFirst({ where: { url: img }, select: { id: true } });
+                photoId = media ? media.id : null;
+            }
+
+            await tx.contentBlock.create({
+                data: { profileId, type, title, body, order, photoId, isHidden: false },
+            });
+            order += 10;
+        }
+    });
+}
+
 async function updateProfile(idOrSlug, updates, actor) {
     // Не даём редактировать soft-deleted (нужно restore сначала)
     const profile = await resolveProfile(idOrSlug);
     if (!profile) {
         const err = new Error('profile_not_found'); err.status = 404; throw err;
+    }
+
+    // Право на редактирование: владелец, ADMIN или грант canEdit
+    const isOwner = actor && profile.ownerId === actor.id;
+    const isAdmin = actor && actor.role === 'ADMIN';
+    if (!isOwner && !isAdmin) {
+        const grant = actor ? await prisma.profileAccess.findUnique({
+            where: { profileId_userId: { profileId: profile.id, userId: actor.id } },
+            select: { canEdit: true },
+        }) : null;
+        if (!grant || !grant.canEdit) {
+            const err = new Error('forbidden'); err.status = 403; throw err;
+        }
+    }
+
+    // Контент-блоки (зебра-разделы) — полная замена, если фронт прислал массив
+    if (Array.isArray(updates.orderedBlocks)) {
+        await replaceContentBlocks(profile.id, updates.orderedBlocks);
     }
 
     const data = {};

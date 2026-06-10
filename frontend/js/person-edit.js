@@ -505,7 +505,7 @@
     const status = panel.querySelector('.edit-gallery-add__status');
     status.textContent = `⏳ Загружаю ${toUpload.length} фото...`;
 
-    const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+    const base = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
     const uploadedUrls = [];
 
     for (const file of toUpload) {
@@ -578,7 +578,7 @@
     formData.append('photo', file);
 
     try {
-      const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+      const base = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
       const res = await fetch(`${base}/api/upload-photo`, {
         method: 'POST',
         body: formData,
@@ -693,7 +693,7 @@
 
     // PUT запрос
     try {
-      const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+      const base = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
       const res = await fetch(`${base}/api/profiles/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1532,7 +1532,7 @@
       const personDates = document.querySelector('.person-header__dates')?.textContent?.trim() || '';
       const fullContext = { name: personName, dates: personDates, originalText: verifiedText, field: field };
 
-      const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+      const base = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
       try {
         const res = await fetch(`${base}/api/ai/chat`, {
           method: 'POST',
@@ -1651,7 +1651,7 @@
         const personDates = document.querySelector('.person-header__dates')?.textContent?.trim() || '';
         const fullContext = { name: personName, dates: personDates, originalText: verifiedText, field: field };
 
-        const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+        const base = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
         try {
           const res = await fetch(`${base}/api/ai/chat`, {
             method: 'POST',
@@ -1783,7 +1783,7 @@
   const personDates = document.querySelector('.person-header__dates')?.textContent?.trim() || '';
   const fullContext = Object.assign({ name: personName, dates: personDates }, contextData || {});
 
-  const base = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  const base = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
   try {
     const res = await fetch(`${base}/api/ai/chat`, {
       method: 'POST',

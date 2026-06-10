@@ -182,4 +182,52 @@ if [ -f db/init/db_dump.sql ]; then
             sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=0 -q' \
             2>&1 | grep -v "already exists" | tail -5 | tee -a "$LOG_FILE" || true
         SEEDED=$(docker compose -f docker-compose.yml exec -T db \
-            sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT C
+            sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COUNT(*) FROM \"Profile\";"' 2>/dev/null | tr -d '[:space:]' || echo "?")
+        log "🌱 Импорт завершён, профилей в базе: ${SEEDED}"
+        # Демо-фото из репозитория → volume uploads (иначе аватарки будут 404)
+        if [ -d backend/uploads ]; then
+            log "🌱 Копирую демо-фото в volume uploads"
+            docker compose -f docker-compose.yml cp backend/uploads/. backend:/app/uploads/ \
+                2>&1 | tee -a "$LOG_FILE" || log "⚠ Не удалось скопировать демо-фото (не критично)"
+        fi
+    else
+        log "⏩ Seed пропущен — в базе уже ${PROFILE_COUNT} профилей"
+    fi
+else
+    log "⏩ Seed пропущен — db/init/db_dump.sql не найден"
+fi
+
+# ─── 6. Healthcheck ──────────────────────────────────────
+DEPLOY_STAGE="healthcheck"
+log "🩺 Healthcheck /health (таймаут 60с)"
+HEALTH_OK=0
+for i in $(seq 1 30); do
+    if curl -sSf --max-time 3 http://localhost/health > /dev/null 2>&1; then
+        HEALTH_OK=1
+        log "✅ /health отвечает (попытка $i/30)"
+        break
+    fi
+    sleep 2
+done
+
+if [ "$HEALTH_OK" = "0" ]; then
+    log "❌ /health не ответил за 60с"
+    log "   Логи бэкенда:"
+    docker compose -f docker-compose.yml logs --tail=50 backend | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+# ─── 7. Чистка висячих образов ───────────────────────────
+DEPLOY_STAGE="cleanup"
+log "🧹 Чистим висячие образы (dangling)"
+docker image prune -f 2>&1 | tee -a "$LOG_FILE" || true
+
+# ─── 8. Финал ─────────────────────────────────────────────
+DEPLOY_STAGE="done"
+trap - ERR
+ELAPSED=$(($(date +%s) - START_TS))
+log "✅ Deploy успешен за ${ELAPSED}с"
+log "   Commit: $CURRENT_COMMIT"
+log "═══════════════════════════════════════════════════════"
+
+notify "✅ <b>Memory deploy OK</b> (${ELAPSED}с)%0A%0ACommit: <code>${CURRENT_COMMIT}</code>%0AServer: $(hostname)"

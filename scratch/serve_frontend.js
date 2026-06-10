@@ -20,6 +20,7 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
+  console.log(`[proxy] ${req.method} ${req.url}`);
   // Proxy /p/*, /api/*, and /uploads/* to the backend server running on port 3000
   if (req.url.startsWith('/p/') || req.url.startsWith('/api/') || req.url.startsWith('/uploads/')) {
     const proxyReq = http.request({

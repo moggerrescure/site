@@ -30,7 +30,7 @@
     });
   }
 
-  const BASE = window.location.port === '3000' ? '' : 'http://localhost:3000';
+  const BASE = (window.location.port === '3000' || window.location.port === '5500') ? '' : 'http://localhost:3000';
   const resolveUrl = path => {
     if (!path) return '';
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
@@ -48,6 +48,16 @@
   let allNodes   = [];
   let clansCache = {};
   let activeDynamicClan = null;
+
+  const isDeceased = (yearsStr) => {
+    if (!yearsStr) return false;
+    const str = String(yearsStr).trim();
+    if (/[-–—]\s*$/.test(str)) return false;
+    const yearsMatched = str.match(/\d{4}/g);
+    if (yearsMatched && yearsMatched.length >= 2) return true;
+    if ((str.includes('-') || str.includes('–') || str.includes('—')) && !/[-–—]\s*$/.test(str)) return true;
+    return false;
+  };
 
   /* ── HISTORY IS HANDLED EXCLUSIVELY VIA PERSONAL EVENTS ── */
 
@@ -801,9 +811,8 @@
   document.addEventListener('click', e => {
     if (currentTreeId === 'default') return;
     if (!e.target.closest('#tree-dynamic .tree-node') && !e.target.closest('.clan-legend__item') && !e.target.closest('.tree-modal') && !e.target.closest('.tree-toolbar')) {
-      if (activeDynamicClan) {
-        filterDynamicByClan(null);
-      }
+      filterDynamicByClan(null);
+      clearHighlightDynamic();
     }
   });
 
@@ -1831,7 +1840,9 @@
         nodeEl.addEventListener('click', e => {
           if (e.target.closest('.tree-node-ctrl')) return;
           const nid = nodeEl.dataset.id;
-          if (nid) handleNodeConnectionClick(nodeEl, nid);
+          if (nid && handleNodeConnectionClick(nodeEl, nid)) {
+            e.preventDefault();
+          }
         });
       });
     }
@@ -2037,8 +2048,13 @@
         const color = clan ? clan.color : '#c8a84b';
         const colorDim = clan ? (clan.colorDim || clan.color + '33') : '#6b5a22';
 
+        const deceased = isDeceased(node.years);
+        const hasPage = !isEditMode && deceased && linked;
+        const tagName = hasPage ? 'a' : 'div';
+        const hrefAttr = hasPage ? `href="person.html?id=${encodeURIComponent(linked)}"` : '';
+
         html += `
-          <div class="tree-node tree-node--young${branch}${activeDynamicClan && activeDynamicClan !== clanId ? ' tree-node--clan-dim' : ''}" data-id="${node.id}" data-clan="${clanId || ''}">
+          <${tagName} ${hrefAttr} class="tree-node tree-node--young${branch}${activeDynamicClan && activeDynamicClan !== clanId ? ' tree-node--clan-dim' : ''}" data-id="${node.id}" data-clan="${clanId || ''}">
             ${isEditMode ? `<div class="tree-node-controls">
               <button class="tree-node-ctrl" data-action="edit" data-id="${node.id}" title="Редактировать"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
               <button class="tree-node-ctrl tree-node-ctrl--events" data-action="events" data-id="${node.id}" title="События жизни"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
@@ -2055,9 +2071,9 @@
               <div class="tree-node__years">${node.years || ''}</div>
               ${clan ? `<div class="tree-node__clan-name" style="color:${color}">${clan.name}</div>` : ''}
               ${node.description ? `<div class="tree-node__desc">${node.description}</div>` : ''}
-              ${linked ? `<a href="/p/${encodeURIComponent(linked)}" class="tree-node__link">Страница памяти →</a>` : ''}
+              ${linked ? (hasPage ? `<span class="tree-node__link">Страница памяти →</span>` : `<a href="person.html?id=${encodeURIComponent(linked)}" class="tree-node__link">Страница памяти →</a>`) : ''}
             </div>
-          </div>`;
+          </${tagName}>`;
       });
       if (isEditMode) html += `<button class="tree-gen-card-add" data-gen="${g}">+ Карточка</button>`;
       html += `</div>`;
@@ -2098,9 +2114,17 @@
     container.querySelectorAll('.tree-node').forEach(nodeEl =>
       nodeEl.addEventListener('click', e => {
         if (e.target.closest('.tree-node-ctrl')) return;
-        if (_nodeDragJustHappened) return; // не реагируем на клик сразу после перетаскивания
+        if (e.target.closest('.tree-node__link') && nodeEl.tagName !== 'A') return; // let inner <a> links work
+        if (nodeEl.tagName === 'A') e.preventDefault();
+        if (_nodeDragJustHappened) {
+          e.preventDefault();
+          return; // не реагируем на клик сразу после перетаскивания
+        }
         const nid = nodeEl.dataset.id;
-        if (handleNodeConnectionClick(nodeEl, nid)) return;
+        if (handleNodeConnectionClick(nodeEl, nid)) {
+          e.preventDefault();
+          return;
+        }
 
         if (dynamicClickTimers[nid]) {
           clearTimeout(dynamicClickTimers[nid]);

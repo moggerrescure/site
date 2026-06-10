@@ -16,6 +16,11 @@ COPY js /srv/js
 COPY styles /srv/styles
 COPY images /srv/images
 COPY assets-v2 /srv/assets-v2
+# Фавиконки лежат в корне frontend/ и не попадают под COPY выше
+COPY favicon*.png favicon.svg apple-touch-icon.png /srv/
+
+# Тестовые/черновые страницы в прод не отдаём
+RUN rm -f /srv/ai-constructor-test.html /srv/ai-mockup.html
 
 # Cache-bust: ?v=${VERSION} на все локальные js/styles ссылки в HTML.
 # Идемпотентно: существующий ?v=... заменяется.
