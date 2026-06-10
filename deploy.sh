@@ -166,37 +166,20 @@ DEPLOY_STAGE="up"
 log "🚢 docker compose up -d --remove-orphans"
 docker compose -f docker-compose.yml up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"
 
-# ─── 6. Healthcheck ──────────────────────────────────────
-DEPLOY_STAGE="healthcheck"
-log "🩺 Healthcheck /health (таймаут 60с)"
-HEALTH_OK=0
-for i in $(seq 1 30); do
-    if curl -sSf --max-time 3 http://localhost/health > /dev/null 2>&1; then
-        HEALTH_OK=1
-        log "✅ /health отвечает (попытка $i/30)"
-        break
-    fi
-    sleep 2
-done
-
-if [ "$HEALTH_OK" = "0" ]; then
-    log "❌ /health не ответил за 60с"
-    log "   Логи бэкенда:"
-    docker compose -f docker-compose.yml logs --tail=50 backend | tee -a "$LOG_FILE"
-    exit 1
-fi
-
-# ─── 7. Чистка висячих образов ───────────────────────────
-DEPLOY_STAGE="cleanup"
-log "🧹 Чистим висячие образы (dangling)"
-docker image prune -f 2>&1 | tee -a "$LOG_FILE" || true
-
-# ─── 8. Финал ─────────────────────────────────────────────
-DEPLOY_STAGE="done"
-trap - ERR
-ELAPSED=$(($(date +%s) - START_TS))
-log "✅ Deploy успешен за ${ELAPSED}с"
-log "   Commit: $CURRENT_COMMIT"
-log "═══════════════════════════════════════════════════════"
-
-notify "✅ <b>Memory deploy OK</b> (${ELAPSED}с)%0A%0ACommit: <code>${CURRENT_COMMIT}</code>%0AServer: $(hostname)"
+# ─── 5b. Разовый seed демо-данных (только если база ПУСТАЯ) ───
+# Импортирует db/init/db_dump.sql, если в Profile ноль записей.
+# На непустой базе шаг тихо пропускается — повторные деплои безопасны.
+DEPLOY_STAGE="seed-if-empty"
+if [ -f db/init/db_dump.sql ]; then
+    PROFILE_COUNT=$(docker compose -f docker-compose.yml exec -T db \
+        sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COUNT(*) FROM \"Profile\";"' 2>/dev/null | tr -d '[:space:]' || echo "ERR")
+    if [ "$PROFILE_COUNT" = "0" ]; then
+        log "🌱 База пуста — импортирую демо-данные из db/init/db_dump.sql"
+        # session_replication_role=replica — отключает FK-проверки на время импорта
+        # (дамп содержит и схему: ошибки 'already exists' игнорируются, данные заливаются)
+        ( echo "SET session_replication_role = replica;"; cat db/init/db_dump.sql ) | \
+            docker compose -f docker-compose.yml exec -T db \
+            sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=0 -q' \
+            2>&1 | grep -v "already exists" | tail -5 | tee -a "$LOG_FILE" || true
+        SEEDED=$(docker compose -f docker-compose.yml exec -T db \
+            sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT C

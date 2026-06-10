@@ -62,6 +62,15 @@ const corsAllowlist = (process.env.CORS_ORIGINS ||
   .map((s) => s.trim())
   .filter(Boolean);
 
+// Боевой домен из SITE_URL всегда разрешён (+ www-вариант) — чтобы логин
+// не падал с "CORS: origin not allowed", даже если CORS_ORIGINS не задан в .env.
+try {
+  const siteOrigin = new URL(process.env.SITE_URL || '').origin;
+  for (const o of [siteOrigin, siteOrigin.replace('://', '://www.')]) {
+    if (o && !corsAllowlist.includes(o)) corsAllowlist.push(o);
+  }
+} catch (_) { /* SITE_URL не задан или невалиден — пропускаем */ }
+
 app.use(cors({
   origin: (origin, cb) => {
     // Без Origin (curl, same-origin запросы через Caddy) — пропускаем
@@ -180,21 +189,3 @@ require('./jobs').startCronJobs();
 
 /* ─── Graceful shutdown ───────────────────────────────── */
 async function shutdown(signal) {
-  console.log(`\n[shutdown] ${signal} received, closing...`);
-  server.close(async () => {
-    try {
-      await prisma.$disconnect();
-      console.log('[shutdown] Prisma disconnected, bye');
-      process.exit(0);
-    } catch (err) {
-      console.error('[shutdown] error:', err);
-      process.exit(1);
-    }
-  });
-  setTimeout(() => {
-    console.error('[shutdown] force exit');
-    process.exit(1);
-  }, 10000).unref();
-}
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
