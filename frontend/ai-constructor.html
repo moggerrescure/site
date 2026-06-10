@@ -667,14 +667,21 @@
     }
 
     /* Рамка аватара при наведении в конструкторе */
+    /* Рамка аватара при наведении в конструкторе */
     #p-avatar-wrap {
       border: 1px dashed rgba(200, 168, 75, 0.2);
       transition: all 0.3s ease;
+      background: #f5f0e8;
     }
     #p-avatar-wrap:hover {
       border-color: var(--gold) !important;
-      background: rgba(200, 168, 75, 0.04);
-      box-shadow: 0 0 15px rgba(200, 168, 75, 0.1);
+      box-shadow: 0 0 15px rgba(200, 168, 75, 0.15);
+    }
+    #p-avatar-wrap:hover .avatar-upload-btn-text {
+      background: var(--gold) !important;
+      color: #0c0b0a !important;
+      border-color: var(--gold) !important;
+      box-shadow: 0 2px 8px rgba(200, 168, 75, 0.3);
     }
 
     /* Поддержка data-placeholder для contenteditable */
@@ -1038,9 +1045,9 @@
     <div class="person-header">
       <div class="person-header__photo" id="p-avatar-wrap" title="Нажмите, чтобы загрузить фото" style="cursor:pointer;">
         <img id="p-avatar" src="" alt="Фото" style="display:none;">
-        <div class="bio-block__photo-placeholder" id="p-avatar-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;">
-          <span class="bio-block__photo-icon">✦</span>
-          <span style="font-size:12px;opacity:.6;font-family:var(--font-ui);">Загрузить фото</span>
+        <div class="bio-block__photo-placeholder" id="p-avatar-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:12px;color:#332f2b;">
+          <span class="bio-block__photo-icon" style="font-size:36px;color:var(--gold-dim);opacity:0.85;">✦</span>
+          <span class="avatar-upload-btn-text" style="font-size:12px;font-family:var(--font-ui);color:#332f2b;background:rgba(200,168,75,0.1);border:1px solid rgba(200,168,75,0.25);padding:6px 16px;border-radius:4px;font-weight:500;transition:all 0.2s;">Загрузить фото</span>
         </div>
       </div>
 
