@@ -215,13 +215,17 @@
    ═══════════════════════════════════════════════ */
 (function adjustTreeLinks() {
   function tryAdjust() {
-    if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
-    const user = API.getUser ? API.getUser() : null;
-    if (user && user.rootTreeId) {
-      document.querySelectorAll('a[href="family-tree.html"]').forEach(a => {
-        a.href = `family-tree.html?tree=${encodeURIComponent(user.rootTreeId)}`;
-      });
+    const defaultTreeId = 'cmpx2xehh0000pa313hbd9znu';
+    let targetId = defaultTreeId;
+    if (typeof API !== 'undefined' && API.isLoggedIn && API.isLoggedIn()) {
+      const user = API.getUser ? API.getUser() : null;
+      if (user && user.rootTreeId) {
+        targetId = user.rootTreeId;
+      }
     }
+    document.querySelectorAll('a[href="family-tree.html"]').forEach(a => {
+      a.href = `family-tree.html?tree=${encodeURIComponent(targetId)}`;
+    });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', tryAdjust, { once: true });

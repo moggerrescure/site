@@ -9,12 +9,12 @@
 
 (function () {
   const urlParams   = new URLSearchParams(window.location.search);
-  let currentTreeId = urlParams.get('tree') || 'default';
+  let currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
 
   // Transparent Tree Selection: redirect user to their rootTreeId if they are on default
   if (typeof API !== 'undefined') {
     const user = API.getUser();
-    if (user && user.rootTreeId && user.rootTreeId !== 'default' && currentTreeId === 'default') {
+    if (user && user.rootTreeId && user.rootTreeId !== 'default' && (currentTreeId === 'default' || currentTreeId === 'cmpx2xehh0000pa313hbd9znu')) {
       window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
       return;
     }
