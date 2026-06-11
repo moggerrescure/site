@@ -71,7 +71,8 @@ router.post('/chat', optionalAuth, aiGenerationLimiter, wrap(async (req, res) =>
   let chatResponse = '';
   let proposedText = '';
   try {
-    const parsed = JSON.parse(content);
+    const { parseJSONSafe } = require('../lib/aiClient');
+    const parsed = parseJSONSafe(content);
     chatResponse = typeof parsed.chatResponse === 'string' ? parsed.chatResponse : '';
     proposedText = typeof parsed.proposedText === 'string' ? parsed.proposedText : '';
   } catch (_) {

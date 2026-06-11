@@ -486,4 +486,31 @@ async function imageGeneration(prompt, opts = {}) {
   }
 }
 
-module.exports = { chatCompletion, imageGeneration, AI_MODEL, AI_IMAGE_MODEL, AI_BASE_URL };
+function parseJSONSafe(str) {
+  if (!str || typeof str !== 'string') return null;
+  let clean = str.trim();
+  
+  if (clean.includes('```')) {
+    const match = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      clean = match[1].trim();
+    }
+  }
+  
+  try {
+    return JSON.parse(clean);
+  } catch (e) {
+    const startIdx = clean.indexOf('{');
+    const endIdx = clean.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      try {
+        return JSON.parse(clean.slice(startIdx, endIdx + 1));
+      } catch (err) {
+        throw new Error(`Failed to parse JSON: ${err.message}. Original: ${str.slice(0, 300)}`);
+      }
+    }
+    throw e;
+  }
+}
+
+module.exports = { chatCompletion, imageGeneration, AI_MODEL, AI_IMAGE_MODEL, AI_BASE_URL, parseJSONSafe };

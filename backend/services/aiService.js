@@ -71,7 +71,7 @@ async function chat({ messages, context }) {
  * Calls Gemini API using native fetch.
  */
 async function callGemini(messages, context) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
   
   // Format messages for Gemini
   const contents = messages.map(msg => ({
@@ -414,8 +414,10 @@ async function structureFullBiography(rawText, context = {}) {
     '2. Напиши coherentный, красивый текст для блока (1–4 абзаца). Перефразируй, улучши стиль, убери повторы и разговорные шероховатости, но сохрани факты, имена, атмосферу и смысл оригинала.',
     '3. Если в рассказе есть сильная вводная часть — верни короткое bio (2–4 предложения, как эпитафия).',
     '4. **Будь агрессивным в создании custom-блоков**: если в рассказе есть яркие уникальные темы (военная служба, хобби-страсть, переезд в другой город, важное событие, характерная черта и т.д.), которые не вписываются идеально в 6 стандартных — смело создавай дополнительные custom_ блоки. Лучше 2–3 хороших custom, чем пытаться впихнуть всё в стандартные.',
-    '5. Не выдумывай факты. Если чего-то не хватает — не добавляй.',
-    '6. Отвечай строго на русском языке.',
+    '5. Не выдумывай факты. Если чего-то не хватает — не добавляй. Категорически ЗАПРЕЩЕНО выдумывать точные даты, годы (например, год окончания школы или вуза, год свадьбы и т.д.), если они прямо не указаны в рассказе пользователя. Никаких "окончил в 2024 году", если этого нет в тексте.',
+    '6. Сопоставляй с датами жизни: если в контексте указаны годы жизни (например, 1942 - 2018), все события должны хронологически укладываться в этот период. Человек не может окончить университет или начать работу в 2024 году, если он ушел из жизни в 2018 году.',
+    '7. Разделяй обучение и работу: учёба (школа, БНТУ, институт) должна относиться строго к разделу education ("Образование и становление"), а работа/карьера (завод, мастер, 40 лет стажа) — строго к разделу career ("Профессиональный путь"). Никогда не смешивай карьеру с образованием и не пиши про будущую карьеру в разделе обучения как о чём-то предстоящем, если человек уже завершил свой трудовой путь или ушел из жизни.',
+    '8. Отвечай строго на русском языке.',
     '',
     'Для каждого блока ОБЯЗАТЕЛЬНО включи короткую цитату-выдержку из оригинального текста пользователя (1–2 предложения), которая стала основой для этого блока. Это поможет пользователю понять, откуда взялся материал.',
     '',
@@ -455,7 +457,8 @@ async function structureFullBiography(rawText, context = {}) {
   }
 
   try {
-    const parsed = JSON.parse(content);
+    const { parseJSONSafe } = require('../lib/aiClient');
+    const parsed = parseJSONSafe(content);
     return {
       bio: typeof parsed.bio === 'string' ? parsed.bio.trim() : '',
       blocks: Array.isArray(parsed.blocks) ? parsed.blocks.filter(b => b && b.key && b.text).map(b => ({
@@ -465,7 +468,7 @@ async function structureFullBiography(rawText, context = {}) {
       })) : []
     };
   } catch (e) {
-    console.error('[structureFullBiography] bad JSON from model');
+    console.error('[structureFullBiography] bad JSON from model:', e.message);
     return generateMockStructuredBio(rawText, personName);
   }
 }
@@ -474,6 +477,7 @@ function generateMockStructuredBio(rawText, personName) {
   // Very simple heuristic mock for when AI is not available
   const lower = rawText.toLowerCase();
   const name = personName || 'Человек';
+  const shortExcerpt = rawText.slice(0, 100) + '...';
 
   const blocks = [];
 
@@ -485,14 +489,14 @@ function generateMockStructuredBio(rawText, personName) {
       excerpt: shortExcerpt
     });
   }
-  if (lower.includes('учеб') || lower.includes('институт') || lower.includes('университет') || lower.includes('школ')) {
+  if (lower.includes('учеб') || lower.includes('учиться') || lower.includes('учился') || lower.includes('училась') || lower.includes('институт') || lower.includes('университет') || lower.includes('бнту') || lower.includes('колледж')) {
     blocks.push({
       key: 'education',
       title: 'Образование',
       text: 'Образование стало важной вехой. ' + name + ' проявлял любопытство и старательность в учёбе.'
     });
   }
-  if (lower.includes('работ') || lower.includes('карьер') || lower.includes('завод') || lower.includes('служб')) {
+  if (lower.includes('работ') || lower.includes('карьер') || lower.includes('завод') || lower.includes('служб') || lower.includes('учитель') || lower.includes('преподавал') || lower.includes('професси')) {
     blocks.push({
       key: 'career',
       title: 'Профессиональный путь',
@@ -569,7 +573,9 @@ async function reconstructPage(rawText, currentBlocks, currentHeader = {}) {
     '- Напиши связный, красивый, уважительный текст на русском языке.',
     '- Исправь орфографию и шероховатости речи.',
     '- Сохраняй все факты, имена и даты.',
-    '- Не выдумывай новые факты, которых нет в речи пользователя.',
+    '- Не выдумывай новые факты, которых нет в речи пользователя. Категорически запрещено выдумывать любые конкретные даты, годы учебы или работы, если их нет в словах пользователя.',
+    '- Сопоставляй с датами жизни (шапкой страницы): события должны хронологически укладываться в период жизни человека (например, если человек ушел в 2018 году, он не мог учиться или работать в 2024).',
+    '- Разделяй учёбу и карьеру: факты об учёбе (университет, институт, школа) направляй в блок `education`, а факты о работе/должностях/стаже — строго в блок `career`. Не смешивай их в один блок и не описывай работу как "будущую деятельность" в блоке образования, если человек уже проработал всю жизнь или умер.',
     '- Если пользователь просит удалить все стартовые/изначальные блоки или очистить страницу, верни DELETE для childhood, education, career.',
     '',
     'Формат ответа — строго валидный JSON вида:',
@@ -592,7 +598,8 @@ async function reconstructPage(rawText, currentBlocks, currentHeader = {}) {
       maxTokens: 1500,
       json: true
     });
-    const parsed = JSON.parse(content);
+    const { parseJSONSafe } = require('../lib/aiClient');
+    const parsed = parseJSONSafe(content);
     return { commands: parsed.commands || [] };
   } catch (err) {
     console.error('[reconstructPage] AI error:', err);

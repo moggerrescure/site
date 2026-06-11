@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,69 +16,22 @@ datasource db {
 //  ENUMS
 // ============================================================
 
-enum UserRole {
-  USER // обычный пользователь сайта
-  EDITOR // может редактировать назначенные профили
-  ADMIN // полный доступ
-}
 
-enum Gender {
-  MALE
-  FEMALE
-  UNKNOWN
-}
 
-enum Visibility {
-  PUBLIC // виден всем
-  UNLISTED // только по прямой ссылке
-  PASSWORD // требует пин-код / пароль
-  PRIVATE // только владелец / разрешённые
-}
+
+
+
 
 // Типизация 6 дефолтных блоков биографии (п. 1.4)
-enum BlockType {
-  HERO // hero-блок (фото + имя + даты) — генерируется из Profile, опционально
-  CHILDHOOD
-  EDUCATION
-  CAREER
-  FAMILY
-  HOBBIES
-  LEGACY
-  CUSTOM // пользовательский блок
-}
 
-enum MemoryType {
-  TEXT
-  PHOTO
-  AUDIO
-  VIDEO
-}
 
-enum RelationType {
-  PARENT // node -> child (родитель → ребёнок)
-  SPOUSE // супружество (двунаправленное, см. ниже)
-  ADOPTIVE // приёмный родитель
-  STEP // отчим / мачеха
-}
 
-enum TimelineCategory {
-  BIRTH
-  DEATH
-  MARRIAGE
-  EDUCATION
-  CAREER
-  RELOCATION
-  AWARD
-  HISTORICAL // событие страны/мира (без привязки к FamilyNode)
-  CUSTOM
-}
 
-enum MediaKind {
-  IMAGE
-  AUDIO
-  VIDEO
-  DOCUMENT
-}
+
+
+
+
+
 
 // ============================================================
 //  AUTH / USERS
@@ -91,7 +44,7 @@ model User {
   passwordHash String
   jwtVersion   Int      @default(0)
   displayName  String?
-  role         UserRole @default(USER)
+  role         String @default("USER")
   telegramId   BigInt?  @unique // привязка к боту (объединение bot.db)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -139,13 +92,13 @@ model Profile {
   burialPlace  String?
   burialLat    Float?
   burialLng    Float?
-  bio          String?   @db.Text // короткое intro (hero subtitle)
+  bio          String?    // короткое intro (hero subtitle)
   coverPhotoId String?   @unique
   coverPhoto   Media?    @relation("ProfileCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
-  gender       Gender    @default(UNKNOWN)
+  gender       String    @default("UNKNOWN")
 
   // Видимость и защита
-  visibility Visibility @default(PUBLIC)
+  visibility String @default("PUBLIC")
   // Пароль страницы: PBKDF2 в том же формате "iterations:saltHex:hashHex".
   // NULL если visibility != PASSWORD
   accessHash String?
@@ -209,9 +162,9 @@ model ContentBlock {
   profileId String
   profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  type    BlockType // жёстко типизирован enum
+  type    String // жёстко типизирован enum
   title   String? // кастомный заголовок (для CUSTOM)
-  body    String    @db.Text // основной текст
+  body    String     // основной текст
   // Опциональное иллюстративное фото (одно — в зебра-вёрстке слева/справа)
   photoId String?
   photo   Media?    @relation("BlockPhoto", fields: [photoId], references: [id], onDelete: SetNull)
@@ -260,8 +213,8 @@ model GuestMemory {
   authorUser   User?   @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
   authorName   String // имя, отображаемое на карточке (может отличаться)
 
-  type    MemoryType @default(TEXT)
-  text    String?    @db.Text
+  type    String @default("TEXT")
+  text    String?    
   mediaId String?
   media   Media?     @relation("MemoryMedia", fields: [mediaId], references: [id], onDelete: SetNull)
 
@@ -307,9 +260,9 @@ model CandleLight {
 model FamilyTree {
   id          String     @id @default(cuid())
   name        String // «Род Петровых»
-  description String?    @db.Text
+  description String?    
   ownerId     String
-  visibility  Visibility @default(UNLISTED)
+  visibility  String @default("UNLISTED")
   accessHash  String?
 
   nodes FamilyNode[]
@@ -332,7 +285,7 @@ model FamilyClan {
   name        String // «Род Ивановых»
   color       String       @default("#c8a84b") // hex для отрисовки нитей
   icon        String       @default("✦") // короткий символ (1-4 char)
-  description String?      @db.Text
+  description String?      
   nodes       FamilyNode[]
   createdAt   DateTime     @default(now())
 
@@ -353,13 +306,13 @@ model FamilyNode {
   maidenName String?
   birthDate  DateTime?
   deathDate  DateTime?
-  gender     Gender    @default(UNKNOWN)
+  gender     String    @default("UNKNOWN")
   photoId    String?
   photo      Media?    @relation("NodePhoto", fields: [photoId], references: [id], onDelete: SetNull)
 
   clanId String?
   clan   FamilyClan? @relation(fields: [clanId], references: [id], onDelete: SetNull)
-  notes  String?     @db.Text
+  notes  String?     
 
   // 1:1 со страницей памяти, если она есть (зеркало Profile.familyNodeId)
   profile Profile?
@@ -393,7 +346,7 @@ model FamilyConnection {
   toNodeId   String
   toNode     FamilyNode @relation("Child", fields: [toNodeId], references: [id], onDelete: Cascade)
 
-  type      RelationType
+  type      String
   // Для SPOUSE: даты брака/развода
   startDate DateTime?
   endDate   DateTime?
@@ -422,9 +375,9 @@ model TimelineEvent {
   profileId    String?
   profile      Profile?    @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  category     TimelineCategory
+  category     String
   title        String
-  description  String?          @db.Text
+  description  String?          
   date         DateTime // точная дата
   dateAccuracy String? // "year" | "month" | "day"
   place        String?
@@ -455,7 +408,7 @@ model TimelineEvent {
 
 model Media {
   id           String    @id @default(cuid())
-  kind         MediaKind
+  kind         String
   url          String // путь относительно /uploads/
   originalName String?
   mimeType     String
@@ -515,60 +468,11 @@ model ProfileAccessCode {
   @@index([profileId])
 }
 
-enum AuditAction {
-  LOGIN
-  LOGIN_FAILED
-  LOGOUT
-  PROFILE_CREATE
-  PROFILE_UPDATE
-  PROFILE_SOFT_DELETE
-  PROFILE_RESTORE
-  PROFILE_HARD_DELETE
-  TREE_CREATE
-  TREE_DELETE
-  USER_ROLE_CHANGE
-  ACCESS_CODE_GENERATE
-  ACCESS_CODE_REDEEM
-TREE_UPDATE
-TIMELINE_EVENT_CREATE
-TIMELINE_EVENT_UPDATE
-TIMELINE_EVENT_DELETE
-ACCESS_GRANT_CREATE
-ACCESS_GRANT_UPDATE
-ACCESS_GRANT_DELETE
-ACCESS_CODE_REVOKE
-ACCESS_CODE_DELETE
 
-  // === Disputes (Phase 1) ===
-  DISPUTE_CREATE
-  DISPUTE_UPDATE_STATUS
-  DISPUTE_RESOLVE
-  DISPUTE_WITHDRAW
-
-  // === Merge (Phase 1) ===
-  MERGE_REQUEST_CREATE
-  MERGE_REQUEST_OWNER_APPROVE
-  MERGE_REQUEST_ADMIN_APPROVE
-  MERGE_REQUEST_REJECT
-  MERGE_REQUEST_EXECUTE
-  MERGE_REQUEST_CANCEL
-
-  // === Legacy Contact (Phase 1) ===
-  LEGACY_CONTACT_SET
-  LEGACY_CONTACT_INVITE_SEND
-  LEGACY_CONTACT_INVITE_ACCEPT
-  LEGACY_CONTACT_REVOKE
-  LEGACY_CONTACT_TRIGGER
-  LEGACY_CLAIM_CREATE
-  LEGACY_CLAIM_APPROVE
-  LEGACY_CLAIM_REJECT
-  LEGACY_CLAIM_EXPIRE
-  OWNERSHIP_TRANSFER
-}
 
 model AuditLog {
   id          String      @id @default(cuid())
-  action      AuditAction
+  action      String
   userId      String?     // кто (null для LOGIN_FAILED по неизвестному email)
   user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   entityType  String?     // 'Profile' | 'FamilyTree' | 'User' | 'AccessCode' | null
@@ -605,45 +509,15 @@ model PasswordResetToken {
 // === Disputes / Merge / Legacy Contact (Phase 1) ============
 // ============================================================
 
-enum DisputeStatus {
-  OPEN
-  UNDER_REVIEW
-  RESOLVED_ACCEPTED
-  RESOLVED_REJECTED
-  WITHDRAWN
-}
 
-enum DisputeReason {
-  WRONG_INFO        // Неверная информация в профиле
-  INAPPROPRIATE     // Оскорбительный/неуместный контент
-  OWNERSHIP_CLAIM   // Я родственник, прошу передать ownership
-  DUPLICATE         // Дубликат другого профиля — триггерит merge
-  OTHER
-}
 
-enum MergeStatus {
-  PENDING_OWNERS    // Ждём согласия обоих владельцев source и target
-  PENDING_ADMIN     // Оба владельца согласны, ждём ADMIN review
-  APPROVED          // Все согласия получены, готов к execute
-  EXECUTED          // Merge выполнен, source soft-deleted
-  REJECTED          // Кто-то из owner/admin отказал
-  CANCELLED         // Заявитель отозвал
-}
 
-enum LegacyContactStatus {
-  PENDING           // Owner пригласил, наследник не подтвердил
-  ACTIVE            // Наследник подтвердил, ждёт триггера
-  TRIGGERED         // Бездействие > inactivityDays, наследник может claim
-  TRANSFERRED       // Передача состоялась
-  REVOKED           // Owner отозвал
-}
 
-enum LegacyClaimStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  EXPIRED
-}
+
+
+
+
+
 
 // --- Disputes -----------------------------------------------
 
@@ -656,13 +530,13 @@ model ProfileDispute {
   reporterId  String
   reporter    User          @relation("DisputeReporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
-  reason      DisputeReason
-  description String        @db.Text
-  evidence    String?       @db.Text  // ссылки на документы, имена файлов
+  reason      String
+  description String        
+  evidence    String?         // ссылки на документы, имена файлов
 
-  status      DisputeStatus @default(OPEN)
+  status      String @default("OPEN")
   resolverId  String?                  // ADMIN userId (без FK — оставим String для гибкости)
-  resolution  String?       @db.Text
+  resolution  String?       
   resolvedAt  DateTime?
 
   // Если reason = DUPLICATE — какой профиль является оригиналом
@@ -699,9 +573,9 @@ model ProfileMergeRequest {
   requesterId     String
   requester       User        @relation("MergeRequester", fields: [requesterId], references: [id], onDelete: Cascade)
 
-  reason          String?     @db.Text
+  reason          String?     
 
-  status          MergeStatus @default(PENDING_OWNERS)
+  status          String @default("PENDING_OWNERS")
 
   // Two-step approval: оба owner → ADMIN
   sourceOwnerApprovedAt DateTime?
@@ -714,7 +588,7 @@ model ProfileMergeRequest {
   executedAt      DateTime?
   rejectedAt      DateTime?
   rejectedBy      String?
-  rejectionReason String?     @db.Text
+  rejectionReason String?     
 
   // Обратная сторона 1:1 с ProfileDispute.mergeRequest
   dispute         ProfileDispute?
@@ -744,7 +618,7 @@ model LegacyContact {
   heirEmail       String
   heirName        String?
 
-  status          LegacyContactStatus @default(PENDING)
+  status          String @default("PENDING")
 
   // Invite flow (token = SHA-256 hex)
   inviteTokenHash String?             @unique
@@ -757,7 +631,7 @@ model LegacyContact {
 
   // Per-contact override (default 90, синхронизируется с User.legacyInactivityDays при create)
   inactivityDays  Int                 @default(90)
-  message         String?             @db.Text  // прощальное сообщение наследнику
+  message         String?               // прощальное сообщение наследнику
 
   revokedAt       DateTime?
 
@@ -783,13 +657,13 @@ model LegacyClaim {
   claimantId      String
   claimant        User              @relation(fields: [claimantId], references: [id], onDelete: Cascade)
 
-  status          LegacyClaimStatus @default(PENDING)
-  evidence        String?           @db.Text
+  status          String @default("PENDING")
+  evidence        String?           
 
   // ADMIN review (resolverId без FK — String)
   reviewerId      String?
   reviewedAt      DateTime?
-  reviewNotes     String?           @db.Text
+  reviewNotes     String?           
 
   expiresAt       DateTime          // обычно +30 дней с createdAt
 
@@ -805,17 +679,12 @@ model LegacyClaim {
 // ─────────────────────────────────────────────────────────────
 // Telegram deep-link login (Phase 3) — без widget/домена
 // ─────────────────────────────────────────────────────────────
-enum TgLoginStatus {
-  PENDING       // создан, ждёт подтверждения через бота
-  READY         // бот подтвердил, ждёт poll'а от фронта
-  CONSUMED      // фронт забрал JWT, токен использован
-  EXPIRED       // не подтверждён в TTL (5 минут)
-}
+
 
 model TgLoginToken {
   id           String        @id @default(cuid())
   token        String        @unique
-  status       TgLoginStatus @default(PENDING)
+  status       String @default("PENDING")
   userId       String?
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   expiresAt    DateTime
