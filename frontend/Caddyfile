@@ -74,7 +74,7 @@
 qr-memory.by {
 	import app
 	tls {
-		ca https://acme.zerossl.com/v2/DV90
+		ca https://api.buypass.com/acme/directory
 	}
 	# HSTS: TLS терминируется на Caddy, поэтому заголовок ставим здесь
 	# (а не в helmet на бэкенде, который ходит по http внутри сети).
@@ -84,7 +84,7 @@ qr-memory.by {
 # www → без www: единый канонический хост (301).
 www.qr-memory.by {
 	tls {
-		ca https://acme.zerossl.com/v2/DV90
+		ca https://api.buypass.com/acme/directory
 	}
 	redir https://qr-memory.by{uri} permanent
 }
