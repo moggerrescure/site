@@ -88,6 +88,8 @@ services:
       - "443:443"
     volumes:
       - uploads:/srv/uploads:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
   # ═══════════════════════════════════════════════════════
   #  pg-backup: ежедневный pg_dump → ./backups + Telegram
@@ -123,3 +125,5 @@ services:
 volumes:
   pgdata:
   uploads:
+  caddy_data:
+  caddy_config:
