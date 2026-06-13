@@ -677,7 +677,12 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
         localStorage.setItem('tree_connections_default', JSON.stringify(conns));
       }
 
-      if (clansJson.ok && nodesJson.ok && Array.isArray(clansJson.data) && Array.isArray(nodesJson.data) && clansJson.data.length > 0 && nodesJson.data.length > 0) {
+      if (clansJson.ok && nodesJson.ok && Array.isArray(clansJson.data) && Array.isArray(nodesJson.data)) {
+        if (nodesJson.data.length === 0) {
+          GENERATIONS = [];
+          CLANS = {};
+          console.log('Loaded empty tree from DB.');
+        } else if (clansJson.data.length > 0 && nodesJson.data.length > 0) {
         if (connsJson.ok && Array.isArray(connsJson.data)) {
           // Pre-populate parents and spouse fields from connections for tree rendering to sort correctly
           const parentMap = {};
@@ -772,7 +777,8 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
         }
         GENERATIONS = newGenerations;
         console.log('Successfully loaded default tree clans and nodes from DB:', CLANS, GENERATIONS);
-      } else {
+      }
+    } else {
         console.log('No DB records or invalid formats. Falling back to hardcoded default data.');
       }
     } catch (err) {
