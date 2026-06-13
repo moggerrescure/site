@@ -207,12 +207,13 @@ async function getTree(treeId, actor) {
 
 async function createTree(input, actor) {
     if (!actor) throw ApiError.unauthorized();
-    const { name, description, visibility } = input || {};
+    const { id, name, description, visibility } = input || {};
     if (!name || String(name).trim().length < 2) {
         throw ApiError.badRequest('Укажите название дерева');
     }
     const tree = await prisma.familyTree.create({
         data: {
+            id: id ? String(id).trim() : undefined,
             name: String(name).trim(),
             description: description ? String(description).trim() : null,
             visibility: visibility && ['PUBLIC', 'UNLISTED', 'PASSWORD', 'PRIVATE'].includes(visibility)

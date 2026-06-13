@@ -1828,36 +1828,78 @@
       initLegendConnections();
     });
   } else {
-    /* Default дерево — статическое, но соединения тоже работают */
-    syncConnectionsFromDb().then(() => {
-      // Done syncing default connections
-    });
+    /* Default дерево — статическое, но если юзер логинен — проверяем его деревья */
+    const isLoggedIn = typeof API !== 'undefined' && API.isLoggedIn && API.isLoggedIn();
+    if (isLoggedIn) {
+      // Скрываем статику превентивно, чтобы не мерцал mock
+      const sw = document.getElementById('tree-wrapper');
+      if (sw) sw.style.display = 'none';
 
-    /* Вешаем соединение на статические карточки */
-    function attachStaticNodeClicks() {
-      document.querySelectorAll('#tree-wrapper .tree-node, #tree-generations .tree-node').forEach(nodeEl => {
-        if (nodeEl.dataset.connBound) return;
-        nodeEl.dataset.connBound = '1';
-        nodeEl.addEventListener('click', e => {
-          if (e.target.closest('.tree-node-ctrl')) return;
-          const nid = nodeEl.dataset.id;
-          if (nid && handleNodeConnectionClick(nodeEl, nid)) {
-            e.preventDefault();
+      fetch(`${BASE}/api/family-trees`, {
+        headers: API.getToken ? (API.getToken() ? { 'Authorization': 'Bearer ' + API.getToken() } : {}) : {}
+      }).then(r => r.json()).then(j => {
+        const trees = (j && (j.data || j.trees)) || [];
+        if (trees.length > 0) {
+          // Перенаправляем на первое дерево
+          const target = trees[0].id || trees[0].treeId;
+          window.location.replace("family-tree.html?tree=" + encodeURIComponent(target));
+        } else {
+          // Деревьев нет — показываем схематику
+          const sl = document.getElementById('tree-clan-legend');
+          if (sl) sl.innerHTML = '';
+          
+          let dc = document.getElementById('tree-dynamic');
+          if (!dc) {
+            dc = document.createElement('div');
+            dc.className = 'tree-dynamic'; dc.id = 'tree-dynamic';
+            document.querySelector('.tree-section')?.appendChild(dc);
           }
-        });
+          dc.style.display = 'block';
+          renderEmptySchematic(dc);
+        }
+      }).catch(() => {
+        // В случае ошибки показываем схематику
+        let dc = document.getElementById('tree-dynamic');
+        if (!dc) {
+          dc = document.createElement('div');
+          dc.className = 'tree-dynamic'; dc.id = 'tree-dynamic';
+          document.querySelector('.tree-section')?.appendChild(dc);
+        }
+        dc.style.display = 'block';
+        renderEmptySchematic(dc);
       });
-    }
-    /* tree.js строит карточки — ждём */
-    setTimeout(() => { attachStaticNodeClicks(); initLegendConnections(); }, 600);
+    } else {
+      /* Default дерево — статическое, но соединения тоже работают */
+      syncConnectionsFromDb().then(() => {
+        // Done syncing default connections
+      });
 
-    /* Рисуем сохранённые соединения поверх статического дерева */
-    setTimeout(() => {
-      const tw = document.getElementById('tree-wrapper');
-      if (tw) {
-        const conns = getLocalConnections();
-        if (conns.length) drawCustomConnections(tw, conns);
+      /* Вешаем соединение на статические карточки */
+      function attachStaticNodeClicks() {
+        document.querySelectorAll('#tree-wrapper .tree-node, #tree-generations .tree-node').forEach(nodeEl => {
+          if (nodeEl.dataset.connBound) return;
+          nodeEl.dataset.connBound = '1';
+          nodeEl.addEventListener('click', e => {
+            if (e.target.closest('.tree-node-ctrl')) return;
+            const nid = nodeEl.dataset.id;
+            if (nid && handleNodeConnectionClick(nodeEl, nid)) {
+              e.preventDefault();
+            }
+          });
+        });
       }
-    }, 800);
+      /* tree.js строит карточки — ждём */
+      setTimeout(() => { attachStaticNodeClicks(); initLegendConnections(); }, 600);
+
+      /* Рисуем сохранённые соединения поверх статического дерева */
+      setTimeout(() => {
+        const tw = document.getElementById('tree-wrapper');
+        if (tw) {
+          const conns = getLocalConnections();
+          if (conns.length) drawCustomConnections(tw, conns);
+        }
+      }, 800);
+    }
   }
 
   function addClanButton() {
@@ -1965,6 +2007,100 @@
 
 
   /* ════════════════════════════════════════════
+     РЕНДЕР ПУСТОЙ СХЕМАТИКИ (EMPTY STATE PLACEHOLDER)
+     ════════════════════════════════════════════ */
+  function renderEmptySchematic(container) {
+    const sw = document.getElementById('tree-wrapper');
+    if (sw) sw.style.display = 'none';
+
+    // Скрываем поиск, легенду и кнопки
+    const searchWrap = document.querySelector('.tree-search-wrap');
+    if (searchWrap) searchWrap.style.display = 'none';
+    const printBtn = document.getElementById('tree-print-btn');
+    if (printBtn) printBtn.style.display = 'none';
+    const editBtn = document.getElementById('tree-edit-btn');
+    if (editBtn) editBtn.style.display = 'none';
+
+    // Clear any thread elements
+    const svg = document.getElementById('tree-threads') || container.querySelector('.tree-dynamic-svg');
+    if (svg) svg.innerHTML = '';
+
+    container.innerHTML = `
+      <div class="tree-empty-schematic">
+        <div class="schematic-header">
+          <h2 class="schematic-title">Создайте своё семейное древо</h2>
+          <p class="schematic-subtitle">Оживите историю вашей семьи: добавляйте поколения, указывайте годы жизни и плетите цветные нити родов.</p>
+        </div>
+
+        <div class="schematic-grid">
+          <!-- SVG lines linking dummy cards -->
+          <svg class="schematic-svg" viewBox="0 0 800 340">
+            <path d="M 180 80 L 290 190" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <path d="M 400 80 L 290 190" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <path d="M 620 80 L 510 190" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <path d="M 510 190 L 400 290" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <path d="M 290 190 L 400 290" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+            <path d="M 290 190 L 510 190" stroke="rgba(255,255,255,0.04)" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+          </svg>
+
+          <!-- Generation rows -->
+          <div class="schematic-row schematic-row--top">
+            <div class="schematic-card schematic-card--stub">
+              <span class="schematic-card__label">Дедушка</span>
+            </div>
+            <div class="schematic-card schematic-card--stub">
+              <span class="schematic-card__label">Бабушка</span>
+            </div>
+            <div class="schematic-card schematic-card--stub">
+              <span class="schematic-card__label">Дедушка</span>
+            </div>
+            <div class="schematic-card schematic-card--stub">
+              <span class="schematic-card__label">Бабушка</span>
+            </div>
+          </div>
+
+          <div class="schematic-row schematic-row--mid">
+            <div class="schematic-card schematic-card--stub">
+              <span class="schematic-card__label">Отец</span>
+            </div>
+            <div class="schematic-card schematic-card--stub">
+              <span class="schematic-card__label">Мать</span>
+            </div>
+          </div>
+
+          <div class="schematic-row schematic-row--bot">
+            <div class="schematic-card schematic-card--active">
+              <span class="schematic-card__label">Вы</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Glassmorphic action panel -->
+        <div class="schematic-panel">
+          <p class="schematic-panel__text">
+            Постройте интерактивную летопись вашего рода. Первая карточка станет началом семейного древа.
+          </p>
+          <button class="schematic-cta-btn" id="schematic-create-btn">
+            🌳 Создать семейное древо
+          </button>
+        </div>
+      </div>
+    `;
+
+    const ctaBtn = container.querySelector('#schematic-create-btn');
+    if (ctaBtn) {
+      ctaBtn.addEventListener('click', () => {
+        if (typeof openCreateTreeModal === 'function') {
+          openCreateTreeModal();
+        } else {
+          const editBtn = document.getElementById('tree-edit-btn');
+          if (editBtn) editBtn.click();
+        }
+      });
+    }
+  }
+
+  /* ════════════════════════════════════════════
      РЕНДЕР ДИНАМИЧЕСКОГО ДЕРЕВА
      ════════════════════════════════════════════ */
   function renderDynamicTree(container) {
@@ -1994,9 +2130,17 @@
     });
 
     if (!allNodes.length && !isEditMode) {
-      container.innerHTML = `<div class="tree-empty"><p class="tree-empty__icon">🌳</p><p class="tree-empty__text">Дерево пустое</p><p class="tree-empty__hint">Нажмите «Редактировать дерево» и добавьте первого человека</p></div>`;
+      renderEmptySchematic(container);
       return;
     }
+
+    // Восстанавливаем видимость поиска и кнопок
+    const searchWrap = document.querySelector('.tree-search-wrap');
+    if (searchWrap) searchWrap.style.display = '';
+    const printBtn = document.getElementById('tree-print-btn');
+    if (printBtn) printBtn.style.display = '';
+    const editBtn = document.getElementById('tree-edit-btn');
+    if (editBtn) editBtn.style.display = '';
     const gens = {};
     allNodes.forEach(n => { const g = n.generation || 0; if (!gens[g]) gens[g] = []; gens[g].push(n); });
     sortDynamicGenerations(gens);
