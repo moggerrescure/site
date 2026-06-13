@@ -8,7 +8,7 @@
 (function () {
 
 const urlParams = new URLSearchParams(window.location.search);
-const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
+const currentTreeId = urlParams.get('tree') || 'default';
 
 
   const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
@@ -530,7 +530,7 @@ const currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
   }
 
   /* ── Если кастомное дерево — tree.js не рисует статику ── */
-  const _urlTree = new URLSearchParams(window.location.search).get('tree') || 'cmpx2xehh0000pa313hbd9znu';
+  const _urlTree = new URLSearchParams(window.location.search).get('tree') || 'default';
   if (_urlTree && _urlTree !== 'default') return;
 
   /* ── DOM SETUP ── */

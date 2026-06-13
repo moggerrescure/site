@@ -215,7 +215,7 @@
    ═══════════════════════════════════════════════ */
 (function adjustTreeLinks() {
   function tryAdjust() {
-    const defaultTreeId = 'cmpx2xehh0000pa313hbd9znu';
+    const defaultTreeId = 'default';
     let targetId = defaultTreeId;
     if (typeof API !== 'undefined' && API.isLoggedIn && API.isLoggedIn()) {
       const user = API.getUser ? API.getUser() : null;

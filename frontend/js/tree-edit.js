@@ -9,7 +9,7 @@
 
 (function () {
   const urlParams   = new URLSearchParams(window.location.search);
-  let currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
+  let currentTreeId = urlParams.get('tree') || 'default';
 
   const isLocalDev  = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
   const BASE        = isLocalDev ? 'http://localhost:3000' : '';
