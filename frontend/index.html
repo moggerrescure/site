@@ -4,8 +4,8 @@
   <meta name="google-site-verification" content="XZ1l0f_nu02uk7tS2ID2xVgUC91dXNQa16LdUJihGEM" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR-Память — сохраните историю семьи и закажите QR-табличку на памятник</title>
-  <meta name="description" content="QR-Память — белорусский сервис: страницы памяти близких, семейное древо и летопись рода, доступные по QR-коду с таблички. ИИ-помощник и поддержка в Telegram."/>
+  <title>QR-табличка на памятник и страница памяти | QR-Память</title>
+  <meta name="description" content="QR-табличка на памятник со ссылкой на страницу памяти: биография, фото, семейное древо, летопись. Сервис из Беларуси, заказ таблички — через партнёров."/>
   <meta name="robots" content="index,follow,max-image-preview:large"/>
   <meta property="og:title"       content="QR-Память — сохраните историю семьи"/>
   <meta property="og:description" content="Страницы памяти, семейное древо и летопись рода по QR-коду с мемориальной таблички. Сервис из Беларуси."/>
@@ -51,6 +51,8 @@
         <li><a href="memory.html"     class="nav__link">Страницы памяти</a></li>
         <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
         <li><a href="timeline.html"   class="nav__link">Летопись</a></li>
+        <li><a href="blog.html"       class="nav__link">Блог</a></li>
+        <li><a href="faq.html"        class="nav__link">Вопросы</a></li>
       </ul>
     </div>
   </nav>
@@ -63,9 +65,9 @@
     <div class="hero--split">
       <div class="hero__inner">
         <p class="hero__eyebrow">Пронесём историю вашей семьи сквозь века</p>
-        <h1 class="hero__title">Сохраните память в одном <em><span class="qr-text">QR</span>-коде</em></h1>
+        <h1 class="hero__title">QR-табличка на памятник: сохраните память в одном <em><span class="qr-text">QR</span>-коде</em></h1>
         <p class="hero__subtitle">
-          Создайте страницу памяти с биографией, семейным древом и хронологией.
+          Создайте страницу памяти с биографией, фотографиями, семейным древом и хронологией — и откройте её по QR-коду с таблички на памятнике.
         </p>
         <div class="hero__actions">
           <a href="ai-constructor.html"    class="btn btn--primary">Создать страницу</a>
@@ -377,11 +379,14 @@
       <div class="showcase__item showcase__item--reverse" id="qr-monuments">
         <div class="showcase__text">
           <span class="showcase__tag">04 · QR-код</span>
-          <h3 class="showcase__name">QR-код на памятнике</h3>
+          <h3 class="showcase__name">QR-табличка на памятник</h3>
           <p class="showcase__desc">
-            Завершающий шаг: долговечная металлическая табличка с QR-кодом, ведущим на страницу памяти. Одно касание камерой — и вся история жизни человека открывается прямо у мемориала.
+            Завершающий шаг: долговечная металлическая табличка (анодированный алюминий или нержавеющая сталь, лазерная гравировка) с QR-кодом, ведущим на страницу памяти. Одно касание камерой — и вся история жизни человека открывается прямо у мемориала; служит десятки лет в любую погоду.
           </p>
-          <a href="#qr-monuments" class="feature-card__link">Подробнее об изготовлении</a>
+          <p class="showcase__desc">
+            Заказать QR-табличку на памятник можно через наши компании-партнёры — с доставкой по Беларуси: Минск, Гомель, Гродно, Брест, Витебск, Могилёв.
+          </p>
+          <a href="faq.html" class="feature-card__link">Как заказать табличку</a>
         </div>
         <div class="showcase__preview">
           <div class="feature-image-container">
@@ -396,6 +401,43 @@
   </section>
 
 
+
+  <!-- HOW IT WORKS / ПОРЯДОК РАБОТЫ -->
+  <section class="howitworks" id="how-it-works">
+    <style>
+      .howitworks{max-width:1100px;margin:0 auto;padding:2rem 1.5rem}
+      .howitworks__steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:2rem}
+      .hiw-step{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:1.4rem;position:relative}
+      .hiw-step__num{font-size:.82rem;letter-spacing:.08em;color:#c8a84b;font-weight:600}
+      .hiw-step__title{font-size:1.08rem;margin:.5rem 0 .4rem;color:#fff}
+      .hiw-step__text{font-size:.92rem;color:rgba(255,255,255,.8);line-height:1.6}
+      @media(max-width:860px){.howitworks__steps{grid-template-columns:1fr 1fr}}
+      @media(max-width:520px){.howitworks__steps{grid-template-columns:1fr}}
+    </style>
+    <h2 class="section-title">Как это <em>работает</em></h2>
+    <div class="howitworks__steps">
+      <div class="hiw-step">
+        <div class="hiw-step__num">Шаг 1</div>
+        <div class="hiw-step__title">Регистрация</div>
+        <div class="hiw-step__text">Зарегистрируйтесь на сайте или войдите через Telegram — это пара минут.</div>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-step__num">Шаг 2</div>
+        <div class="hiw-step__title">Создание страницы</div>
+        <div class="hiw-step__text">Соберите страницу памяти: биография (поможет ИИ-помощник), фотографии и воспоминания.</div>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-step__num">Шаг 3</div>
+        <div class="hiw-step__title">Изготовление QR-таблички</div>
+        <div class="hiw-step__text">Закажите металлическую QR-табличку через компании-партнёры — изготовление около недели.</div>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-step__num">Шаг 4</div>
+        <div class="hiw-step__title">Доставка</div>
+        <div class="hiw-step__text">Привозим табличку по Беларуси. Останется установить её на памятник — и страница откроется по QR-коду.</div>
+      </div>
+    </div>
+  </section>
 
   <!-- FEATURED PERSON — живая карточка с цитатой -->
   <section class="featured-person" id="featured-person">
@@ -575,6 +617,8 @@
         <a href="memory.html" class="footer__nav-link">Страницы памяти</a>
         <a href="family-tree.html" class="footer__nav-link">Древо семьи</a>
         <a href="timeline.html" class="footer__nav-link">Летопись</a>
+        <a href="blog.html" class="footer__nav-link">Блог</a>
+        <a href="faq.html" class="footer__nav-link">Вопросы и ответы</a>
       </nav>
     </div>
     <div class="footer__bottom">

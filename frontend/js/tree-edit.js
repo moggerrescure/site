@@ -11,13 +11,26 @@
   const urlParams   = new URLSearchParams(window.location.search);
   let currentTreeId = urlParams.get('tree') || 'cmpx2xehh0000pa313hbd9znu';
 
-  // Transparent Tree Selection: redirect user to their rootTreeId if they are on default
-  if (typeof API !== 'undefined') {
-    const user = API.getUser();
-    if (user && user.rootTreeId && user.rootTreeId !== 'default' && !urlParams.has('tree')) {
-      window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
-      return;
-    }
+  const isLocalDev  = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
+  const BASE        = isLocalDev ? 'http://localhost:3000' : '';
+
+  // Transparent Tree Selection: if logged in and no tree param is specified, redirect to their first tree
+  if (typeof API !== 'undefined' && API.isLoggedIn && API.isLoggedIn() && !urlParams.has('tree')) {
+    fetch(`${BASE}/api/family-trees`)
+      .then(r => r.json())
+      .then(j => {
+        const trees = (j && (j.data || j.trees)) || [];
+        if (trees.length > 0) {
+          const target = trees[0].id || trees[0].treeId;
+          window.location.replace("family-tree.html?tree=" + encodeURIComponent(target));
+        } else {
+          window.location.replace("family-tree.html?tree=default");
+        }
+      })
+      .catch(() => {
+        window.location.replace("family-tree.html?tree=default");
+      });
+    return;
   }
 
   const editBtn = document.getElementById('tree-edit-btn');
@@ -29,9 +42,6 @@
       window.print();
     });
   }
-
-  const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
-  const BASE = isLocalDev ? 'http://localhost:3000' : '';
   const resolveUrl = path => {
     if (!path) return '';
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
@@ -1749,9 +1759,9 @@
 
     if (trees.length <= 1) return;
 
-    // Deduplicate and filter out redundant default tree if user has rootTreeId
-    const user = typeof API !== 'undefined' ? API.getUser() : null;
-    if (user && user.rootTreeId && user.rootTreeId !== 'default') {
+    // Filter out redundant default tree if user is logged in
+    const isLoggedIn = typeof API !== 'undefined' && API.isLoggedIn && API.isLoggedIn();
+    if (isLoggedIn) {
       trees = trees.filter(t => t.id !== 'default');
     }
 
@@ -1928,7 +1938,7 @@
           if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
             window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
           } else {
-            window.location.replace("family-tree.html");
+            window.location.replace("family-tree.html?tree=default");
           }
           return;
         }
@@ -2963,7 +2973,7 @@
           if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
             window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
           } else {
-            window.location.replace("family-tree.html");
+            window.location.replace("family-tree.html?tree=default");
           }
           return [];
         }

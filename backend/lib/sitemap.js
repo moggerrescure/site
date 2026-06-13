@@ -25,6 +25,13 @@ const STATIC_PATHS = [
     { path: '/timeline.html',    changefreq: 'weekly',  priority: '0.6' },
     { path: '/about.html',       changefreq: 'monthly', priority: '0.7' },
     { path: '/faq.html',         changefreq: 'monthly', priority: '0.7' },
+    { path: '/blog.html',        changefreq: 'weekly',  priority: '0.7' },
+    { path: '/blog-pochemu-zabyvayut-korni.html',                  changefreq: 'monthly', priority: '0.6' },
+    { path: '/blog-qr-tablichka-na-pamyatnik.html',                changefreq: 'monthly', priority: '0.6' },
+    { path: '/blog-qr-kod-kak-rabotaet.html',                      changefreq: 'monthly', priority: '0.6' },
+    { path: '/blog-cifrovaya-stranica-pamyati.html',              changefreq: 'monthly', priority: '0.6' },
+    { path: '/blog-semejnoe-drevo-onlajn.html',                    changefreq: 'monthly', priority: '0.6' },
+    { path: '/blog-virtualnye-ekskursii-istoricheskie-mesta.html', changefreq: 'monthly', priority: '0.6' },
     { path: '/privacy.html',     changefreq: 'yearly',  priority: '0.3' },
     { path: '/terms.html',       changefreq: 'yearly',  priority: '0.3' },
 ];
