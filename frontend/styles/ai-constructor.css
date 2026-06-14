@@ -1,0 +1,1812 @@
+/* ═══════════════════════════════════════════════
+   ПРЕМИУМ ДИЗАЙН ИИ-КОНСТРУКТОРА v2 (ИИ-Панель)
+   Цвета используются строго в рамках гаммы сайта:
+   --gold (#c8a84b), --gold-light (#e2c97e), --gold-dim (#8a7035)
+   --cream (#f5efe0), --cream-dim (#bdae93)
+   Фоны: глубокий черный и оттенки темного (#0c0b0a, #0d0c0a, #141210)
+   ═══════════════════════════════════════════════ */
+
+/* ── Скелетон загрузки блока ИИ ── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.bio-block.is-generating-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(200, 168, 75, 0.35) !important;
+}
+
+.bio-block.is-generating-skeleton::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(200, 168, 75, 0.15) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bio-block.is-generating-skeleton .bio-block-text {
+  min-height: 80px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.01) 25%,
+    rgba(200, 168, 75, 0.12) 50%,
+    rgba(255, 255, 255, 0.01) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+  animation-delay: 0.3s;
+  border-radius: 4px;
+  position: relative;
+}
+
+/* ── Печатающий курсор ИИ (осязаемость процесса) ── */
+.bio-block.is-generating-skeleton .bio-block-text::after {
+  content: ' ✍️ ИИ пишет... |';
+  display: inline-block;
+  color: var(--gold-light);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 500;
+  animation: cursorBlink 0.9s infinite alternate;
+  margin-left: 6px;
+}
+
+@keyframes cursorBlink {
+  0% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+/* ── Фокусный оверлей (затемнение фона) ── */
+.focus-dimmer {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 4, 3, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 990;
+  transition: opacity 0.5s ease;
+}
+.focus-dimmer.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Фоновое свечение (Ambient Glow / Аура) при записи ── */
+.ambient-glow-aura {
+  position: fixed;
+  bottom: -120px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  width: 760px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(200, 168, 75, 0.16) 0%, rgba(226, 201, 126, 0.05) 50%, transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+  z-index: 995;
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ambient-glow-aura.is-active {
+  opacity: 1;
+  transform: translateX(-50%) scale(1.1);
+  animation: auraPulse 3.5s infinite alternate ease-in-out;
+}
+
+@keyframes auraPulse {
+  0% { opacity: 0.75; filter: blur(50px); }
+  100% { opacity: 1.15; filter: blur(70px); }
+}
+
+/* ── Фото в шапке ── */
+.person-header__photo {
+  overflow: hidden;
+}
+.person-header__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 4px;
+}
+
+/* ═══════════ ПЛАВАЮЩАЯ ИИ-ПАНЕЛЬ УПРАВЛЕНИЯ (Floating Panel) ═══════════ */
+.ai-control-panel {
+  position: relative;
+  margin: 40px auto 50px;
+  max-width: 860px;
+  width: 100%;
+  /* Премиальный глассморфизм */
+  background: rgba(10, 9, 8, 0.72);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  /* Тонкая рамка с эффектом мягкого золотого свечения сверху */
+  border: 1px solid rgba(200, 168, 75, 0.28);
+  border-top-color: rgba(226, 201, 126, 0.45);
+  border-radius: 20px;
+  padding: 22px 26px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9), 
+              0 0 50px rgba(200, 168, 75, 0.03),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  font-family: var(--font-ui);
+  z-index: 100;
+  opacity: 1;
+  overflow: hidden;
+  transition: border-color 250ms ease-out, 
+              box-shadow 250ms ease-out,
+              background-color 250ms ease-out;
+}
+
+/* Эффект двойной рамки (Double Frame) */
+.ai-control-panel::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border: 1px solid rgba(200, 168, 75, 0.15);
+  border-radius: 12px;
+  pointer-events: none;
+  transition: border-color 250ms ease-out;
+}
+
+/* Угловые декоративные плетения (Corner Flourishes) */
+.ai-control-panel::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  pointer-events: none;
+  background-image: 
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M24,1.5 H1.5 V24' /><path d='M24,5.5 H5.5 V24' stroke-width='1' stroke-opacity='0.6' /><path d='M1.5,1.5 L8,8' stroke-width='1' /><circle cx='8' cy='8' r='1.5' fill='%23c8a84b' stroke='none' /></svg>"),
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M0,1.5 H22.5 V24' /><path d='M0,5.5 H18.5 V24' stroke-width='1' stroke-opacity='0.6' /><path d='M22.5,1.5 L16,8' stroke-width='1' /><circle cx='16' cy='8' r='1.5' fill='%23c8a84b' stroke='none' /></svg>"),
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M24,22.5 H1.5 V0' /><path d='M24,18.5 H5.5 V0' stroke-width='1' stroke-opacity='0.6' /><path d='M1.5,22.5 L8,16' stroke-width='1' /><circle cx='8' cy='16' r='1.5' fill='%23c8a84b' stroke='none' /></svg>"),
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M0,22.5 H22.5 V0' /><path d='M0,18.5 H18.5 V0' stroke-width='1' stroke-opacity='0.6' /><path d='M22.5,22.5 L16,16' stroke-width='1' /><circle cx='16' cy='16' r='1.5' fill='%23c8a84b' stroke='none' /></svg>");
+  background-repeat: no-repeat;
+  background-position: top left, top right, bottom left, bottom right;
+  background-size: 14px 14px;
+  transition: background-size 250ms cubic-bezier(0.23, 1, 0.32, 1), opacity 250ms ease;
+  opacity: 0.8;
+}
+
+.ai-control-panel:hover::before {
+  border-color: rgba(200, 168, 75, 0.25);
+}
+
+.ai-control-panel:hover::after {
+  background-size: 18px 18px;
+  opacity: 1.0;
+}
+
+.ai-control-panel:focus-within {
+  border-color: rgba(200, 168, 75, 0.55);
+  border-top-color: rgba(226, 201, 126, 0.7);
+  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.95), 
+              0 0 60px rgba(200, 168, 75, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: rgba(10, 9, 8, 0.82);
+}
+
+.ai-control-panel:focus-within::before {
+  border-color: rgba(200, 168, 75, 0.32);
+}
+
+.ai-control-panel.is-processing {
+  animation: panelProcessingPulse 1.6s infinite alternate ease-in-out;
+}
+
+@keyframes panelProcessingPulse {
+  0% { border-color: rgba(200, 168, 75, 0.35); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(200, 168, 75, 0.05); }
+  100% { border-color: rgba(200, 168, 75, 0.8); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.95), 0 0 50px rgba(200, 168, 75, 0.22); }
+}
+
+.ai-control-panel.is-minimized .dictation-wrapper,
+.ai-control-panel.is-minimized .settings-row {
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+}
+
+.ai-control-panel.is-minimized {
+  padding-bottom: 0 !important;
+}
+
+.ai-control-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-control-header:hover .ai-title {
+  color: var(--gold-light);
+}
+
+.ai-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+  animation: dotPulse 2.6s infinite;
+}
+
+@keyframes dotPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  70%  { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.ai-control-header-text {
+  flex: 1;
+}
+
+.ai-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cream);
+  margin-bottom: 2px;
+  transition: color 0.2s;
+}
+
+.ai-subtitle {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--cream-dim);
+  line-height: 1.4;
+}
+
+.ai-panel-collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--cream-dim);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.3s;
+}
+.ai-panel-collapse-btn:hover {
+  color: var(--gold-light);
+}
+
+/* ── Зона ввода и расшифровки ── */
+.dictation-wrapper {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01);
+  transition: border-color 250ms ease-out;
+}
+
+.dictation-wrapper:focus-within {
+  border-color: rgba(200, 168, 75, 0.22);
+}
+
+.dictation-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.dictation-column--left {
+  width: 220px;
+  flex-shrink: 0;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  gap: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  padding-right: 24px;
+}
+
+.dictation-column--right {
+  flex: 1;
+}
+
+.dictation-controls {
+  position: relative;
+}
+
+.mic-button-container {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+}
+
+.mic-button {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid rgba(200, 168, 75, 0.3);
+  /* Тактильный фоновый градиент с эффектом линзы */
+  background: radial-gradient(circle at center, rgba(200, 168, 75, 0.12) 0%, rgba(20, 18, 16, 0.95) 100%);
+  color: var(--gold-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  /* Плавный переход с точечно определенными свойствами (без all) */
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+              background-color 200ms ease-out,
+              border-color 200ms ease-out,
+              color 200ms ease-out,
+              box-shadow 200ms ease-out;
+  outline: none;
+  /* Тиснение и фаска за счет тени */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 
+              inset 0 -2px 6px rgba(0, 0, 0, 0.6), 
+              0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.mic-button svg {
+  width: 28px;
+  height: 28px;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.mic-button:hover {
+  border-color: rgba(200, 168, 75, 0.65);
+  color: var(--cream);
+  background: radial-gradient(circle at center, rgba(200, 168, 75, 0.18) 0%, rgba(25, 23, 20, 0.97) 100%);
+  transform: scale(1.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12),
+              inset 0 -2px 8px rgba(0, 0, 0, 0.7),
+              0 8px 24px rgba(200, 168, 75, 0.12),
+              0 12px 28px rgba(0, 0, 0, 0.6);
+}
+
+.mic-button:active {
+  /* Физическое продавливание по кнопке */
+  transform: scale(0.94) translateY(2px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8),
+              0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mic-button.is-recording {
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.18) 0%, rgba(18, 10, 10, 0.98) 100%);
+  border-color: rgba(239, 68, 68, 0.75);
+  color: #ef4444;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05),
+              inset 0 -2px 8px rgba(0, 0, 0, 0.8),
+              0 0 20px rgba(239, 68, 68, 0.3),
+              0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.mic-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 168, 75, 0.25) 0%, rgba(200, 168, 75, 0.05) 50%, transparent 70%);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.mic-button.is-recording ~ .mic-glow {
+  opacity: 1;
+  animation: siriGlow 3s infinite alternate ease-in-out;
+}
+
+@keyframes siriGlow {
+  0% { transform: scale(1.02); opacity: 0.45; filter: blur(6px); }
+  50% { transform: scale(1.28); opacity: 0.75; filter: blur(10px); }
+  100% { transform: scale(1.15); opacity: 0.60; filter: blur(8px); }
+}
+
+.mic-status-container {
+  flex: 1;
+  min-width: 160px;
+}
+
+.status-text {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cream-dim);
+  letter-spacing: 0.01em;
+  transition: color 200ms ease-out;
+}
+
+.status-text.recording {
+  color: #ef4444;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
+}
+
+/* ── Симуляция Siri-волны (Улучшенные, плавные волны) ── */
+.mic-orbit-waves {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+}
+
+.dictation-controls.is-recording .mic-orbit-waves {
+  display: block;
+}
+
+.mic-orbit-waves .waves-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 16px;
+  background: rgba(10, 9, 8, 0.9);
+  border: 1px solid rgba(200, 168, 75, 0.25);
+  border-radius: 20px;
+  padding: 2px 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.wave-bar {
+  width: 3px;
+  height: 4px;
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 50%, var(--gold-dim) 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(200, 168, 75, 0.35);
+  animation: waveBounce 1.2s infinite ease-in-out;
+  transform-origin: bottom;
+  transition: height 200ms ease-out;
+}
+
+.wave-bar:nth-child(1) { animation-delay: 0.05s; animation-duration: 0.75s; }
+.wave-bar:nth-child(2) { animation-delay: 0.25s; animation-duration: 1.05s; }
+.wave-bar:nth-child(3) { animation-delay: 0.12s; animation-duration: 0.85s; }
+.wave-bar:nth-child(4) { animation-delay: 0.45s; animation-duration: 1.25s; }
+.wave-bar:nth-child(5) { animation-delay: 0.10s; animation-duration: 0.95s; }
+.wave-bar:nth-child(6) { animation-delay: 0.30s; animation-duration: 1.15s; }
+.wave-bar:nth-child(7) { animation-delay: 0.18s; animation-duration: 0.80s; }
+
+@keyframes waveBounce {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(3.2); }
+}
+
+.transcript-box {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  padding: 12px 16px;
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.8),
+              inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: border-color 200ms ease-out, 
+              box-shadow 200ms ease-out, 
+              background-color 200ms ease-out;
+}
+
+.transcript-box:focus {
+  border-color: rgba(200, 168, 75, 0.35);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.9),
+              0 0 12px rgba(200, 168, 75, 0.06);
+}
+
+.transcript-box::placeholder {
+  color: rgba(245, 239, 224, 0.28);
+  font-style: italic;
+}
+
+/* ── Настройки и действия на панели (Осязаемый дизайн) ── */
+.settings-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 16px;
+}
+
+.ai-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Физический свитч с тиснением и эффектом растяжения ползунка */
+.ai-switch__track {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background-color 200ms ease-out, border-color 200ms ease-out;
+  flex-shrink: 0;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.ai-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cream-dim);
+  /* Пружинный отскок свитча */
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1), 
+              width 150ms ease-out,
+              background-color 200ms ease-out, 
+              box-shadow 200ms ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.ai-switch:hover .ai-switch__track::after {
+  background-color: var(--cream);
+  box-shadow: 0 2px 6px rgba(200, 168, 75, 0.2);
+}
+
+.ai-switch:active .ai-switch__track::after {
+  width: 18px; /* эффект растяжения при клике */
+}
+
+.ai-switch input:checked + .ai-switch__track {
+  background: rgba(200, 168, 75, 0.22);
+  border-color: rgba(200, 168, 75, 0.55);
+}
+
+.ai-switch input:checked + .ai-switch__track::after {
+  transform: translateX(20px);
+  background: var(--gold-light);
+  box-shadow: 0 0 12px rgba(200, 168, 75, 0.7);
+}
+
+.ai-switch input:checked:active + .ai-switch__track::after {
+  transform: translateX(16px); /* компенсация растяжения ползунка */
+}
+
+.ai-switch__label {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--cream-dim);
+  letter-spacing: 0.01em;
+  transition: color 200ms ease-out;
+}
+
+.ai-switch:hover .ai-switch__label {
+  color: var(--cream);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  align-items: center;
+}
+
+/* Физические, осязаемые кнопки с тактильным прожатием */
+.btn-ai {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  /* Плавный переход без all */
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
+              background-color 200ms ease-out,
+              border-color 200ms ease-out,
+              color 200ms ease-out,
+              box-shadow 200ms ease-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-ai:active {
+  /* Тактильный прожим */
+  transform: scale(0.96) translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Первичная кнопка с мягким благородным переливом */
+.btn-ai-primary {
+  background: linear-gradient(135deg, var(--gold-dim) 0%, var(--gold) 50%, var(--gold-light) 100%);
+  color: #0f0d0a;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(200, 168, 75, 0.3), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ai-primary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-25deg);
+}
+
+.btn-ai-primary:hover::after {
+  left: 150%;
+  transition: left 0.85s ease-in-out;
+}
+
+.btn-ai-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(200, 168, 75, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-ai-primary.is-ready {
+  animation: buttonPulse 2s infinite ease-in-out;
+}
+
+@keyframes buttonPulse {
+  0% {
+    box-shadow: 0 4px 14px rgba(200, 168, 75, 0.3), 
+                0 0 0 0px rgba(200, 168, 75, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(200, 168, 75, 0.45), 
+                0 0 0 6px rgba(200, 168, 75, 0),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  100% {
+    box-shadow: 0 4px 14px rgba(200, 168, 75, 0.3), 
+                0 0 0 0px rgba(200, 168, 75, 0),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+}
+
+.btn-ai-secondary {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--cream-dim);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.btn-ai-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--cream);
+  background: rgba(255, 255, 255, 0.02);
+  transform: translateY(-1px);
+}
+
+/* Специальные стили кнопок в панели ИИ с мемориальным золотым/красным оттенком */
+#drawer-toggle-btn.btn-ai-secondary {
+  background: rgba(200, 168, 75, 0.04);
+  border: 1px solid rgba(200, 168, 75, 0.3);
+  color: var(--gold-light);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01),
+              0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#drawer-toggle-btn.btn-ai-secondary:hover {
+  border-color: rgba(226, 201, 126, 0.55);
+  color: var(--cream);
+  background: rgba(200, 168, 75, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
+              0 0 12px rgba(200, 168, 75, 0.2);
+  transform: translateY(-1px);
+}
+
+#clear-btn.btn-ai-secondary {
+  background: rgba(239, 68, 68, 0.04);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #ffa3a3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01),
+              0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#clear-btn.btn-ai-secondary:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ffc2c2;
+  background: rgba(239, 68, 68, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03),
+              0 0 12px rgba(239, 68, 68, 0.18);
+  transform: translateY(-1px);
+}
+
+/* ═══════════ БОКОВАЯ ПАНЕЛЬ (Drawer) ДЛЯ РЕФАЙНМЕНТА И ЛОГОВ ═══════════ */
+.refinement-drawer {
+  position: fixed;
+  top: 0;
+  right: -420px;
+  width: 400px;
+  height: 100vh;
+  background: rgba(10, 9, 8, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-left: 1px solid rgba(200, 168, 75, 0.25);
+  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.7);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  /* Плавное iOS-образное выдвижение */
+  transition: right 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.refinement-drawer.is-open {
+  right: 0;
+}
+
+.drawer-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--gold-light);
+  margin: 0;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+.drawer-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--cream-dim);
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms ease-out, transform 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.drawer-close-btn:hover {
+  color: var(--gold-light);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.drawer-close-btn:active {
+  transform: rotate(90deg) scale(0.9);
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Сайдбар блоки подгонки ── */
+.refinement-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.refinement-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold-light);
+  margin: 0 0 6px 0;
+}
+
+.refinement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.refinement-chunk {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.refinement-chunk:hover {
+  border-color: rgba(200, 168, 75, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.refinement-chunk-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--cream);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.refinement-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.refinement-btn {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--cream-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refinement-btn:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold-light);
+  background: rgba(200, 168, 75, 0.06);
+}
+
+/* ── Логи в сайдбаре ── */
+.ai-log-wrapper {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 20px;
+}
+
+.ai-log-title {
+  font-size: 10.5px;
+  color: var(--gold-light);
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ai-log-list {
+  font-family: monospace;
+  font-size: 11.5px;
+  list-style-type: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--cream-dim);
+  padding: 0;
+  margin: 0;
+}
+
+.ai-log-item {
+  display: flex;
+  gap: 8px;
+  line-height: 1.4;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  padding-bottom: 6px;
+}
+
+.log-action.add    { color: #60a5fa; font-weight: bold; }
+.log-action.update { color: #fbbf24; font-weight: bold; }
+.log-action.delete { color: #f87171; font-weight: bold; }
+.log-action.set_header { color: #c8a84b; font-weight: bold; }
+
+/* ═══════════ РЕЖИМ РЕДАКТИРОВАНИЯ И СТИЛЬ Notion ДЛЯ БЛОКОВ ═══════════ */
+.bio-block-key {
+  position: absolute;
+  bottom: 14px;
+  right: 20px;
+  font-family: monospace;
+  font-size: 9px;
+  color: var(--gold-dim);
+  background: rgba(0, 0, 0, 0.65);
+  padding: 1px 6px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.bio-block.is-editing-mode .bio-block-key {
+  opacity: 1;
+}
+
+.bio-block {
+  transition: border-color 0.4s, background-color 0.4s, box-shadow 0.4s, opacity 0.3s ease;
+  position: relative;
+}
+
+.bio-block.is-editing-mode {
+  border: 1px solid rgba(200, 168, 75, 0.22);
+  border-radius: 14px;
+  background: rgba(15, 14, 12, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  /* Плавные переходы для масштабирования, теней и границ */
+  transition: border-color 200ms ease-out, 
+              background-color 200ms ease-out, 
+              box-shadow 250ms ease-out, 
+              transform 200ms ease-out;
+}
+
+.bio-block.is-editing-mode::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  border: 1px solid rgba(200, 168, 75, 0.08);
+  border-radius: 10px;
+  pointer-events: none;
+  transition: border-color 200ms ease-out;
+}
+
+.bio-block.is-editing-mode:hover::before {
+  border-color: rgba(200, 168, 75, 0.18);
+}
+
+.bio-block.is-editing-mode:hover {
+  border-color: rgba(200, 168, 75, 0.45);
+  background: rgba(15, 14, 12, 0.6);
+  box-shadow: 0 20px 40px rgba(200, 168, 75, 0.05), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transform: translateY(-3px); /* Физический подъем */
+}
+
+.bio-block.is-editing-mode:active {
+  /* Микро-сжатие при клике */
+  transform: scale(0.99) translateY(-1px);
+}
+
+.delete-block-btn {
+  margin-top: 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 120, 120, 0.7);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s, color 0.2s;
+  display: none;
+  text-align: left;
+  padding: 0;
+}
+
+.bio-block.is-editing-mode .delete-block-btn {
+  display: inline-block;
+}
+
+.bio-block.is-editing-mode:hover .delete-block-btn {
+  opacity: 0.8;
+}
+
+.delete-block-btn:hover {
+  opacity: 1 !important;
+  color: rgba(239, 68, 68, 1);
+  text-decoration: underline;
+}
+
+/* ── Спиннер ── */
+.ai-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(200, 168, 75, 0.15);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Плейсхолдер иллюстрации ── */
+.bio-block__photo-placeholder {
+  cursor: default;
+  background: rgba(200, 168, 75, 0.02);
+  transition: background 0.3s, border-color 0.3s;
+  border: 1px solid rgba(200, 168, 75, 0.15);
+}
+
+.bio-block__photo-hint {
+  display: none;
+}
+
+.bio-block.is-editing-mode .bio-block__photo-hint {
+  display: block;
+}
+
+.bio-block.is-editing-mode .bio-block__photo-placeholder:hover {
+  background: rgba(200, 168, 75, 0.05);
+  border-color: rgba(200, 168, 75, 0.35);
+}
+
+/* Кнопки действий с фото */
+.photo-actions {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.bio-block.is-editing-mode .photo-actions {
+  display: flex;
+}
+
+.photo-action-btn {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 168, 75, 0.3);
+  background: rgba(12, 11, 10, 0.85);
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.photo-action-btn:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #12100e;
+}
+
+/* Оверлей управления фото */
+.photo-actions-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 11, 10, 0.82);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(100%);
+  clip-path: inset(0 0 0 0);
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  z-index: 5;
+}
+
+.bio-block.is-editing-mode .bio-block__photo:hover .photo-actions-overlay {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.bio-block.is-editing-mode .bio-block__photo-placeholder .photo-actions-overlay {
+  opacity: 1;
+  pointer-events: auto;
+  background: transparent;
+  backdrop-filter: none;
+  position: static;
+  transform: none;
+}
+
+.bio-block__photo.is-loading .bio-block__photo-img-wrap,
+.bio-block__photo.is-loading .bio-block__photo-placeholder,
+.bio-block__photo.is-loading .photo-actions-overlay {
+  display: none !important;
+}
+
+.bio-block__photo.is-loading {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(20, 18, 16, 0.9) 0%, rgba(10, 9, 8, 0.98) 100%) !important;
+  border: 1px solid rgba(200, 168, 75, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Эффект проявления фотографии */
+.bio-block__photo.is-loading::before {
+  content: 'Проявление фото...';
+  position: absolute;
+  bottom: 12px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  opacity: 0.7;
+  animation: developingPulse 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes developingPulse {
+  0% { opacity: 0.35; }
+  100% { opacity: 0.85; }
+}
+
+.bio-block__photo.is-loading::after {
+  content: '';
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgba(200, 168, 75, 0.15);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 750ms linear infinite;
+}
+
+/* ── Тост оповещений ── */
+.notification-toast {
+  position: fixed;
+  bottom: 120px; /* Смещен вверх, чтобы не перекрывать плавающую панель */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  background: var(--gold-dim);
+  border: 1px solid var(--gold);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-style: italic;
+  z-index: 2000;
+}
+
+/* ── СТИЛИ ДЛЯ ИНЛАЙН-РЕДАКТИРОВАНИЯ И ИИ-ПОМОЩНИКОВ В СТИЛЕ NOTION ── */
+#p-name[contenteditable="true"],
+#p-dates[contenteditable="true"],
+#p-city[contenteditable="true"],
+#p-bio[contenteditable="true"] {
+  outline: none;
+  transition: all 0.25s ease;
+  border: 1px dashed rgba(200, 168, 75, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.015);
+  display: inline-block;
+}
+
+#p-name[contenteditable="true"] {
+  display: block;
+  width: fit-content;
+  margin-left: 0;
+  margin-bottom: 14px;
+}
+
+#p-dates[contenteditable="true"] {
+  display: inline-block;
+  min-width: 150px;
+  margin-bottom: 14px;
+}
+
+#p-city[contenteditable="true"] {
+  display: inline-block;
+  min-width: 100px;
+}
+
+#p-bio[contenteditable="true"] {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
+}
+
+#p-name[contenteditable="true"]:hover,
+#p-dates[contenteditable="true"]:hover,
+#p-city[contenteditable="true"]:hover,
+#p-bio[contenteditable="true"]:hover {
+  border-color: rgba(200, 168, 75, 0.5);
+  background: rgba(200, 168, 75, 0.03);
+}
+
+#p-name[contenteditable="true"]:focus,
+#p-dates[contenteditable="true"]:focus,
+#p-city[contenteditable="true"]:focus,
+#p-bio[contenteditable="true"]:focus {
+  border-color: var(--gold);
+  border-style: solid;
+  background: rgba(200, 168, 75, 0.06);
+  box-shadow: 0 0 12px rgba(200, 168, 75, 0.2);
+}
+
+#p-avatar-wrap {
+  border: 1px dashed rgba(200, 168, 75, 0.3) !important;
+  transition: all 0.3s ease;
+  background: rgba(245, 240, 232, 0.03) !important;
+}
+#p-avatar-wrap:hover {
+  border-color: var(--gold) !important;
+  background: rgba(200, 168, 75, 0.08) !important;
+}
+#p-avatar-wrap:hover .avatar-upload-btn-text {
+  background: var(--gold) !important;
+  color: #0c0b0a !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 2px 8px rgba(200, 168, 75, 0.3);
+}
+
+[contenteditable="true"]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(245, 239, 224, 0.32) !important;
+  font-style: italic;
+  pointer-events: none;
+  display: inline-block;
+}
+
+.bio-block-text[contenteditable="true"] {
+  outline: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  transition: all 0.25s;
+}
+
+.bio-block.is-editing-mode .bio-block-text[contenteditable="true"] {
+  border: 1px dashed rgba(200, 168, 75, 0.2);
+}
+
+.bio-block.is-editing-mode .bio-block-text[contenteditable="true"]:focus {
+  border: 1px solid var(--gold);
+  background: rgba(200, 168, 75, 0.04);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.bio-block__title[contenteditable="true"] {
+  outline: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-bottom-color 0.2s;
+}
+
+.bio-block.is-editing-mode .bio-block__title[contenteditable="true"] {
+  border-bottom: 1px dashed rgba(200, 168, 75, 0.3);
+}
+
+.bio-block.is-editing-mode .bio-block__title[contenteditable="true"]:focus {
+  border-bottom: 1px solid var(--gold);
+}
+
+/* ── Элегантная фокусировка полей ввода и затемнение остальных блоков ── */
+.person-header,
+.person-bio,
+.bio-blocks {
+  transition: opacity 300ms ease, filter 300ms ease;
+}
+
+/* При фокусе на блоки биографии, затемняем шапку и эпитафию */
+body:has(.bio-blocks [contenteditable="true"]:focus) .person-header,
+body:has(.bio-blocks [contenteditable="true"]:focus) .person-bio {
+  opacity: 0.7;
+}
+
+/* При фокусе на шапку, затемняем эпитафию и блоки биографии */
+body:has(.person-header__info [contenteditable="true"]:focus) .person-bio,
+body:has(.person-header__info [contenteditable="true"]:focus) .bio-blocks {
+  opacity: 0.7;
+}
+
+/* При фокусе на эпитафию, затемняем шапку и блоки биографии */
+body:has(#p-bio:focus) .person-header,
+body:has(#p-bio:focus) .bio-blocks {
+  opacity: 0.7;
+}
+
+/* Внутри шапки: при фокусе на элемент, другие элементы шапки тускнеют */
+.person-header__info:has([contenteditable="true"]:focus) > *:not(:has([contenteditable="true"]:focus)):not([contenteditable="true"]:focus) {
+  opacity: 0.7;
+  transition: opacity 300ms ease;
+}
+
+/* ── Тулбар действий ИИ над полем ввода (Notion Toolbar Style) ── */
+.ai-block-helper {
+  position: relative;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  gap: 6px;
+  background: rgba(15, 14, 12, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(200, 168, 75, 0.18);
+  border-radius: 20px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  opacity: 0.85;
+  visibility: visible;
+  transition: border-color 200ms ease-out, 
+              background-color 200ms ease-out, 
+              opacity 200ms ease;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.bio-block.is-editing-mode:hover .ai-block-helper,
+.bio-block.is-editing-mode:focus-within .ai-block-helper {
+  opacity: 1.0;
+  border-color: rgba(200, 168, 75, 0.35);
+  background: rgba(15, 14, 12, 0.75);
+}
+
+.ai-helper-btn {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--gold-light);
+  cursor: pointer;
+  transition: transform 120ms ease-out,
+              background-color 150ms ease-out,
+              color 150ms ease-out,
+              box-shadow 150ms ease-out;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ai-helper-btn:hover {
+  background: rgba(200, 168, 75, 0.15);
+  color: var(--cream);
+  transform: scale(1.04);
+  box-shadow: 0 2px 8px rgba(200, 168, 75, 0.1);
+}
+
+.ai-helper-btn:active {
+  transform: scale(0.96);
+}
+
+.ai-helper-btn.loading {
+  opacity: 0.8;
+  filter: blur(1px);
+  cursor: wait;
+}
+
+.bio-block-text-loading {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.bio-block__photo {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.bio-block__photo-img-wrap {
+  width: 100%;
+  height: 100%;
+  display: none;
+  overflow: hidden;
+}
+
+.bio-block__photo-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.bio-block.is-editing-mode .bio-block__photo:hover .bio-block__photo-img-wrap img {
+  transform: scale(1.04);
+}
+
+.bio-block__photo.has-image .bio-block__photo-img-wrap {
+  display: block;
+}
+
+.bio-block__photo.has-image .bio-block__photo-placeholder {
+  display: none;
+}
+
+.bio-block__photo-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.bio-block.is-editing-mode .bio-block__photo-placeholder:hover .bio-block__photo-icon {
+  animation: breatheIcon 2s infinite ease-in-out;
+}
+
+@keyframes breatheIcon {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.18); opacity: 1; color: var(--gold-light); }
+}
+
+/* ── СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.modal-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-window {
+  background: #0d0c0a;
+  border: 1px solid rgba(200, 168, 75, 0.2);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 580px;
+  padding: 28px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+  font-family: var(--font-ui);
+}
+
+.modal-overlay.is-visible .modal-window {
+  transform: scale(1);
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--gold-light);
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
+}
+
+.modal-form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-form-group label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cream-dim);
+  font-weight: 500;
+}
+
+.modal-input, .modal-select, .modal-textarea {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: var(--cream);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.modal-input:focus, .modal-select:focus, .modal-textarea:focus {
+  border-color: rgba(200, 168, 75, 0.45);
+}
+
+.modal-select option {
+  background: #0d0c0a;
+  color: var(--cream);
+}
+
+.modal-textarea {
+  resize: vertical;
+  min-height: 90px;
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+.modal-ai-trigger-btn {
+  align-self: flex-start;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--gold-light);
+  background: rgba(200, 168, 75, 0.05);
+  border: 1px dashed rgba(200, 168, 75, 0.35);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-ai-trigger-btn:hover {
+  background: rgba(200, 168, 75, 0.12);
+  border-style: solid;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* Кнопка ручного добавления секции */
+.add-block-btn-wrap {
+  text-align: center;
+  margin: 40px auto 140px; /* Увеличили отступ снизу, чтобы не перекрывалось floating panel */
+  max-width: 1000px;
+  display: none;
+}
+
+.btn-add-section {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  background: rgba(200, 168, 75, 0.03);
+  border: 1px dashed rgba(200, 168, 75, 0.35);
+  color: var(--gold-light);
+  padding: 12px 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.btn-add-section:hover {
+  background: rgba(200, 168, 75, 0.08);
+  border-style: solid;
+  color: var(--cream);
+}
+
+/* Подсказка в пустых разделах и contenteditable-полях шапки */
+.bio-block-text:empty::before {
+  content: 'Раздел пока пуст. Расскажите историю в панели ИИ ниже — текст появится здесь сам.';
+  opacity: 0.35;
+  font-style: italic;
+}
+[contenteditable]:focus {
+  outline: 1px dashed rgba(200, 168, 75, 0.5);
+  outline-offset: 4px;
+}
+
+/* Адаптивность для плавающей панели */
+@media (max-width: 768px) {
+  .ai-control-panel {
+    margin: 20px auto 30px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 14px;
+  }
+  
+  .ai-control-panel.is-minimized {
+    /* Относительное сворачивание без сдвига */
+  }
+
+  .dictation-wrapper {
+    flex-direction: column;
+    gap: 16px;
+    padding: 14px;
+  }
+
+  .dictation-column--left {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-right: 0;
+    padding-bottom: 16px;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 16px;
+  }
+  
+  .transcript-box {
+    min-height: 100px;
+  }
+
+  .action-buttons {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  
+  .settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .refinement-drawer {
+    width: 100%;
+    right: -100%;
+  }
+
+  .ai-block-helper {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    border-radius: 8px;
+    margin-top: 8px;
+    width: 100%;
+  }
+}
+
+/* ── Плейсхолдер пустого состояния сетки блоков ── */
+#blocks-container:empty::before {
+  content: "Здесь появится ваша летопись. Нажмите на микрофон внизу и начните рассказывать историю жизни близкого человека...";
+  display: block;
+  grid-column: 1 / -1;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-style: italic;
+  color: var(--cream-dim);
+  opacity: 0.65;
+  padding: 80px 40px;
+  border: 1px dashed rgba(200, 168, 75, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.005);
+  max-width: 760px;
+  margin: 40px auto;
+  line-height: 1.6;
+}
+
+/* ── Скрывать Notion-помощников ИИ, если в блоке еще нет текста ── */
+.bio-block:has(.bio-block-text:empty) .ai-block-helper {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ── Драг-энд-дроп перетаскивание блоков (Drag-and-Drop) ── */
+.bio-block__drag-handle {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  cursor: grab;
+  font-size: 20px;
+  color: var(--gold-light);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 300ms ease, transform 200ms ease, color 200ms ease;
+  user-select: none;
+  z-index: 15;
+}
+
+/* Сдвигаем заголовок вправо в режиме редактирования, чтобы освободить место для ручки */
+.bio-block.is-editing-mode .bio-block__title {
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+.bio-block.is-editing-mode .bio-block__drag-handle {
+  opacity: 0.5;
+  visibility: visible;
+}
+
+.bio-block.is-editing-mode:hover .bio-block__drag-handle {
+  opacity: 0.95;
+}
+
+.bio-block__drag-handle:hover {
+  color: var(--gold) !important;
+  transform: scale(1.2);
+}
+
+.bio-block__drag-handle:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+/* Состояние перетаскиваемого блока */
+.bio-block.is-dragging {
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(15, 14, 12, 0.75) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 
+              0 0 35px rgba(200, 168, 75, 0.15) !important;
+  transform: scale(1.02);
+  transition: none !important;
+}
+
+.bio-block.is-dragging::before {
+  border-color: rgba(200, 168, 75, 0.45) !important;
+}
+
+/* Скрываем тулбар ИИ и кнопку удаления во время перетаскивания */
+.bio-block.is-dragging .ai-block-helper,
+.bio-block.is-dragging .delete-block-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ── Эффект химического проявления фотографии в проявителе ── */
+.bio-block__photo.is-developing::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(200, 168, 75, 0.22) 0%, rgba(239, 68, 68, 0.12) 60%, rgba(12, 11, 10, 0.8) 100%);
+  mix-blend-mode: color-burn;
+  pointer-events: none;
+  z-index: 4;
+  animation: chemicalWash 3.5s forwards cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes chemicalWash {
+  0% { opacity: 1; filter: blur(4px); }
+  60% { opacity: 0.85; filter: blur(2px); }
+  100% { opacity: 0; filter: blur(0px); }
+}

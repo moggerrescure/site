@@ -27,995 +27,7 @@
   <!-- GSAP Core для анимаций переходов -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-  <style>
-    /* ═══════════════════════════════════════════════
-       ГИБРИДНЫЙ ДИЗАЙН:
-       — контент страницы: мемориальная эстетика (родные классы person.css / blocks.css)
-       — ИИ-панель: сдержанный технологичный стиль (Inter, минимум украшений)
-       ═══════════════════════════════════════════════ */
-
-    /* ── Фото в шапке: родная рамка person.css + заполнение картинкой ── */
-    .person-header__photo {
-      overflow: hidden;
-    }
-    .person-header__photo img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      border-radius: 4px;
-    }
-
-    /* ═══════════ ИИ-ПАНЕЛЬ УПРАВЛЕНИЯ ═══════════ */
-    .ai-control-panel {
-      background: #0c0b0a;
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 12px;
-      padding: 28px;
-      margin: 20px auto 56px;
-      max-width: 1000px;
-      width: 100%;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
-      font-family: var(--font-ui);
-      opacity: 1;
-      height: auto;
-      overflow: visible;
-      display: block;
-      transform: none;
-    }
-
-    .ai-control-header {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      margin-bottom: 22px;
-    }
-
-    .ai-status-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #10b981;
-      margin-top: 5px;
-      flex-shrink: 0;
-      animation: dotPulse 2.6s infinite;
-    }
-
-    @keyframes dotPulse {
-      0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
-      70%  { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
-
-    .ai-title {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--cream);
-      margin-bottom: 6px;
-    }
-
-    .ai-subtitle {
-      font-size: 13px;
-      font-weight: 300;
-      color: var(--cream-dim);
-      line-height: 1.55;
-    }
-
-    /* ── Зона диктовки ── */
-    .dictation-wrapper {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      padding: 18px;
-      margin-bottom: 18px;
-    }
-
-    .dictation-controls {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-
-    .mic-button-container {
-      position: relative;
-      width: 52px;
-      height: 52px;
-    }
-
-    .mic-button {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--cream);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      z-index: 2;
-      transition: transform 0.2s, background 0.3s, border-color 0.3s, color 0.3s;
-      outline: none;
-    }
-
-    .mic-button:hover {
-      border-color: rgba(200, 168, 75, 0.6);
-      color: var(--gold-light);
-    }
-
-    .mic-button.is-recording {
-      background: rgba(239, 68, 68, 0.14);
-      border-color: #ef4444;
-      color: #ef4444;
-    }
-
-    .mic-pulse-ring {
-      position: absolute;
-      inset: -4px;
-      border-radius: 50%;
-      border: 2px solid #ef4444;
-      opacity: 0;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    .mic-button.is-recording + .mic-pulse-ring {
-      animation: pulseRing 1.5s infinite;
-    }
-
-    @keyframes pulseRing {
-      0%   { transform: scale(1);   opacity: 1; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-
-    .mic-status-container {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .status-text {
-      font-size: 13px;
-      font-weight: 400;
-      color: var(--cream-dim);
-      margin-bottom: 4px;
-      letter-spacing: 0.01em;
-    }
-
-    .status-text.recording {
-      color: #ef4444;
-      font-weight: 500;
-    }
-
-    .waves-container {
-      display: none;
-      align-items: center;
-      gap: 3px;
-      height: 18px;
-      margin-top: 6px;
-    }
-
-    .dictation-controls.is-recording .waves-container {
-      display: flex;
-    }
-
-    .wave-bar {
-      width: 2px;
-      height: 5px;
-      background: #ef4444;
-      border-radius: 2px;
-      animation: waveBounce 1.2s infinite ease-in-out;
-    }
-
-    .wave-bar:nth-child(1) { animation-delay: 0.1s; }
-    .wave-bar:nth-child(2) { animation-delay: 0.2s; }
-    .wave-bar:nth-child(3) { animation-delay: 0.3s; }
-    .wave-bar:nth-child(4) { animation-delay: 0.4s; }
-    .wave-bar:nth-child(5) { animation-delay: 0.5s; }
-
-    @keyframes waveBounce {
-      0%, 100% { height: 5px; }
-      50%      { height: 18px; }
-    }
-
-    /* Текст рассказа — это контент, поэтому серифы */
-    .transcript-box {
-      width: 100%;
-      min-height: 110px;
-      background: rgba(0, 0, 0, 0.45);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 6px;
-      padding: 12px 16px;
-      color: var(--cream);
-      font-family: var(--font-body);
-      font-size: 15px;
-      line-height: 1.65;
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .transcript-box:focus {
-      border-color: rgba(200, 168, 75, 0.5);
-    }
-
-    .transcript-box::placeholder {
-      color: rgba(245, 239, 224, 0.35);
-      font-style: italic;
-    }
-
-    /* ── Настройки и действия ── */
-    .settings-row {
-      display: flex;
-      gap: 14px 28px;
-      flex-wrap: wrap;
-      align-items: center;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding-top: 18px;
-    }
-
-    .ai-switches {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      flex: 1 1 320px;
-    }
-
-    .ai-switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .ai-switch input {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .ai-switch__track {
-      position: relative;
-      width: 34px;
-      height: 18px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
-      transition: background 0.25s;
-      flex-shrink: 0;
-    }
-
-    .ai-switch__track::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--cream);
-      transition: transform 0.25s;
-    }
-
-    .ai-switch input:checked + .ai-switch__track {
-      background: var(--gold);
-    }
-
-    .ai-switch input:checked + .ai-switch__track::after {
-      transform: translateX(16px);
-      background: #141210;
-    }
-
-    .ai-switch__label {
-      font-size: 12px;
-      font-weight: 300;
-      color: var(--cream-dim);
-      letter-spacing: 0.02em;
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-      margin-left: auto;
-    }
-
-    .btn-ai {
-      font-family: var(--font-ui);
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.04em;
-      padding: 10px 20px;
-      border-radius: 6px;
-      cursor: pointer;
-      border: none;
-      transition: all 0.25s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-ai:active {
-      transform: scale(0.97);
-    }
-
-    .btn-ai:disabled {
-      opacity: 0.55;
-      cursor: default;
-    }
-
-    .btn-ai-primary {
-      background: var(--gold);
-      color: #141210;
-    }
-
-    .btn-ai-primary:hover:not(:disabled) {
-      background: var(--gold-light);
-    }
-
-    .btn-ai-secondary {
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: var(--cream-dim);
-    }
-
-    .btn-ai-secondary:hover {
-      border-color: rgba(255, 255, 255, 0.35);
-      color: var(--cream);
-    }
-
-    /* ── Лог команд ── */
-    .ai-log-wrapper {
-      margin-top: 18px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      border-radius: 6px;
-      padding: 12px 14px;
-      display: none;
-    }
-
-    .ai-log-title {
-      font-size: 10px;
-      color: var(--cream-dim);
-      font-weight: 600;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-
-    .ai-log-list {
-      font-family: monospace;
-      font-size: 12px;
-      list-style-type: none;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      color: var(--cream-dim);
-    }
-
-    .ai-log-item {
-      display: flex;
-      gap: 8px;
-    }
-
-    .log-action.add    { color: #60a5fa; }
-    .log-action.update { color: #fbbf24; }
-    .log-action.delete { color: #f87171; }
-
-    /* ── Точечная подгонка ── */
-    .refinement-container {
-      margin-top: 18px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding-top: 16px;
-    }
-
-    .refinement-title {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--cream-dim);
-      margin-bottom: 12px;
-    }
-
-    .refinement-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .refinement-chunk {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 6px;
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .refinement-chunk-text {
-      font-family: var(--font-body);
-      font-size: 14px;
-      color: var(--cream);
-      font-style: italic;
-      line-height: 1.55;
-    }
-
-    .refinement-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .refinement-btn {
-      font-family: var(--font-ui);
-      font-size: 11px;
-      padding: 4px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: transparent;
-      color: var(--cream-dim);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .refinement-btn:hover:not(:disabled) {
-      border-color: var(--gold);
-      color: var(--gold-light);
-    }
-
-    /* ═══════════ РЕЖИМ РЕДАКТИРОВАНИЯ НА БЛОКАХ ═══════════ */
-    .bio-block-key {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      font-family: monospace;
-      font-size: 10px;
-      color: var(--gold-dim);
-      background: rgba(0, 0, 0, 0.6);
-      padding: 2px 7px;
-      border-radius: 3px;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-      z-index: 5;
-    }
-
-    .bio-block.is-editing-mode .bio-block-key {
-      opacity: 1;
-    }
-
-    .bio-block {
-      transition: border-color 0.4s, background-color 0.4s;
-    }
-
-    .bio-block.is-editing-mode {
-      border: 1px dashed rgba(200, 168, 75, 0.3);
-      border-radius: 8px;
-      background-color: rgba(255, 255, 255, 0.01);
-      position: relative;
-      padding: 20px;
-    }
-
-    .delete-block-btn {
-      margin-top: 14px;
-      background: transparent;
-      border: none;
-      color: rgba(255, 120, 120, 0.85);
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.3s;
-      display: none;
-      text-align: left;
-      padding: 0;
-    }
-
-    .bio-block.is-editing-mode .delete-block-btn {
-      display: inline-block;
-    }
-
-    .bio-block.is-editing-mode:hover .delete-block-btn {
-      opacity: 0.8;
-    }
-
-    .delete-block-btn:hover {
-      opacity: 1 !important;
-      text-decoration: underline;
-    }
-
-    /* ── Спиннер отрисовки иллюстрации ── */
-    .ai-spinner {
-      width: 22px;
-      height: 22px;
-      border: 2px solid rgba(200, 168, 75, 0.2);
-      border-top-color: var(--gold);
-      border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* ── Плейсхолдер иллюстрации (мемориальный) ──
-       Генерация доступна только в режиме редактирования:
-       вне его — нейтральная заглушка без подсказки и курсора */
-    .bio-block__photo-placeholder {
-      cursor: default;
-      background: rgba(200, 168, 75, 0.03);
-      transition: background 0.3s;
-    }
-
-    .bio-block__photo-hint {
-      display: none;
-    }
-
-    .bio-block.is-editing-mode .bio-block__photo-hint {
-      display: block;
-    }
-
-    .bio-block.is-editing-mode .bio-block__photo-placeholder:hover {
-      background: rgba(200, 168, 75, 0.06);
-    }
-
-    /* Кнопки действий с фото — видны только в режиме редактирования */
-    .photo-actions {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-      align-items: center;
-      margin-top: 4px;
-    }
-
-    .bio-block.is-editing-mode .photo-actions {
-      display: flex;
-    }
-
-    .photo-action-btn {
-      font-family: var(--font-ui);
-      font-size: 12px;
-      letter-spacing: 0.03em;
-      padding: 6px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(200, 168, 75, 0.35);
-      background: rgba(0, 0, 0, 0.35);
-      color: var(--gold-light);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .photo-action-btn:hover {
-      background: rgba(200, 168, 75, 0.12);
-      border-color: var(--gold);
-    }
-
-    /* ── Тост оповещений ── */
-    .notification-toast {
-      background: var(--gold-dim);
-      border: 1px solid var(--gold);
-      color: var(--cream);
-      font-family: var(--font-body);
-      font-size: 14px;
-      font-style: italic;
-      z-index: 2000;
-    }
-
-    /* ── СТИЛИ ДЛЯ ИНЛАЙН-РЕДАКТИРОВАНИЯ И ИИ-ПОМОЩНИКОВ ── */
-    /* ── Стили редактирования полей шапки (имя, даты, город, эпитафия) ── */
-    #p-name[contenteditable="true"],
-    #p-dates[contenteditable="true"],
-    #p-city[contenteditable="true"],
-    #p-bio[contenteditable="true"] {
-      outline: none;
-      transition: all 0.25s ease;
-      border: 1px dashed rgba(200, 168, 75, 0.25);
-      border-radius: 6px;
-      padding: 4px 10px;
-      background: rgba(255, 255, 255, 0.01);
-      display: inline-block;
-    }
-
-    #p-name[contenteditable="true"] {
-      display: block;
-      width: fit-content;
-      margin-left: 0;
-      margin-bottom: 14px;
-    }
-
-    #p-dates[contenteditable="true"] {
-      display: inline-block;
-      min-width: 150px;
-      margin-bottom: 14px;
-    }
-
-    #p-city[contenteditable="true"] {
-      display: inline-block;
-      min-width: 100px;
-    }
-
-    #p-bio[contenteditable="true"] {
-      display: block;
-      width: 100%;
-      text-align: center;
-      margin: 0 auto;
-    }
-
-    #p-name[contenteditable="true"]:hover,
-    #p-dates[contenteditable="true"]:hover,
-    #p-city[contenteditable="true"]:hover,
-    #p-bio[contenteditable="true"]:hover {
-      border-color: rgba(200, 168, 75, 0.55);
-      background: rgba(200, 168, 75, 0.02);
-    }
-
-    #p-name[contenteditable="true"]:focus,
-    #p-dates[contenteditable="true"]:focus,
-    #p-city[contenteditable="true"]:focus,
-    #p-bio[contenteditable="true"]:focus {
-      border-color: var(--gold);
-      border-style: solid;
-      background: rgba(200, 168, 75, 0.05);
-      box-shadow: 0 0 12px rgba(200, 168, 75, 0.15);
-    }
-
-    /* Рамка аватара при наведении в конструкторе (темный стиль) */
-    #p-avatar-wrap {
-      border: 1px dashed rgba(200, 168, 75, 0.3) !important;
-      transition: all 0.3s ease;
-      background: rgba(245, 240, 232, 0.04) !important;
-      box-shadow: none !important;
-    }
-    #p-avatar-wrap:hover {
-      border-color: var(--gold) !important;
-      background: rgba(200, 168, 75, 0.08) !important;
-      box-shadow: 0 0 15px rgba(200, 168, 75, 0.15) !important;
-    }
-    #p-avatar-wrap:hover .avatar-upload-btn-text {
-      background: var(--gold) !important;
-      color: #0c0b0a !important;
-      border-color: var(--gold) !important;
-      box-shadow: 0 2px 8px rgba(200, 168, 75, 0.3);
-    }
-
-    /* Поддержка data-placeholder для contenteditable */
-    [contenteditable="true"]:empty::before {
-      content: attr(data-placeholder);
-      color: rgba(245, 239, 224, 0.35) !important;
-      font-style: italic;
-      pointer-events: none;
-      display: inline-block;
-    }
-
-    .bio-block-text[contenteditable="true"] {
-      outline: none;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      padding: 4px 8px;
-      margin: -4px -8px;
-      transition: all 0.25s;
-    }
-
-    .bio-block.is-editing-mode .bio-block-text[contenteditable="true"] {
-      border: 1px dashed rgba(200, 168, 75, 0.25);
-    }
-
-    .bio-block.is-editing-mode .bio-block-text[contenteditable="true"]:focus {
-      border-color: var(--gold);
-      background: rgba(200, 168, 75, 0.04);
-      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
-    }
-
-    .bio-block__title[contenteditable="true"] {
-      outline: none;
-      border-bottom: 1px dashed transparent;
-      transition: border-bottom-color 0.2s;
-    }
-
-    .bio-block.is-editing-mode .bio-block__title[contenteditable="true"] {
-      border-bottom: 1px dashed rgba(200, 168, 75, 0.35);
-    }
-
-    .bio-block.is-editing-mode .bio-block__title[contenteditable="true"]:focus {
-      border-bottom-color: var(--gold);
-    }
-
-    /* AI действия на уровне блока */
-    .ai-block-helper {
-      display: none;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 12px;
-      opacity: 0;
-      transform: translateY(4px);
-      animation: helperFadeIn 0.3s forwards;
-    }
-
-    .bio-block.is-editing-mode .ai-block-helper {
-      display: flex;
-    }
-
-    @keyframes helperFadeIn {
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .ai-helper-btn {
-      font-family: var(--font-ui);
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-      padding: 4px 10px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      color: var(--cream-dim);
-      cursor: pointer;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .ai-helper-btn:hover {
-      border-color: rgba(200, 168, 75, 0.45);
-      color: var(--gold-light);
-      background: rgba(200, 168, 75, 0.06);
-    }
-
-    .ai-helper-btn.loading {
-      opacity: 0.6;
-      cursor: wait;
-    }
-
-    .bio-block-text-loading {
-      opacity: 0.35;
-      pointer-events: none;
-    }
-
-    .bio-block__photo {
-      position: relative;
-    }
-    
-    .bio-block__photo-img-wrap {
-      width: 100%;
-      height: 100%;
-      display: none;
-    }
-    
-    .bio-block__photo-img-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    
-    .bio-block__photo.has-image .bio-block__photo-img-wrap {
-      display: block;
-    }
-    
-    .bio-block__photo.has-image .bio-block__photo-placeholder {
-      display: none;
-    }
-
-    /* Оверлей управления фото в режиме редактирования */
-    .photo-actions-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(12, 11, 10, 0.75);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-      z-index: 5;
-    }
-
-    /* В режиме редактирования оверлей появляется при ховере на фото */
-    .bio-block.is-editing-mode .bio-block__photo:hover .photo-actions-overlay {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    /* Если фото пустое (плейсхолдер), оверлей виден сразу */
-    .bio-block.is-editing-mode .bio-block__photo-placeholder .photo-actions-overlay {
-      opacity: 1;
-      pointer-events: auto;
-      background: transparent;
-      position: static;
-    }
-
-    /* Спиннер загрузки для контейнера фото */
-    .bio-block__photo.is-loading .bio-block__photo-img-wrap,
-    .bio-block__photo.is-loading .bio-block__photo-placeholder,
-    .bio-block__photo.is-loading .photo-actions-overlay {
-      display: none !important;
-    }
-    
-    .bio-block__photo.is-loading {
-      display: flex !important;
-      align-items: center;
-      justify-content: center;
-      background: rgba(12, 11, 10, 0.8) !important;
-    }
-    
-    .bio-block__photo.is-loading::after {
-      content: '';
-      width: 28px;
-      height: 28px;
-      border: 2px solid rgba(200, 168, 75, 0.2);
-      border-top-color: var(--gold);
-      border-radius: 50%;
-      animation: spin 0.9s linear infinite;
-    }
-
-    /* ── СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ── */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 3000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .modal-overlay.is-visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .modal-window {
-      background: #0d0c0a;
-      border: 1px solid rgba(200, 168, 75, 0.2);
-      border-radius: 12px;
-      width: 90%;
-      max-width: 580px;
-      padding: 28px;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
-      transform: scale(0.95);
-      transition: transform 0.3s ease;
-      font-family: var(--font-ui);
-    }
-
-    .modal-overlay.is-visible .modal-window {
-      transform: scale(1);
-    }
-
-    .modal-title {
-      font-family: var(--font-display);
-      font-size: 20px;
-      color: var(--gold-light);
-      margin-bottom: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      padding-bottom: 10px;
-    }
-
-    .modal-form-group {
-      margin-bottom: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .modal-form-group label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--cream-dim);
-      font-weight: 500;
-    }
-
-    .modal-input, .modal-select, .modal-textarea {
-      background: rgba(255, 255, 255, 0.015);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 6px;
-      padding: 10px 14px;
-      color: var(--cream);
-      font-size: 13.5px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .modal-input:focus, .modal-select:focus, .modal-textarea:focus {
-      border-color: rgba(200, 168, 75, 0.45);
-    }
-
-    .modal-select option {
-      background: #0d0c0a;
-      color: var(--cream);
-    }
-
-    .modal-textarea {
-      resize: vertical;
-      min-height: 90px;
-      font-family: var(--font-body);
-      line-height: 1.6;
-    }
-
-    .modal-ai-trigger-btn {
-      align-self: flex-start;
-      font-family: var(--font-ui);
-      font-size: 11.5px;
-      font-weight: 500;
-      color: var(--gold-light);
-      background: rgba(200, 168, 75, 0.05);
-      border: 1px dashed rgba(200, 168, 75, 0.35);
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 2px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .modal-ai-trigger-btn:hover {
-      background: rgba(200, 168, 75, 0.12);
-      border-style: solid;
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      margin-top: 24px;
-    }
-
-    /* Кнопка ручного добавления секции */
-    .add-block-btn-wrap {
-      text-align: center;
-      margin: 40px auto 80px;
-      max-width: 1000px;
-      display: none; /* скрыта, показывается в режиме редактирования */
-    }
-
-    .btn-add-section {
-      font-family: var(--font-ui);
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      background: rgba(200, 168, 75, 0.03);
-      border: 1px dashed rgba(200, 168, 75, 0.35);
-      color: var(--gold-light);
-      padding: 12px 28px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.25s;
-    }
-
-    .btn-add-section:hover {
-      background: rgba(200, 168, 75, 0.08);
-      border-style: solid;
-      color: var(--cream);
-    }
-
-    /* Подсказка в пустых разделах и contenteditable-полях шапки */
-    .bio-block-text:empty::before {
-      content: 'Раздел пока пуст. Расскажите историю в панели ИИ выше — текст появится здесь сам.';
-      opacity: 0.35;
-      font-style: italic;
-    }
-    [contenteditable]:focus {
-      outline: 1px dashed rgba(200, 168, 75, 0.5);
-      outline-offset: 4px;
-    }
-  </style>
+  <link rel="stylesheet" href="styles/ai-constructor.css?v=2" />
 </head>
 <body>
 
@@ -1061,47 +73,66 @@
     <!-- Скрытый input для фото шапки -->
     <input type="file" id="avatar-upload-input" accept="image/*" style="display:none;">
 
+    <!-- Фоновое свечение (Аура) при записи -->
+    <div id="ambient-glow-aura" class="ambient-glow-aura"></div>
+
     <!-- ИИ-ПАНЕЛЬ УПРАВЛЕНИЯ (скрыта по умолчанию, появляется при переходе в режим ИИ-редактора) -->
     <section class="ai-control-panel" id="ai-control-panel">
-      <div class="ai-control-header">
+      <div class="ai-control-header" id="ai-control-header">
         <span class="ai-status-dot"></span>
-        <div>
+        <div class="ai-control-header-text">
           <h3 class="ai-title">ИИ-помощник страницы памяти</h3>
-          <p class="ai-subtitle">Расскажите историю жизни голосом или текстом — разделы страницы будут созданы, обновлены или удалены автоматически.</p>
+          <p class="ai-subtitle">Расскажите историю жизни голосом или текстом — разделы страницы будут созданы автоматически.</p>
         </div>
+        <button class="ai-panel-collapse-btn" id="ai-panel-collapse-btn" title="Свернуть / развернуть панель">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
       </div>
 
       <div class="dictation-wrapper">
-        <div class="dictation-controls">
+        <!-- Левая колонка: микрофон, его свечение и Siri-анимация волновода -->
+        <div class="dictation-column dictation-column--left dictation-controls">
           <div class="mic-button-container">
             <button id="mic-btn" class="mic-button" title="Включить / выключить запись" aria-label="Запись голоса">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="2" width="6" height="12" rx="3"/>
-                <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-                <line x1="12" y1="18" x2="12" y2="22"/>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="rgba(200, 168, 75, 0.15)" stroke="var(--gold-light)"/>
+                <path d="M19 10v1a7 7 0 0 1-14 0v-1" stroke="var(--gold)"/>
+                <line x1="12" y1="18" x2="12" y2="23" stroke="var(--gold)"/>
+                <line x1="8" y1="23" x2="16" y2="23" stroke="var(--gold)"/>
+                <path d="M21 3l.5 1.5L23 5l-1.5.5L21 7l-.5-1.5L19 5l1.5-.5L21 3z" fill="var(--gold-light)"/>
               </svg>
             </button>
-            <div class="mic-pulse-ring"></div>
+            <div class="mic-glow"></div>
+            
+            <!-- Орбитальные волны Siri, огибающие микрофон -->
+            <div class="mic-orbit-waves">
+              <div class="waves-container">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+              </div>
+            </div>
           </div>
-
           <div class="mic-status-container">
             <div id="status-label" class="status-text">Нажмите на микрофон и начните говорить</div>
-            <div class="waves-container">
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-              <div class="wave-bar"></div>
-            </div>
           </div>
         </div>
 
-        <textarea id="transcript-input" class="transcript-box" placeholder="Здесь отобразится расшифрованный текст вашего рассказа... Вы можете свободно отредактировать его вручную перед отправкой в ИИ."></textarea>
+        <!-- Правая колонка: текстовое поле редактирования -->
+        <div class="dictation-column dictation-column--right">
+          <textarea id="transcript-input" class="transcript-box" placeholder="Здесь отобразится расшифрованный текст вашего рассказа... Вы можете свободно отредактировать его вручную перед отправкой в ИИ."></textarea>
+        </div>
       </div>
 
       <div class="settings-row">
         <div class="ai-switches">
-          <label class="ai-switch" style="display:none;">
+          <label class="ai-switch" id="sim-mode-label">
             <input type="checkbox" id="sim-mode">
             <span class="ai-switch__track"></span>
             <span class="ai-switch__label">Оффлайн-симуляция ответов ИИ (тест без бэкенда)</span>
@@ -1114,25 +145,10 @@
         </div>
 
         <div class="action-buttons">
+          <button id="drawer-toggle-btn" class="btn-ai btn-ai-secondary" title="Логи ИИ и точечная подгонка">📋 Списки</button>
           <button id="clear-btn" class="btn-ai btn-ai-secondary">Очистить</button>
           <button id="process-btn" class="btn-ai btn-ai-primary">Обработать через ИИ</button>
         </div>
-      </div>
-
-      <!-- Панель точечной подгонки (Refinement Mapping) — свёрнута по умолчанию -->
-      <div id="refinement-panel" class="refinement-container" style="display: none;">
-        <h4 class="refinement-title" id="refinement-toggle" style="cursor:pointer; user-select:none;">
-          <span id="refinement-arrow">▸</span> Точечная подгонка фрагментов рассказа <span style="opacity:.5; font-weight:400;">(если ИИ что-то пропустил — раскройте и добавьте фразы в разделы вручную)</span>
-        </h4>
-        <div id="refinement-list" class="refinement-list" style="display: none;"></div>
-      </div>
-
-      <!-- Лог команд -->
-      <div id="ai-log-box" class="ai-log-wrapper">
-        <div class="ai-log-title">Выполненные команды перестройки страницы</div>
-        <ul id="ai-log-list" class="ai-log-list">
-          <!-- Заполняется JS -->
-        </ul>
       </div>
     </section>
 
@@ -1140,21 +156,21 @@
     <h3 class="person-sec-title">Биография и летопись</h3>
 
     <div class="bio-blocks" id="blocks-container">
-
       <!-- Блок Детство -->
-      <section class="bio-block is-editing-mode" data-key="childhood" style="border-color: rgba(200, 168, 75, 0.35);">
-        <h4 class="bio-block__title" contenteditable="true">Детские годы</h4>
+      <section class="bio-block" data-key="childhood">
+        <div class="bio-block__drag-handle" title="Перетащить блок">❧</div>
+        <h4 class="bio-block__title">Детство и юность</h4>
         <div class="bio-block__row">
           <div class="bio-block__text">
-            <span class="bio-block-key" style="opacity: 1;">childhood</span>
-            <div class="bio-block-text" contenteditable="true"></div>
+            <span class="bio-block-key">childhood</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'improve')">✨ Улучшить стиль (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'warm')">❤️ Сделать теплее (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'improve')">✨ Слог</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'warm')">❤️ Теплее</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'formal')">👔 Официально</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'continue')">✍️ Продолжить</button>
             </div>
-            <button class="delete-block-btn" style="display: inline-block; opacity: 0.8;" onclick="deleteBlockLocally('childhood')">Удалить раздел</button>
+            <div class="bio-block-text">Александр родился в послевоенные годы. С самого раннего детства он проявлял живой интерес к окружающему миру и книгам.</div>
+            <button class="delete-block-btn" onclick="deleteBlockLocally('childhood')">Удалить раздел</button>
           </div>
           <div class="bio-block__photo">
             <div class="bio-block__photo-img-wrap"></div>
@@ -1169,20 +185,21 @@
         </div>
       </section>
 
-      <!-- Блок Образование -->
-      <section class="bio-block is-editing-mode" data-key="education" style="border-color: rgba(200, 168, 75, 0.35);">
-        <h4 class="bio-block__title" contenteditable="true">Образование и становление</h4>
+      <!-- Блок Увлечения -->
+      <section class="bio-block" data-key="hobbies">
+        <div class="bio-block__drag-handle" title="Перетащить блок">❧</div>
+        <h4 class="bio-block__title">Хобби и увлечения</h4>
         <div class="bio-block__row">
           <div class="bio-block__text">
-            <span class="bio-block-key" style="opacity: 1;">education</span>
-            <div class="bio-block-text" contenteditable="true"></div>
+            <span class="bio-block-key">hobbies</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'improve')">✨ Улучшить стиль (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'warm')">❤️ Сделать теплее (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'improve')">✨ Слог</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'warm')">❤️ Теплее</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'formal')">👔 Официально</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'continue')">✍️ Продолжить</button>
             </div>
-            <button class="delete-block-btn" style="display: inline-block; opacity: 0.8;" onclick="deleteBlockLocally('education')">Удалить раздел</button>
+            <div class="bio-block-text">Свободное время он любил посвящать творчеству, чтению исторических романов и прогулкам на природе.</div>
+            <button class="delete-block-btn" onclick="deleteBlockLocally('hobbies')">Удалить раздел</button>
           </div>
           <div class="bio-block__photo">
             <div class="bio-block__photo-img-wrap"></div>
@@ -1190,27 +207,28 @@
               <span class="bio-block__photo-icon">❧</span>
             </div>
             <div class="photo-actions-overlay">
-              <button class="photo-action-btn" onclick="generateBlockImage('education')">Создать ИИ-фото</button>
-              <button class="photo-action-btn" onclick="uploadBlockPhoto('education')">Загрузить своё</button>
+              <button class="photo-action-btn" onclick="generateBlockImage('hobbies')">Создать ИИ-фото</button>
+              <button class="photo-action-btn" onclick="uploadBlockPhoto('hobbies')">Загрузить своё</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Блок Карьера -->
-      <section class="bio-block is-editing-mode" data-key="career" style="border-color: rgba(200, 168, 75, 0.35);">
-        <h4 class="bio-block__title" contenteditable="true">Профессиональный путь</h4>
+      <!-- Блок Работа -->
+      <section class="bio-block" data-key="career">
+        <div class="bio-block__drag-handle" title="Перетащить блок">❧</div>
+        <h4 class="bio-block__title">Профессиональный путь</h4>
         <div class="bio-block__row">
           <div class="bio-block__text">
-            <span class="bio-block-key" style="opacity: 1;">career</span>
-            <div class="bio-block-text" contenteditable="true"></div>
+            <span class="bio-block-key">career</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'improve')">✨ Улучшить стиль (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'warm')">❤️ Сделать теплее (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'improve')">✨ Слог</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'warm')">❤️ Теплее</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'formal')">👔 Официально</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'continue')">✍️ Продолжить</button>
             </div>
-            <button class="delete-block-btn" style="display: inline-block; opacity: 0.8;" onclick="deleteBlockLocally('career')">Удалить раздел</button>
+            <div class="bio-block-text">Посвятил долгие годы созидательному труду, заслужив искреннее уважение со стороны коллег и руководства.</div>
+            <button class="delete-block-btn" onclick="deleteBlockLocally('career')">Удалить раздел</button>
           </div>
           <div class="bio-block__photo">
             <div class="bio-block__photo-img-wrap"></div>
@@ -1225,11 +243,65 @@
         </div>
       </section>
 
+      <!-- Блок Старость -->
+      <section class="bio-block" data-key="oldage">
+        <div class="bio-block__drag-handle" title="Перетащить блок">❧</div>
+        <h4 class="bio-block__title">Поздние годы</h4>
+        <div class="bio-block__row">
+          <div class="bio-block__text">
+            <span class="bio-block-key">oldage</span>
+            <div class="ai-block-helper">
+              <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'improve')">✨ Слог</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'warm')">❤️ Теплее</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'formal')">👔 Официально</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'continue')">✍️ Продолжить</button>
+            </div>
+            <div class="bio-block-text">В преклонном возрасте он продолжал делиться мудростью и жизненным опытом с внуками, оставаясь опорой для всей семьи.</div>
+            <button class="delete-block-btn" onclick="deleteBlockLocally('oldage')">Удалить раздел</button>
+          </div>
+          <div class="bio-block__photo">
+            <div class="bio-block__photo-img-wrap"></div>
+            <div class="bio-block__photo-placeholder">
+              <span class="bio-block__photo-icon">❧</span>
+            </div>
+            <div class="photo-actions-overlay">
+              <button class="photo-action-btn" onclick="generateBlockImage('oldage')">Создать ИИ-фото</button>
+              <button class="photo-action-btn" onclick="uploadBlockPhoto('oldage')">Загрузить своё</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 
   <!-- Подвал сайта -->
   <div id="site-footer"></div>
+
+  <!-- Фокусное затемнение фона при диктовке/редактировании -->
+  <div id="focus-dimmer" class="focus-dimmer"></div>
+
+  <!-- Боковая панель для Лога команд ИИ и Точечной подгонки фрагментов рассказа -->
+  <div id="refinement-drawer" class="refinement-drawer">
+    <div class="drawer-header">
+      <h4 class="drawer-title">Списки & Логи ИИ</h4>
+      <button class="drawer-close-btn" id="drawer-close-btn" title="Закрыть панель">&times;</button>
+    </div>
+    <div class="drawer-content">
+      <!-- Точечная подгонка фрагментов рассказа -->
+      <div id="refinement-panel" class="refinement-container" style="display: none;">
+        <h5 class="refinement-title">Точечная подгонка фрагментов</h5>
+        <div id="refinement-list" class="refinement-list"></div>
+      </div>
+
+      <!-- Лог выполненных команд перестройки -->
+      <div id="ai-log-box" class="ai-log-wrapper" style="display: none;">
+        <h5 class="ai-log-title">Команды перестройки страницы</h5>
+        <ul id="ai-log-list" class="ai-log-list">
+          <!-- Заполняется JS -->
+        </ul>
+      </div>
+    </div>
+  </div>
 
   <!-- Тост уведомлений -->
   <div id="toast" class="notification-toast">Страница успешно обновлена!</div>
@@ -1246,6 +318,7 @@
     let recognition = null;
     let finalTranscript = '';
     let isEditingMode = true;
+    let isPanelMinimized = false;
 
     // База API: берём из общего клиента api.js (same-origin в проде, :3000 в dev)
     const API_BASE = (window.API && API.BASE) || '';
@@ -1259,15 +332,105 @@
     const simModeCheckbox = document.getElementById('sim-mode');
     const autoPhotoMode = document.getElementById('auto-photo-mode');
     const blocksContainer = document.getElementById('blocks-container');
-    const aiLogBox = document.getElementById('ai-log-box');
-    const aiLogList = document.getElementById('ai-log-list');
     const toast = document.getElementById('toast');
-    const refinementPanel = document.getElementById('refinement-panel');
-    const refinementList = document.getElementById('refinement-list');
     const editPanel = document.getElementById('edit-panel');
     const editToggleBtn = document.getElementById('edit-toggle-btn');
     const aiControlPanel = document.getElementById('ai-control-panel');
     const dictationControls = document.querySelector('.dictation-controls');
+
+    // Новые элементы v2
+    const refinementDrawer = document.getElementById('refinement-drawer');
+    const drawerToggleBtn = document.getElementById('drawer-toggle-btn');
+    const drawerCloseBtn = document.getElementById('drawer-close-btn');
+    const focusDimmer = document.getElementById('focus-dimmer');
+    const ambientGlowAura = document.getElementById('ambient-glow-aura');
+    const aiPanelCollapseBtn = document.getElementById('ai-panel-collapse-btn');
+    const aiControlHeader = document.getElementById('ai-control-header');
+
+    // Сайдбар секции
+    const refinementPanel = document.getElementById('refinement-panel');
+    const refinementList = document.getElementById('refinement-list');
+    const aiLogBox = document.getElementById('ai-log-box');
+    const aiLogList = document.getElementById('ai-log-list');
+
+    // === ФОКУС-РЕЖИМ (Фоновый Диммер) ===
+    function updateDimmer() {
+      // Затемнение фона полностью отключено по требованию пользователя
+      focusDimmer.classList.remove('is-active');
+    }
+
+    // Подсветка кнопки отправки при наличии текста
+    function updateProcessButtonState() {
+      const hasText = !!transcriptInput.value.trim();
+      if (hasText) {
+        processBtn.classList.add('is-ready');
+      } else {
+        processBtn.classList.remove('is-ready');
+      }
+    }
+
+    transcriptInput.addEventListener('input', updateProcessButtonState);
+
+    transcriptInput.addEventListener('focus', () => {
+      isPanelMinimized = false;
+      aiControlPanel.classList.remove('is-minimized');
+      if (aiPanelCollapseBtn) aiPanelCollapseBtn.style.transform = 'rotate(0deg)';
+      updateDimmer();
+    });
+    transcriptInput.addEventListener('blur', () => {
+      setTimeout(updateDimmer, 200);
+    });
+
+    focusDimmer.addEventListener('click', () => {
+      if (isRecording) stopRecording();
+      transcriptInput.blur();
+      updateDimmer();
+    });
+
+    // === СВЕРНУТЬ / РАЗВЕРНУТЬ ИИ-ПАНЕЛЬ ===
+    if (aiPanelCollapseBtn) {
+      aiPanelCollapseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isPanelMinimized = !isPanelMinimized;
+        if (isPanelMinimized) {
+          aiControlPanel.classList.add('is-minimized');
+          aiPanelCollapseBtn.style.transform = 'rotate(180deg)';
+          // При сворачивании убираем фокус
+          transcriptInput.blur();
+        } else {
+          aiControlPanel.classList.remove('is-minimized');
+          aiPanelCollapseBtn.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
+
+    if (aiControlHeader) {
+      aiControlHeader.addEventListener('click', () => {
+        if (isPanelMinimized) {
+          isPanelMinimized = false;
+          aiControlPanel.classList.remove('is-minimized');
+          if (aiPanelCollapseBtn) aiPanelCollapseBtn.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
+
+    // === УПРАВЛЕНИЕ БОКОВОЙ ПАНЕЛЬЮ (DRAWER) ===
+    if (drawerToggleBtn && refinementDrawer) {
+      drawerToggleBtn.addEventListener('click', () => {
+        refinementDrawer.classList.toggle('is-open');
+      });
+    }
+
+    if (drawerCloseBtn && refinementDrawer) {
+      drawerCloseBtn.addEventListener('click', () => {
+        refinementDrawer.classList.remove('is-open');
+      });
+    }
+
+    // Закрывать Drawer при клике на диммер
+    focusDimmer.addEventListener('click', () => {
+      if (refinementDrawer) refinementDrawer.classList.remove('is-open');
+    });
 
     // === ФУНКЦИЯ ЧЕРЕДОВАНИЯ БЛОКОВ (ЗЕБРА) ===
     function updateZebraAlternation() {
@@ -1281,7 +444,140 @@
       });
     }
 
-    document.addEventListener('DOMContentLoaded', updateZebraAlternation);
+    document.addEventListener('DOMContentLoaded', () => {
+      updateZebraAlternation();
+      initDragAndDrop();
+    });
+
+    // === ДРАГ-ЭНД-ДРОП ПЕРЕТАСКИВАНИЕ БЛОКОВ (Drag-and-Drop) ===
+    let draggedEl = null;
+    let initialMouseY = 0;
+    let isDragging = false;
+
+    function initDragAndDrop() {
+      const container = document.getElementById('blocks-container');
+      if (!container) return;
+
+      container.addEventListener('mousedown', onDragStart);
+      container.addEventListener('touchstart', onDragStart, { passive: false });
+    }
+
+    // Вспомогательная функция FLIP-анимации при перестроении DOM
+    function arrangeBlocksWithFLIP(actionFn) {
+      const container = document.getElementById('blocks-container');
+      const blocks = Array.from(container.querySelectorAll('.bio-block:not(.is-dragging)'));
+      const firstPositions = blocks.map(block => ({
+        block,
+        rect: block.getBoundingClientRect()
+      }));
+
+      actionFn();
+
+      updateZebraAlternation();
+      updateRefinementButtons();
+
+      firstPositions.forEach(({ block, rect: firstRect }) => {
+        const lastRect = block.getBoundingClientRect();
+        const deltaY = firstRect.top - lastRect.top;
+        if (deltaY !== 0) {
+          gsap.fromTo(block, 
+            { y: deltaY }, 
+            { y: 0, duration: 0.5, ease: 'back.out(1.2)', clearProps: 'transform' }
+          );
+        }
+      });
+    }
+
+    function onDragStart(e) {
+      if (!isEditingMode) return;
+      const handle = e.target.closest('.bio-block__drag-handle');
+      if (!handle) return;
+
+      draggedEl = handle.closest('.bio-block');
+      if (!draggedEl) return;
+
+      // Игнорируем клик правой кнопкой мыши
+      if (e.type === 'mousedown' && e.button !== 0) return;
+
+      isDragging = true;
+      initialMouseY = e.clientY || e.touches?.[0]?.clientY;
+
+      draggedEl.classList.add('is-dragging');
+      document.body.style.userSelect = 'none';
+
+      window.addEventListener('mousemove', onDragMove);
+      window.addEventListener('touchmove', onDragMove, { passive: false });
+      window.addEventListener('mouseup', onDragEnd);
+      window.addEventListener('touchend', onDragEnd);
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !draggedEl) return;
+      if (e.cancelable) e.preventDefault();
+
+      const clientY = e.clientY || e.touches?.[0]?.clientY;
+      const deltaY = clientY - initialMouseY;
+
+      draggedEl.style.transform = `translateY(${deltaY}px) scale(1.02)`;
+
+      const draggedRect = draggedEl.getBoundingClientRect();
+      const draggedMid = draggedRect.top + draggedRect.height / 2;
+
+      const container = document.getElementById('blocks-container');
+      const blocks = Array.from(container.querySelectorAll('.bio-block'));
+      
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        if (block === draggedEl) continue;
+
+        const rect = block.getBoundingClientRect();
+        const blockMid = rect.top + rect.height / 2;
+
+        if (draggedMid < blockMid && draggedEl.nextElementSibling === block) {
+          const oldOffsetTop = draggedEl.offsetTop;
+          arrangeBlocksWithFLIP(() => {
+            container.insertBefore(block, draggedEl);
+          });
+          const newOffsetTop = draggedEl.offsetTop;
+          initialMouseY -= (oldOffsetTop - newOffsetTop);
+          break;
+        } else if (draggedMid > blockMid && draggedEl.previousElementSibling === block) {
+          const oldOffsetTop = draggedEl.offsetTop;
+          arrangeBlocksWithFLIP(() => {
+            container.insertBefore(draggedEl, block);
+          });
+          const newOffsetTop = draggedEl.offsetTop;
+          initialMouseY -= (oldOffsetTop - newOffsetTop);
+          break;
+        }
+      }
+    }
+
+    function onDragEnd(e) {
+      if (!isDragging || !draggedEl) return;
+
+      isDragging = false;
+      draggedEl.classList.remove('is-dragging');
+      
+      const clientY = e.clientY || e.changedTouches?.[0]?.clientY || initialMouseY;
+      const currentDeltaY = clientY - initialMouseY;
+
+      draggedEl.style.transform = '';
+      
+      // Пружинная посадка в итоговую позицию
+      gsap.fromTo(draggedEl,
+        { y: currentDeltaY },
+        { y: 0, duration: 0.5, ease: 'back.out(1.4)', clearProps: 'transform' }
+      );
+
+      draggedEl = null;
+      document.body.style.userSelect = '';
+
+      window.removeEventListener('mousemove', onDragMove);
+      window.removeEventListener('touchmove', onDragMove);
+      window.removeEventListener('mouseup', onDragEnd);
+      window.removeEventListener('touchend', onDragEnd);
+    }
 
     // === ЛОГИКА ПЕРЕХОДА В РЕЖИМ РЕДАКТИРОВАНИЯ ===
     function enterEditingMode() {
@@ -1294,15 +590,17 @@
       document.getElementById('edit-cancel-btn').addEventListener('click', exitEditingMode);
 
       aiControlPanel.style.display = 'block';
+      isPanelMinimized = false;
+      if (aiPanelCollapseBtn) aiPanelCollapseBtn.style.transform = 'rotate(0deg)';
+      
       if (typeof gsap !== 'undefined') {
         gsap.fromTo(aiControlPanel,
-          { height: 0, opacity: 0, y: -20 },
-          { height: 'auto', opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }
+          { y: 30, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }
         );
       } else {
-        aiControlPanel.style.height = 'auto';
         aiControlPanel.style.opacity = '1';
-        aiControlPanel.style.transform = 'none';
+        aiControlPanel.style.transform = 'translateY(0)';
       }
 
       // Показываем кнопку ручного добавления секции
@@ -1353,23 +651,22 @@
       editPanel.innerHTML = `<button class="edit-panel__btn" id="edit-toggle-btn">Редактировать с ИИ</button>`;
       document.getElementById('edit-toggle-btn').addEventListener('click', enterEditingMode);
 
+      // Закрываем боковую панель и снимаем фокус
+      refinementDrawer.classList.remove('is-open');
+      focusDimmer.classList.remove('is-active');
+
       if (typeof gsap !== 'undefined') {
         gsap.to(aiControlPanel, {
-          height: 0,
+          y: 30,
           opacity: 0,
-          y: -20,
           duration: 0.4,
           ease: 'power3.in',
           onComplete: () => {
             aiControlPanel.style.display = 'none';
-            refinementPanel.style.display = 'none';
-            aiLogBox.style.display = 'none';
           }
         });
       } else {
         aiControlPanel.style.display = 'none';
-        refinementPanel.style.display = 'none';
-        aiLogBox.style.display = 'none';
       }
 
       // Скрываем кнопку ручного добавления
@@ -1530,18 +827,23 @@
       editPanel.innerHTML = `<button class="edit-panel__btn" id="edit-toggle-btn">Редактировать с ИИ</button>`;
       document.getElementById('edit-toggle-btn').addEventListener('click', enterEditingMode);
 
-      gsap.to(aiControlPanel, {
-        height: 0,
-        opacity: 0,
-        y: -20,
-        duration: 0.4,
-        ease: 'power3.in',
-        onComplete: () => {
-          aiControlPanel.style.display = 'none';
-          refinementPanel.style.display = 'none';
-          aiLogBox.style.display = 'none';
-        }
-      });
+      // Закрываем боковую панель и снимаем фокус
+      refinementDrawer.classList.remove('is-open');
+      focusDimmer.classList.remove('is-active');
+
+      if (typeof gsap !== 'undefined') {
+        gsap.to(aiControlPanel, {
+          y: 30,
+          opacity: 0,
+          duration: 0.4,
+          ease: 'power3.in',
+          onComplete: () => {
+            aiControlPanel.style.display = 'none';
+          }
+        });
+      } else {
+        aiControlPanel.style.display = 'none';
+      }
 
       const addBlockBtnWrap = document.getElementById('add-block-btn-wrap');
       if (addBlockBtnWrap) {
@@ -1588,6 +890,7 @@
         }
         transcriptInput.value = (finalTranscript + interimTranscript).trim();
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
+        updateProcessButtonState();
       };
 
       recognition.onerror = (e) => {
@@ -1619,6 +922,8 @@
         dictationControls.classList.add('is-recording');
         statusLabel.textContent = 'Слушаю вас... Говорите историю';
         statusLabel.classList.add('recording');
+        if (ambientGlowAura) ambientGlowAura.classList.add('is-active');
+        updateDimmer();
       } catch (e) {
         console.error(e);
       }
@@ -1632,6 +937,8 @@
       dictationControls.classList.remove('is-recording');
       statusLabel.textContent = 'Запись остановлена. Вы можете отредактировать текст';
       statusLabel.classList.remove('recording');
+      if (ambientGlowAura) ambientGlowAura.classList.remove('is-active');
+      updateDimmer();
     }
 
     micBtn.addEventListener('click', () => {
@@ -1645,6 +952,10 @@
       if (isRecording) stopRecording();
       refinementPanel.style.display = 'none';
       refinementList.innerHTML = '';
+      aiLogBox.style.display = 'none';
+      aiLogList.innerHTML = '';
+      if (refinementDrawer) refinementDrawer.classList.remove('is-open');
+      updateProcessButtonState();
     });
 
     // === УДАЛЕНИЕ БЛОКА ===
@@ -1701,8 +1012,8 @@
           imgWrap.innerHTML = `<img src="${reader.result}" alt="Фотография из семейного архива">`;
           const img = imgWrap.querySelector('img');
           gsap.fromTo(img,
-            { opacity: 0, scale: 0.95 },
-            { opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out' }
+            { opacity: 0, scale: 0.97, filter: 'blur(8px) contrast(0.8)' },
+            { opacity: 1, scale: 1, filter: 'blur(0px) contrast(1)', duration: 1.2, ease: 'power2.out', clearProps: 'filter' }
           );
         }
         showToast('Фотография добавлена');
@@ -1798,14 +1109,28 @@
           if (!data.ok || !data.image) throw new Error('Пустой ответ модели');
 
           photoContainer.classList.remove('is-loading');
-          photoContainer.classList.add('has-image');
+          photoContainer.classList.add('has-image', 'is-developing');
           const imgWrap = photoContainer.querySelector('.bio-block__photo-img-wrap');
           if (imgWrap) {
             imgWrap.innerHTML = `<img src="${data.image}" alt="${titleContent}">`;
             const img = imgWrap.querySelector('img');
             gsap.fromTo(img,
-              { opacity: 0, scale: 0.95 },
-              { opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out' }
+              { 
+                opacity: 0, 
+                scale: 0.96,
+                filter: 'blur(15px) sepia(0.8) hue-rotate(-20deg) saturate(0.2) contrast(0.6) brightness(1.2)'
+              },
+              { 
+                opacity: 1, 
+                scale: 1, 
+                filter: 'blur(0px) sepia(0) hue-rotate(0deg) saturate(1) contrast(1) brightness(1)',
+                duration: 3.5, 
+                ease: 'power1.out',
+                clearProps: 'filter',
+                onComplete: () => {
+                  photoContainer.classList.remove('is-developing');
+                }
+              }
             );
           }
           showToast(`ИИ-иллюстрация создана (эпоха ${decade}-х)!`);
@@ -1835,17 +1160,35 @@
             src = "https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=400&q=80";
           } else if (titleLower.includes('карьер') || titleLower.includes('профессиональн') || textLower.includes('работал') || textLower.includes('конструктор')) {
             src = "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=400&q=80";
+          } else if (titleLower.includes('хобби') || titleLower.includes('увлечен') || textLower.includes('хобби') || textLower.includes('увлечен')) {
+            src = "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=400&q=80";
+          } else if (titleLower.includes('старост') || titleLower.includes('поздн') || textLower.includes('поздн') || textLower.includes('старост')) {
+            src = "https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=400&q=80";
           }
 
           photoContainer.classList.remove('is-loading');
-          photoContainer.classList.add('has-image');
+          photoContainer.classList.add('has-image', 'is-developing');
           const imgWrap = photoContainer.querySelector('.bio-block__photo-img-wrap');
           if (imgWrap) {
             imgWrap.innerHTML = `<img src="${src}" alt="${titleContent}" onerror="this.src='https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=400&q=80'">`;
             const img = imgWrap.querySelector('img');
             gsap.fromTo(img,
-              { opacity: 0, scale: 0.95 },
-              { opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out' }
+              { 
+                opacity: 0, 
+                scale: 0.96,
+                filter: 'blur(15px) sepia(0.8) hue-rotate(-20deg) saturate(0.2) contrast(0.6) brightness(1.2)'
+              },
+              { 
+                opacity: 1, 
+                scale: 1, 
+                filter: 'blur(0px) sepia(0) hue-rotate(0deg) saturate(1) contrast(1) brightness(1)',
+                duration: 3.5, 
+                ease: 'power1.out',
+                clearProps: 'filter',
+                onComplete: () => {
+                  photoContainer.classList.remove('is-developing');
+                }
+              }
             );
           }
           showToast(`Иллюстрация создана для эпохи ${decade}-х годов!`);
@@ -2235,6 +1578,9 @@
       aiLogList.innerHTML = '';
       aiLogBox.style.display = 'block';
 
+      // Автоматически открываем боковую панель для демонстрации логов ИИ
+      if (refinementDrawer) refinementDrawer.classList.add('is-open');
+
       data.commands.forEach((cmd) => {
         const logItem = document.createElement('li');
         logItem.className = 'ai-log-item';
@@ -2313,17 +1659,18 @@
       if (isEditingMode) article.classList.add('is-editing-mode');
       article.setAttribute('data-key', key);
       article.innerHTML = `
+        <div class="bio-block__drag-handle" title="Перетащить блок">❧</div>
         <h4 class="bio-block__title" ${isEditingMode ? 'contenteditable="true"' : ''}>${title}</h4>
         <div class="bio-block__row">
           <div class="bio-block__text">
             <span class="bio-block-key" style="${isEditingMode ? 'opacity: 1;' : ''}">${key}</span>
-            <div class="bio-block-text" ${isEditingMode ? 'contenteditable="true"' : ''}>${text}</div>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'improve')">✨ Улучшить стиль (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'warm')">❤️ Сделать теплее (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'improve')">✨ Слог</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'warm')">❤️ Теплее</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'formal')">👔 Официально</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'continue')">✍️ Продолжить</button>
             </div>
+            <div class="bio-block-text" ${isEditingMode ? 'contenteditable="true"' : ''}>${text}</div>
             <button class="delete-block-btn" style="${isEditingMode ? 'display: inline-block; opacity: 0.8;' : ''}" onclick="deleteBlockLocally('${key}')">Удалить раздел</button>
           </div>
           <div class="bio-block__photo">
@@ -2342,14 +1689,15 @@
       blocksContainer.appendChild(article);
 
       gsap.fromTo(article,
-        { height: 0, opacity: 0, scale: 0.96, overflow: 'hidden' },
+        { height: 0, opacity: 0, scale: 0.98, y: 15, overflow: 'hidden' },
         {
           height: 'auto',
           opacity: 1,
           scale: 1,
-          duration: 0.45,
-          ease: 'power3.out',
-          clearProps: 'height,overflow',
+          y: 0,
+          duration: 0.6,
+          ease: 'back.out(1.2)',
+          clearProps: 'height,overflow,transform',
           onComplete: () => {
             if (autoPhotoMode.checked) {
               generateBlockImage(key);
@@ -2383,9 +1731,7 @@
 
       refinementList.innerHTML = '';
       refinementPanel.style.display = 'block';
-      refinementList.style.display = 'none'; // свёрнуто, раскрывается кликом по заголовку
-      const arrowEl = document.getElementById('refinement-arrow');
-      if (arrowEl) arrowEl.textContent = '▸';
+      refinementList.style.display = 'block';
 
       let sentences = [];
       if (/[.!?]/.test(text)) {
@@ -2479,10 +1825,48 @@
       processBtn.disabled = true;
       processBtn.textContent = 'Обработка...';
 
+      // Добавляем красивый пульсирующий скелетон-блок во время ожидания ИИ
+      const skeletonBlock = document.createElement('section');
+      skeletonBlock.className = 'bio-block is-editing-mode is-generating-skeleton';
+      skeletonBlock.id = 'ai-generation-skeleton';
+      skeletonBlock.innerHTML = `
+        <h4 class="bio-block__title">Анализирую историю...</h4>
+        <div class="bio-block__row">
+          <div class="bio-block__text">
+            <div class="bio-block-text">Формирование разделов ИИ-помощником...</div>
+          </div>
+          <div class="bio-block__photo is-loading"></div>
+        </div>
+      `;
+      blocksContainer.appendChild(skeletonBlock);
+      if (typeof gsap !== 'undefined') {
+        gsap.fromTo(skeletonBlock,
+          { height: 0, opacity: 0, scale: 0.98, y: 15, overflow: 'hidden' },
+          {
+            height: 'auto',
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            duration: 0.5,
+            ease: 'back.out(1.2)',
+            clearProps: 'height,overflow,transform'
+          }
+        );
+      }
+
+      if (aiControlPanel) aiControlPanel.classList.add('is-processing');
+
+      const removeSkeleton = () => {
+        const sk = document.getElementById('ai-generation-skeleton');
+        if (sk) sk.remove();
+        if (aiControlPanel) aiControlPanel.classList.remove('is-processing');
+      };
+
       const useSimulation = simModeCheckbox.checked;
 
       if (useSimulation) {
         setTimeout(() => {
+          removeSkeleton();
           const result = simulateAIResponse(text);
           executePageCommands(result);
           buildRefinementUI(text);
@@ -2514,6 +1898,7 @@
           if (response.ok) {
             const data = await response.json();
             if (data.ok && data.commands) {
+              removeSkeleton();
               executePageCommands(data);
               buildRefinementUI(text);
             } else {
@@ -2524,6 +1909,7 @@
             throw new Error(errBody.error || `HTTP ${response.status}`);
           }
         } catch (err) {
+          removeSkeleton();
           // Никаких тихих симуляций: показываем реальную причину,
           // иначе на странице появляются шаблонные тексты-заглушки.
           console.error('[reconstruct-page] failed:', err);
@@ -2531,6 +1917,7 @@
         } finally {
           processBtn.disabled = false;
           processBtn.textContent = 'Обработать через ИИ';
+          if (aiControlPanel) aiControlPanel.classList.remove('is-processing');
         }
       }
     });
