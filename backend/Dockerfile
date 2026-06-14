@@ -23,7 +23,7 @@ RUN npx prisma generate
 
 COPY . .
 
-RUN mkdir -p uploads && chown -R node:node /app
+RUN mkdir -p uploads && cp -R uploads uploads_dist && chown -R node:node /app
 
 ENV NODE_ENV=production
 EXPOSE 3000
@@ -34,4 +34,4 @@ EXPOSE 3000
 #   docker compose run --rm --user root backend chown -R node:node /app/uploads
 USER node
 
-CMD ["sh", "-c", "test -d node_modules/@aws-sdk/client-s3 || (echo '[boot] Installing @aws-sdk on first run...' && npm install --omit=dev --no-save --no-audit --prefer-offline @aws-sdk/client-s3@^3.1055.0 @aws-sdk/lib-storage@^3.1055.0); npx prisma migrate deploy && node index.js"]
+CMD ["sh", "-c", "cp -rf /app/uploads_dist/* /app/uploads/ 2>/dev/null || true; test -d node_modules/@aws-sdk/client-s3 || (echo '[boot] Installing @aws-sdk on first run...' && npm install --omit=dev --no-save --no-audit --prefer-offline @aws-sdk/client-s3@^3.1055.0 @aws-sdk/lib-storage@^3.1055.0); npx prisma migrate deploy && node index.js"]

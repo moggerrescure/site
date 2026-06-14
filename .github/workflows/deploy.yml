@@ -30,13 +30,5 @@ jobs:
           script: |
             set -euo pipefail
             cd ~/site
-
-            # Защита от параллельного запуска (если деплоят руками в этот момент)
-            exec 9>/tmp/memory-deploy.lock
-            if ! flock -n 9; then
-              echo "❌ Другой деплой уже идёт (lock занят). Выходим."
-              exit 1
-            fi
-
             echo "🚀 Starting deploy via deploy.sh..."
             ./deploy.sh

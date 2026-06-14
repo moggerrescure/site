@@ -72,15 +72,13 @@ if [ "${SKIP_PULL:-0}" = "1" ]; then
 else
     log "📥 git pull"
 
-    # Проверка: нет ли локальных незакоммиченных изменений
+    # Автоматический сброс локальных изменений на сервере перед pull
     if ! git diff --quiet || ! git diff --cached --quiet; then
-        log "❌ Локальные изменения в репозитории!"
-        log "   Закоммить или сбрось их перед деплоем:"
-        log "     git status"
-        log "     git stash       # временно убрать"
-        log "     git checkout -- .   # выбросить"
-        exit 1
+        log "⚠ Обнаружены локальные изменения на сервере. Сбрасываем их перед git pull..."
+        git reset --hard
+        git clean -fd
     fi
+
 
     OLD_HEAD=$(git rev-parse --short HEAD)
     git fetch --quiet
