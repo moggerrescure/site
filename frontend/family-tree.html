@@ -18,6 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css?v=14" />
   <link rel="stylesheet" href="styles/responsive.css?v=14" />
+  <link rel="stylesheet" href="styles/content.css" />
   <link rel="stylesheet" href="styles/tree.css?v=16" />
   <script src="js/counters.js?v=1" data-counters></script>
 </head>
@@ -25,20 +26,8 @@
 
   <canvas id="particles-canvas"></canvas>
 
-  <nav class="nav">
-    <div class="nav__inner">
-      <a href="index.html" class="nav__logo">
-        <img src="assets-v2/logo-tree-cut.webp" alt="" width="360" height="369"/>
-        <span class="nav__logo-script">QR-Память</span>
-      </a>
-      <ul class="nav__links">
-        <li><a href="index.html" class="nav__link">Главная</a></li>
-        <li><a href="memory.html" class="nav__link">Страницы памяти</a></li>
-        <li><a href="family-tree.html?tree=default" class="nav__link nav__link--active">Древо семьи</a></li>
-        <li><a href="timeline.html" class="nav__link">Летопись</a></li>
-      </ul>
-    </div>
-  </nav>
+  <div id="site-header"></div>
+  <script src="js/layout.js?v=1"></script>
 
   <section class="tree-hero">
     <div class="tree-hero__inner">
@@ -102,27 +91,7 @@
     </div>
   </div>
 
-    <footer class="footer">
-    <div class="footer__top">
-      <div class="footer__logo-wrap">
-        <span class="footer__logo">Память</span>
-        <span class="footer__tagline">Хранители воспоминаний</span>
-      </div>
-      <nav class="footer__nav" aria-label="Навигация сайта">
-        <a href="index.html" class="footer__nav-link">Главная</a>
-        <a href="memory.html" class="footer__nav-link">Страницы памяти</a>
-        <a href="family-tree.html?tree=default" class="footer__nav-link">Древо семьи</a>
-        <a href="timeline.html" class="footer__nav-link">Летопись</a>
-      </nav>
-      <p class="footer__quote">Пока мы помним —<br/>они живы.</p>
-    </div>
-    <div class="footer__bottom">
-      <div class="footer__inner">
-        <p class="footer__copy">© 2024 — Хранители воспоминаний</p>
-        <p class="footer__copy">Сайт создан с любовью к памяти</p>
-      </div>
-    </div>
-  </footer>
+    <div id="site-footer"></div>
 
   <script>
     /* Если переходим к новому дереву — анимация появления */

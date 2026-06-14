@@ -10,23 +10,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css?v=14" />
   <link rel="stylesheet" href="styles/responsive.css?v=14" />
+  <link rel="stylesheet" href="styles/content.css" />
   <link rel="stylesheet" href="styles/audit.css?v=14" />
   <script src="js/counters.js?v=1" data-counters></script>
 </head>
 <body>
 <canvas id="particles-canvas"></canvas>
 
-<nav class="nav">
-  <div class="nav__inner">
-    <a href="index.html" class="nav__logo"><span class="nav__logo-script">Память</span></a>
-    <ul class="nav__links">
-      <li><a href="index.html" class="nav__link">Главная</a></li>
-      <li><a href="memory.html" class="nav__link">Страницы памяти</a></li>
-      <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
-      <li><a href="timeline.html" class="nav__link">Летопись</a></li>
-    </ul>
-  </div>
-</nav>
+<div id="site-header"></div>
+<script src="js/layout.js?v=1"></script>
 
 <section class="timeline-hero">
   <div class="timeline-hero__inner">
@@ -42,13 +34,7 @@
   </div>
 </section>
 
-<footer class="footer">
-  <div class="footer__bottom">
-    <div class="footer__inner">
-      <p class="footer__copy">© 2024 — Хранители воспоминаний</p>
-    </div>
-  </div>
-</footer>
+<div id="site-footer"></div>
 
 <script src="js/particles.js?v=19"></script>
 <script src="js/favicon.js?v=19"></script>

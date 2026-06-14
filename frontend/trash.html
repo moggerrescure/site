@@ -16,6 +16,7 @@
 
   <link rel="stylesheet" href="styles/main.css?v=14" />
   <link rel="stylesheet" href="styles/responsive.css?v=14" />
+  <link rel="stylesheet" href="styles/content.css" />
   <link rel="stylesheet" href="styles/trash.css?v=14" />
   <script src="js/counters.js?v=1" data-counters></script>
 </head>
@@ -23,19 +24,8 @@
 
 <canvas id="particles-canvas"></canvas>
 
-<nav class="nav">
-  <div class="nav__inner">
-    <a href="index.html" class="nav__logo">
-      <span class="nav__logo-script">Память</span>
-    </a>
-    <ul class="nav__links">
-      <li><a href="index.html" class="nav__link">Главная</a></li>
-      <li><a href="memory.html" class="nav__link">Страницы памяти</a></li>
-      <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
-      <li><a href="timeline.html" class="nav__link">Летопись</a></li>
-    </ul>
-  </div>
-</nav>
+<div id="site-header"></div>
+<script src="js/layout.js?v=1"></script>
 
 <!-- HERO -->
 <section class="trash-hero">
@@ -55,27 +45,7 @@
   </div>
 </section>
 
-<footer class="footer">
-  <div class="footer__top">
-    <div class="footer__logo-wrap">
-      <span class="footer__logo">Память</span>
-      <span class="footer__tagline">Хранители воспоминаний</span>
-    </div>
-    <nav class="footer__nav" aria-label="Навигация сайта">
-      <a href="index.html" class="footer__nav-link">Главная</a>
-      <a href="memory.html" class="footer__nav-link">Страницы памяти</a>
-      <a href="family-tree.html" class="footer__nav-link">Древо семьи</a>
-      <a href="timeline.html" class="footer__nav-link">Летопись</a>
-    </nav>
-    <p class="footer__quote">Пока мы помним —<br/>они живы.</p>
-  </div>
-  <div class="footer__bottom">
-    <div class="footer__inner">
-      <p class="footer__copy">© 2024 — Хранители воспоминаний</p>
-      <p class="footer__copy">Сайт создан с любовью к памяти</p>
-    </div>
-  </div>
-</footer>
+<div id="site-footer"></div>
 
 <script src="js/particles.js?v=19"></script>
 <script src="js/favicon.js?v=19"></script>

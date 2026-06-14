@@ -17,10 +17,13 @@
   .legal-page a { color: #c8a84b; }
   .legal-back { display: inline-block; margin-top: 2.5rem; color: rgba(255,255,255,0.65); text-decoration: none; }
   .legal-back:hover { color: #c8a84b; }
-  <script src="js/counters.js?v=1" data-counters></script>
+</style>
+<link rel="stylesheet" href="styles/content.css">
+<script src="js/counters.js?v=1" data-counters></script>
 </head>
 <body>
-<nav class="nav"><div class="nav__inner"><a href="/" class="nav__logo"><img src="assets-v2/logo-tree-cut.webp" alt="" width="360" height="369"/><span class="nav__logo-script">QR-Память</span></a></div></nav>
+<div id="site-header"></div>
+<script src="js/layout.js?v=1"></script>
 
 <main class="legal-page">
   <h1>Пользовательское соглашение</h1>
@@ -69,8 +72,12 @@
   <a href="/" class="legal-back">← На главную</a>
 </main>
 
+<div id="site-footer"></div>
+
 <script src="js/particles.js?v=19"></script>
 <script src="js/favicon.js?v=19"></script>
+<script src="js/api.js?v=19"></script>
+<script src="js/auth-ui.js?v=19"></script>
 <script src="js/nav.js?v=19"></script>
 <script src="js/transitions.js?v=19"></script>
 <script src="js/ambient.js?v=19"></script>

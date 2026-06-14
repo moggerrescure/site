@@ -19,6 +19,7 @@
   <!-- Подключение оригинальных стилей сайта -->
   <link rel="stylesheet" href="styles/main.css?v=14" />
   <link rel="stylesheet" href="styles/responsive.css?v=14" />
+  <link rel="stylesheet" href="styles/content.css" />
   <link rel="stylesheet" href="styles/person.css?v=15" />
   <link rel="stylesheet" href="styles/blocks.css?v=14" />
   <link rel="stylesheet" href="styles/gallery.css?v=14" />
@@ -1019,19 +1020,8 @@
 <body>
 
   <!-- Навигационная панель с оригинального сайта -->
-  <nav class="nav">
-    <div class="nav__inner">
-      <a href="index.html" class="nav__logo">
-        <span class="nav__logo-script">QR-Память</span>
-      </a>
-      <ul class="nav__links">
-        <li><a href="index.html" class="nav__link">Главная</a></li>
-        <li><a href="memory.html" class="nav__link nav__link--active">Страницы памяти</a></li>
-        <li><a href="family-tree.html" class="nav__link">Древо семьи</a></li>
-        <li><a href="timeline.html" class="nav__link">Летопись</a></li>
-      </ul>
-    </div>
-  </nav>
+  <div id="site-header"></div>
+  <script src="js/layout.js?v=1"></script>
 
   <!-- Фиксированная панель кнопок режима редактирования (как в person-edit.js) -->
   <div class="edit-panel" id="edit-panel">
@@ -1239,27 +1229,7 @@
   </main>
 
   <!-- Подвал сайта -->
-  <footer class="footer">
-    <div class="footer__top">
-      <div class="footer__logo-wrap">
-        <span class="footer__logo">Память</span>
-        <span class="footer__tagline">Хранители воспоминаний</span>
-      </div>
-      <nav class="footer__nav" aria-label="Навигация сайта">
-        <a href="index.html" class="footer__nav-link">Главная</a>
-        <a href="memory.html" class="footer__nav-link">Страницы памяти</a>
-        <a href="family-tree.html" class="footer__nav-link">Древо семьи</a>
-        <a href="timeline.html" class="footer__nav-link">Летопись</a>
-      </nav>
-      <p class="footer__quote">Пока мы помним —<br/>они живы.</p>
-    </div>
-    <div class="footer__bottom">
-      <div class="footer__inner">
-        <p class="footer__copy">© 2026 — Хранители воспоминаний</p>
-        <p class="footer__copy">Сайт создан с любовью к памяти</p>
-      </div>
-    </div>
-  </footer>
+  <div id="site-footer"></div>
 
   <!-- Тост уведомлений -->
   <div id="toast" class="notification-toast">Страница успешно обновлена!</div>
