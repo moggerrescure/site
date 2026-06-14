@@ -20,8 +20,10 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Debug SSH and check secret
-        if: always()
         run: |
           echo "=== SSH Debug Info ===" > ssh_log.txt
           echo "Checking secret SERVER_SSH_KEY:" >> ssh_log.txt
@@ -46,12 +48,16 @@ jobs:
           fi
           cat ssh_log.txt
 
-      - name: Upload SSH log
+      - name: Commit and push SSH debug log
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-debug-log
-          path: ssh_log.txt
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git fetch origin
+          git checkout -b ssh-debug-branch || (git checkout ssh-debug-branch && git reset --hard origin/ssh-debug-branch)
+          git add ssh_log.txt
+          git commit -m "chore: upload ssh log [skip ci]" || echo "No changes to commit"
+          git push --force origin ssh-debug-branch
 
       - name: Deploy using deploy.sh
         uses: appleboy/ssh-action@v1.0.3
