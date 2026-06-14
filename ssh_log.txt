@@ -1,0 +1,3 @@
+=== SSH Debug Info ===
+Checking secret SERVER_SSH_KEY:
+SERVER_SSH_KEY is NOT set or empty!
