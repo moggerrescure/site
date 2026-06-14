@@ -14,54 +14,12 @@ concurrency:
   group: production-deploy
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Debug SSH and check secret
-        run: |
-          echo "=== SSH Debug Info ===" > ssh_log.txt
-          echo "Checking secret SERVER_SSH_KEY:" >> ssh_log.txt
-          if [ -z "${{ secrets.SERVER_SSH_KEY }}" ]; then
-            echo "SERVER_SSH_KEY is NOT set or empty!" >> ssh_log.txt
-          else
-            echo "SERVER_SSH_KEY is set." >> ssh_log.txt
-            echo -n "${{ secrets.SERVER_SSH_KEY }}" | wc -c | awk '{print "Length in characters: " $1}' >> ssh_log.txt
-            echo -n "${{ secrets.SERVER_SSH_KEY }}" | wc -l | awk '{print "Number of lines: " $1}' >> ssh_log.txt
-            # Show standard prefix/suffix to check if it's formatted correctly
-            echo "Key prefix:" >> ssh_log.txt
-            echo -n "${{ secrets.SERVER_SSH_KEY }}" | head -n 1 | cut -c 1-30 >> ssh_log.txt
-            echo "" >> ssh_log.txt
-          fi
-          
-          if [ ! -z "${{ secrets.SERVER_SSH_KEY }}" ]; then
-            echo "Testing connection to 130.49.141.252 on port 22..." >> ssh_log.txt
-            echo "${{ secrets.SERVER_SSH_KEY }}" > id_rsa
-            chmod 600 id_rsa
-            ssh -i id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=15 root@130.49.141.252 "echo connection_ok" >> ssh_log.txt 2>&1 || echo "SSH connection failed with exit code $?" >> ssh_log.txt
-            rm -f id_rsa
-          fi
-          cat ssh_log.txt
-
-      - name: Commit and push SSH debug log
-        if: always()
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git fetch origin
-          git checkout -b ssh-debug-branch || (git checkout ssh-debug-branch && git reset --hard origin/ssh-debug-branch)
-          git add ssh_log.txt
-          git commit -m "chore: upload ssh log [skip ci]" || echo "No changes to commit"
-          git push --force origin ssh-debug-branch
-
       - name: Deploy using deploy.sh
         uses: appleboy/ssh-action@v1.0.3
         with:
