@@ -914,6 +914,110 @@
       border-style: solid;
       color: var(--cream);
     }
+
+    /* Подсказка в пустых разделах */
+    .bio-block-text:empty:not(:focus)::before {
+      content: 'Введите историю...';
+      color: rgba(245, 239, 224, 0.32);
+      font-style: italic;
+      font-weight: 300;
+    }
+
+    /* Адаптивность для плавающей панели и блоков редактора на мобильных устройствах */
+    @media (max-width: 768px) {
+      .ai-control-panel {
+        margin: 20px auto 30px;
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 14px;
+      }
+      
+      .dictation-wrapper {
+        flex-direction: column;
+        gap: 16px;
+        padding: 14px;
+      }
+
+      .dictation-column--left {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-right: 0;
+        padding-bottom: 16px;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        gap: 12px !important;
+      }
+      
+      .transcript-box {
+        min-height: 100px;
+      }
+
+      .action-buttons {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 8px;
+      }
+      
+      .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .refinement-drawer {
+        width: 100%;
+        right: -100%;
+      }
+
+      /* Нормализация блоков биографии под мобилку: вертикальная раскладка */
+      .bio-block__row {
+        flex-direction: column !important;
+        gap: 1.5rem !important;
+      }
+      
+      .bio-block--reverse .bio-block__row {
+        flex-direction: column !important;
+      }
+      
+      .bio-block__text {
+        width: 100% !important;
+        flex: 1 1 auto !important;
+      }
+      
+      .bio-block__photo {
+        width: 100% !important;
+        max-width: 320px !important;
+        aspect-ratio: 4 / 3 !important;
+        max-height: none !important;
+        margin: 0 auto !important;
+        flex: 0 0 auto !important;
+      }
+      
+      .bio-block__photo img {
+        max-height: none !important;
+      }
+
+      /* Элегантный ИИ-помощник: горизонтальный свайп вместо переноса строк */
+      .ai-block-helper {
+        position: relative;
+        display: inline-flex !important;
+        width: auto !important;
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        border-radius: 20px !important;
+        margin-top: 0 !important;
+        margin-bottom: 12px !important;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      
+      .ai-block-helper::-webkit-scrollbar {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1048,9 +1152,7 @@
         <div class="bio-block__row">
           <div class="bio-block__text">
             <span class="bio-block-key">childhood</span>
-            <div class="bio-block-text">
-              Александр родился в послевоенном Минске. С самого раннего детства он проявлял живой интерес к технике и конструированию, собирая простейшие механизмы из подручных средств.
-            </div>
+            <div class="bio-block-text"></div>
             <div class="ai-block-helper">
               <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'warm')">❤️ Сделать теплее (ИИ)</button>
@@ -1078,9 +1180,7 @@
         <div class="bio-block__row">
           <div class="bio-block__text">
             <span class="bio-block-key">education</span>
-            <div class="bio-block-text">
-              Окончил Белорусский политехнический институт по специальности инженера-механика в 1968 году. Учителя всегда отзывались о нем как о выдающемся и глубоком студенте.
-            </div>
+            <div class="bio-block-text"></div>
             <div class="ai-block-helper">
               <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'warm')">❤️ Сделать теплее (ИИ)</button>
@@ -1108,9 +1208,7 @@
         <div class="bio-block__row">
           <div class="bio-block__text">
             <span class="bio-block-key">career</span>
-            <div class="bio-block-text">
-              Более 35 лет посвятил работе в конструкторском бюро, пройдя путь от рядового инженера до главного конструктора проектов. Автор нескольких запатентованных изобретений.
-            </div>
+            <div class="bio-block-text"></div>
             <div class="ai-block-helper">
               <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'warm')">❤️ Сделать теплее (ИИ)</button>
