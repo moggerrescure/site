@@ -350,9 +350,10 @@
       document.addEventListener('touchstart', unlock, { passive: true });
       document.addEventListener('click', unlock, { passive: true });
     }
-  });
+   });
 })();
 
+/* ═══════════════════════════════════════════════
    Image error fallback delegation (заменяет inline onerror)
    ═══════════════════════════════════════════════ */
 (function () {

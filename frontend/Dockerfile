@@ -18,7 +18,7 @@ COPY images /srv/images
 COPY assets-v2 /srv/assets-v2
 # Фавиконки лежат в корне frontend/ и не попадают под COPY выше
 COPY favicon*.png favicon.svg apple-touch-icon.png /srv/
-COPY letopis.webm letopis.mp4 /srv/
+COPY letopis.webm letopis.mp4 tree.webm tree.mp4 /srv/
 
 
 # Тестовые/черновые страницы в прод не отдаём
