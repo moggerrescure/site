@@ -302,15 +302,17 @@
     entries.forEach(e => {
       if (!isDesktop) {
         if (e.isIntersecting) {
+          e.target.dataset.isIntersecting = 'true';
           e.target.play().catch(() => {});
         } else {
+          e.target.dataset.isIntersecting = 'false';
           e.target.pause();
         }
       }
     });
   }, { threshold: 0.25 });
+
   document.querySelectorAll('video.bg').forEach(video => {
-    // Disable looping to pause at the end and fix on the last frame
     video.loop = false;
     video.removeAttribute('loop');
 
@@ -332,12 +334,25 @@
       });
     } else {
       videoIo.observe(video);
+
+      const unlock = () => {
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            if (video.dataset.isIntersecting !== 'true') {
+              video.pause();
+            }
+          }).catch(() => {});
+        }
+        document.removeEventListener('touchstart', unlock);
+        document.removeEventListener('click', unlock);
+      };
+      document.addEventListener('touchstart', unlock, { passive: true });
+      document.addEventListener('click', unlock, { passive: true });
     }
   });
 })();
 
-
-/* ═══════════════════════════════════════════════
    Image error fallback delegation (заменяет inline onerror)
    ═══════════════════════════════════════════════ */
 (function () {
