@@ -135,21 +135,23 @@
   background: rgba(10, 9, 8, 0.72);
   backdrop-filter: blur(32px) saturate(190%);
   -webkit-backdrop-filter: blur(32px) saturate(190%);
-  /* Тонкая рамка с эффектом мягкого золотого свечения сверху */
-  border: 1px solid rgba(200, 168, 75, 0.28);
-  border-top-color: rgba(226, 201, 126, 0.45);
+  /* Тонкая рамка с эффектом мягкого золотого свечения сверху - утолщенная 2px золотая рамка */
+  border: 2px solid rgba(200, 168, 75, 0.45);
+  border-top-color: rgba(226, 201, 126, 0.7);
   border-radius: 20px;
   padding: 22px 26px;
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.9), 
-              0 0 50px rgba(200, 168, 75, 0.03),
+              0 0 50px rgba(200, 168, 75, 0.04),
               inset 0 1px 0 rgba(255, 255, 255, 0.05);
   font-family: var(--font-ui);
-  z-index: 100;
+  z-index: 99;
   opacity: 1;
   overflow: hidden;
-  transition: border-color 250ms ease-out, 
-              box-shadow 250ms ease-out,
-              background-color 250ms ease-out;
+  /* Плавный подъем при наведении и анимация рамки */
+  transition: border-color 300ms ease-out, 
+              box-shadow 300ms ease-out,
+              background-color 300ms ease-out,
+              transform 350ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 /* Эффект двойной рамки (Double Frame) */
@@ -160,10 +162,10 @@
   left: 8px;
   right: 8px;
   bottom: 8px;
-  border: 1px solid rgba(200, 168, 75, 0.15);
+  border: 1px solid rgba(200, 168, 75, 0.22);
   border-radius: 12px;
   pointer-events: none;
-  transition: border-color 250ms ease-out;
+  transition: border-color 300ms ease-out;
 }
 
 /* Угловые декоративные плетения (Corner Flourishes) */
@@ -176,37 +178,44 @@
   bottom: 8px;
   pointer-events: none;
   background-image: 
-    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M24,1.5 H1.5 V24' /><path d='M24,5.5 H5.5 V24' stroke-width='1' stroke-opacity='0.6' /><path d='M1.5,1.5 L8,8' stroke-width='1' /><circle cx='8' cy='8' r='1.5' fill='%23c8a84b' stroke='none' /></svg>"),
-    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M0,1.5 H22.5 V24' /><path d='M0,5.5 H18.5 V24' stroke-width='1' stroke-opacity='0.6' /><path d='M22.5,1.5 L16,8' stroke-width='1' /><circle cx='16' cy='8' r='1.5' fill='%23c8a84b' stroke='none' /></svg>"),
-    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M24,22.5 H1.5 V0' /><path d='M24,18.5 H5.5 V0' stroke-width='1' stroke-opacity='0.6' /><path d='M1.5,22.5 L8,16' stroke-width='1' /><circle cx='8' cy='16' r='1.5' fill='%23c8a84b' stroke='none' /></svg>"),
-    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M0,22.5 H22.5 V0' /><path d='M0,18.5 H18.5 V0' stroke-width='1' stroke-opacity='0.6' /><path d='M22.5,22.5 L16,16' stroke-width='1' /><circle cx='16' cy='16' r='1.5' fill='%23c8a84b' stroke='none' /></svg>");
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M30,2 H2 V30' /><path d='M30,6 H6 V30' stroke-width='1' stroke-opacity='0.5' /><path d='M2,2 C10,2 2,10 10,10' /><path d='M2,2 L14,14' stroke-width='1.2' /><circle cx='14' cy='14' r='2' fill='%23c8a84b' stroke='none' /></svg>"),
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M0,2 H28 V30' /><path d='M0,6 H24 V30' stroke-width='1' stroke-opacity='0.5' /><path d='M28,2 C20,2 28,10 20,10' /><path d='M28,2 L16,14' stroke-width='1.2' /><circle cx='16' cy='14' r='2' fill='%23c8a84b' stroke='none' /></svg>"),
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M30,28 H2 V0' /><path d='M30,24 H6 V0' stroke-width='1' stroke-opacity='0.5' /><path d='M2,28 C10,28 2,20 10,20' /><path d='M2,28 L14,16' stroke-width='1.2' /><circle cx='14' cy='16' r='2' fill='%23c8a84b' stroke='none' /></svg>"),
+    url("data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30' fill='none' stroke='%23c8a84b' stroke-width='1.5'><path d='M0,28 H28 V0' /><path d='M0,24 H24 V0' stroke-width='1' stroke-opacity='0.5' /><path d='M28,28 C20,28 28,20 20,20' /><path d='M28,28 L16,16' stroke-width='1.2' /><circle cx='16' cy='16' r='2' fill='%23c8a84b' stroke='none' /></svg>");
   background-repeat: no-repeat;
   background-position: top left, top right, bottom left, bottom right;
-  background-size: 14px 14px;
-  transition: background-size 250ms cubic-bezier(0.23, 1, 0.32, 1), opacity 250ms ease;
-  opacity: 0.8;
+  background-size: 20px 20px;
+  transition: background-size 300ms cubic-bezier(0.23, 1, 0.32, 1), opacity 300ms ease;
+  opacity: 0.85;
+}
+
+.ai-control-panel:hover {
+  transform: translateY(-8px) !important;
+  border-color: rgba(226, 201, 126, 0.75);
+  box-shadow: 0 38px 80px rgba(0, 0, 0, 0.95), 
+              0 0 60px rgba(200, 168, 75, 0.15),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .ai-control-panel:hover::before {
-  border-color: rgba(200, 168, 75, 0.25);
+  border-color: rgba(200, 168, 75, 0.45);
 }
 
 .ai-control-panel:hover::after {
-  background-size: 18px 18px;
+  background-size: 26px 26px;
   opacity: 1.0;
 }
 
 .ai-control-panel:focus-within {
-  border-color: rgba(200, 168, 75, 0.55);
-  border-top-color: rgba(226, 201, 126, 0.7);
-  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.95), 
-              0 0 60px rgba(200, 168, 75, 0.12),
+  border-color: rgba(226, 201, 126, 0.8);
+  box-shadow: 0 38px 90px rgba(0, 0, 0, 0.95), 
+              0 0 65px rgba(200, 168, 75, 0.18),
               inset 0 1px 0 rgba(255, 255, 255, 0.08);
   background: rgba(10, 9, 8, 0.82);
 }
 
 .ai-control-panel:focus-within::before {
-  border-color: rgba(200, 168, 75, 0.32);
+  border-color: rgba(200, 168, 75, 0.45);
 }
 
 .ai-control-panel.is-processing {
@@ -320,7 +329,7 @@
 }
 
 .dictation-column--left {
-  width: 220px;
+  width: 260px;
   flex-shrink: 0;
   align-items: center;
   text-align: center;
@@ -340,8 +349,8 @@
 
 .mic-button-container {
   position: relative;
-  width: 76px;
-  height: 76px;
+  width: 100px;
+  height: 100px;
   flex-shrink: 0;
 }
 
@@ -349,9 +358,9 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 1px solid rgba(200, 168, 75, 0.3);
+  border: 1.5px solid rgba(200, 168, 75, 0.4);
   /* Тактильный фоновый градиент с эффектом линзы */
-  background: radial-gradient(circle at center, rgba(200, 168, 75, 0.12) 0%, rgba(20, 18, 16, 0.95) 100%);
+  background: radial-gradient(circle at center, rgba(200, 168, 75, 0.18) 0%, rgba(20, 18, 16, 0.95) 100%);
   color: var(--gold-light);
   cursor: pointer;
   display: flex;
@@ -367,14 +376,14 @@
               box-shadow 200ms ease-out;
   outline: none;
   /* Тиснение и фаска за счет тени */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
               inset 0 -2px 6px rgba(0, 0, 0, 0.6), 
-              0 6px 16px rgba(0, 0, 0, 0.5);
+              0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
 .mic-button svg {
-  width: 28px;
-  height: 28px;
+  width: 38px;
+  height: 38px;
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -716,17 +725,20 @@
 }
 
 .btn-ai-secondary {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--cream-dim);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  background: rgba(200, 168, 75, 0.05);
+  border: 1px solid rgba(200, 168, 75, 0.35);
+  color: var(--gold-light);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02),
+              0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .btn-ai-secondary:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  color: var(--cream);
-  background: rgba(255, 255, 255, 0.02);
-  transform: translateY(-1px);
+  border-color: rgba(226, 201, 126, 0.7);
+  color: var(--white);
+  background: rgba(200, 168, 75, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05),
+              0 0 15px rgba(200, 168, 75, 0.25);
+  transform: translateY(-2px);
 }
 
 /* Специальные стили кнопок в панели ИИ с мемориальным золотым/красным оттенком */
@@ -740,28 +752,28 @@
 
 #drawer-toggle-btn.btn-ai-secondary:hover {
   border-color: rgba(226, 201, 126, 0.55);
-  color: var(--cream);
+  color: var(--white);
   background: rgba(200, 168, 75, 0.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
               0 0 12px rgba(200, 168, 75, 0.2);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 #clear-btn.btn-ai-secondary {
-  background: rgba(239, 68, 68, 0.04);
-  border: 1px solid rgba(239, 68, 68, 0.22);
-  color: #ffa3a3;
+  background: rgba(200, 168, 75, 0.04);
+  border: 1px solid rgba(200, 168, 75, 0.3);
+  color: var(--gold-light);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.01),
               0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 #clear-btn.btn-ai-secondary:hover {
-  border-color: rgba(239, 68, 68, 0.45);
-  color: #ffc2c2;
-  background: rgba(239, 68, 68, 0.09);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03),
-              0 0 12px rgba(239, 68, 68, 0.18);
-  transform: translateY(-1px);
+  border-color: rgba(226, 201, 126, 0.55);
+  color: var(--white);
+  background: rgba(200, 168, 75, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
+              0 0 12px rgba(200, 168, 75, 0.2);
+  transform: translateY(-2px);
 }
 
 /* ═══════════ БОКОВАЯ ПАНЕЛЬ (Drawer) ДЛЯ РЕФАЙНМЕНТА И ЛОГОВ ═══════════ */
@@ -1301,20 +1313,23 @@
 .bio-block-text[contenteditable="true"] {
   outline: none;
   border: 1px solid transparent;
-  border-radius: 4px;
-  padding: 4px 8px;
-  margin: -4px -8px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 10px 0 0 0;
   transition: all 0.25s;
 }
 
 .bio-block.is-editing-mode .bio-block-text[contenteditable="true"] {
-  border: 1px dashed rgba(200, 168, 75, 0.2);
+  border: 1px dashed rgba(200, 168, 75, 0.35);
+  background: rgba(20, 18, 16, 0.45);
+  min-height: 150px;
+  display: block;
 }
 
 .bio-block.is-editing-mode .bio-block-text[contenteditable="true"]:focus {
   border: 1px solid var(--gold);
-  background: rgba(200, 168, 75, 0.04);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  background: rgba(200, 168, 75, 0.06);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 15px rgba(200, 168, 75, 0.05);
 }
 
 .bio-block__title[contenteditable="true"] {
@@ -1643,6 +1658,10 @@ body:has(#p-bio:focus) .bio-blocks {
 
 /* Адаптивность для плавающей панели и блоков редактора на мобильных устройствах */
 @media (max-width: 768px) {
+  .person-page {
+    padding: calc(var(--nav-h) + 20px) 16px 60px !important;
+  }
+
   .ai-control-panel {
     margin: 20px auto 30px;
     width: 100%;
@@ -1678,9 +1697,25 @@ body:has(#p-bio:focus) .bio-blocks {
   }
 
   .action-buttons {
-    width: 100%;
-    justify-content: space-between;
-    margin-top: 8px;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-top: 12px;
+  }
+
+  .action-buttons .btn-ai {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+  
+  .ai-switch {
+    align-items: flex-start !important;
+  }
+
+  .ai-switch__track {
+    margin-top: 2px !important;
+    flex-shrink: 0 !important;
   }
   
   .settings-row {
@@ -1708,6 +1743,25 @@ body:has(#p-bio:focus) .bio-blocks {
     flex: 1 1 auto !important;
   }
   
+  .bio-block.is-editing-mode {
+    padding: 16px !important;
+    border-radius: 12px !important;
+  }
+
+  .bio-block__drag-handle {
+    top: 16px !important;
+    left: 16px !important;
+  }
+
+  .bio-block.is-editing-mode .bio-block__title {
+    padding-left: 28px !important;
+  }
+
+  .bio-block-text[contenteditable="true"] {
+    padding: 10px 12px !important;
+    min-height: 120px !important;
+  }
+  
   .bio-block__photo {
     width: 100% !important;
     max-width: 320px !important;
@@ -1719,6 +1773,30 @@ body:has(#p-bio:focus) .bio-blocks {
   
   .bio-block__photo img {
     max-height: none !important;
+  }
+
+  /* Оверлей управления фото на мобилке: тонкая нижняя плашка вместо полноэкранного ховера */
+  .bio-block.is-editing-mode .bio-block__photo .photo-actions-overlay {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(0) !important;
+    background: rgba(12, 11, 10, 0.75) !important;
+    height: 48px !important;
+    top: auto !important;
+    flex-direction: row !important;
+    padding: 0 8px !important;
+    gap: 6px !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+  }
+
+  .bio-block.is-editing-mode .bio-block__photo .photo-actions-overlay .photo-action-btn {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    height: 32px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
   }
 
   /* Элегантный ИИ-помощник: горизонтальный свайп вместо переноса строк */
@@ -1735,6 +1813,7 @@ body:has(#p-bio:focus) .bio-blocks {
     /* Скрыть скроллбар */
     -ms-overflow-style: none;  /* IE и Edge */
     scrollbar-width: none;  /* Firefox */
+    -webkit-overflow-scrolling: touch !important;
   }
   
   .ai-block-helper::-webkit-scrollbar {
@@ -1763,11 +1842,7 @@ body:has(#p-bio:focus) .bio-blocks {
 }
 
 /* ── Скрывать Notion-помощников ИИ, если в блоке еще нет текста ── */
-.bio-block:has(.bio-block-text:empty) .ai-block-helper {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
+/* Удалено по просьбе пользователя, чтобы кнопки-помощники были видны всегда над полем ввода */
 
 /* ── Драг-энд-дроп перетаскивание блоков (Drag-and-Drop) ── */
 .bio-block__drag-handle {
