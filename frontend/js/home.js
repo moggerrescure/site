@@ -295,6 +295,18 @@
     });
   });
 
+  /* ── VIDEO INTERSECTION OBSERVER ── */
+  const videoIo = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.play().catch(() => {});
+      } else {
+        e.target.pause();
+      }
+    });
+  }, { threshold: 0.25 });
+  document.querySelectorAll('video.bg').forEach(v => videoIo.observe(v));
+
 })();
 
 
