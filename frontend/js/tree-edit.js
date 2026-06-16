@@ -22,8 +22,14 @@
         const trees = (j && (j.data || j.trees)) || [];
         if (trees.length > 0) {
           const target = trees[0].id || trees[0].treeId;
+          if (typeof API.updateRootTreeId === 'function') {
+            API.updateRootTreeId(target);
+          }
           window.location.replace("family-tree.html?tree=" + encodeURIComponent(target));
         } else {
+          if (typeof API.updateRootTreeId === 'function') {
+            API.updateRootTreeId(null);
+          }
           window.location.replace("family-tree.html?tree=default");
         }
       })
@@ -1161,8 +1167,14 @@
     /* Запоминаем активное дерево для летописи */
     if (treeId && treeId !== 'default') {
       localStorage.setItem('active_tree_id', treeId);
+      if (typeof API !== 'undefined' && typeof API.updateRootTreeId === 'function') {
+        API.updateRootTreeId(treeId);
+      }
     } else {
       localStorage.removeItem('active_tree_id');
+      if (typeof API !== 'undefined' && typeof API.updateRootTreeId === 'function') {
+        API.updateRootTreeId(null);
+      }
     }
 
     /* Старое дерево отдаляется и пропадает */
@@ -1850,9 +1862,17 @@
       }).then(r => r.json()).then(j => {
         const trees = (j && (j.data || j.trees)) || [];
         if (trees.length > 0) {
-          // Перенаправляем на первое дерево
           const target = trees[0].id || trees[0].treeId;
-          window.location.replace("family-tree.html?tree=" + encodeURIComponent(target));
+          if (typeof API.updateRootTreeId === 'function') {
+            API.updateRootTreeId(target);
+          }
+          // Если параметр tree явно равен 'default', не редирекмим, а показываем статику
+          if (urlParams.get('tree') === 'default') {
+            if (sw) sw.style.display = 'block';
+          } else {
+            // Перенаправляем на первое дерево
+            window.location.replace("family-tree.html?tree=" + encodeURIComponent(target));
+          }
         } else {
           // Деревьев нет — показываем схематику
           const sl = document.getElementById('tree-clan-legend');
@@ -1935,8 +1955,14 @@
       if (r.status === 403 || r.status === 404) {
         if (currentTreeId !== 'default') {
           const user = typeof API !== 'undefined' ? API.getUser() : null;
-          if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
-            window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          if (user && user.rootTreeId === currentTreeId) {
+            if (typeof API.updateRootTreeId === 'function') {
+              API.updateRootTreeId(null);
+            }
+          }
+          const freshUser = typeof API !== 'undefined' ? API.getUser() : null;
+          if (freshUser && freshUser.rootTreeId && freshUser.rootTreeId !== currentTreeId) {
+            window.location.replace("family-tree.html?tree=" + encodeURIComponent(freshUser.rootTreeId));
           } else {
             window.location.replace("family-tree.html?tree=default");
           }
@@ -2970,8 +2996,14 @@
       if (r.status === 403 || r.status === 404) {
         if (currentTreeId !== 'default') {
           const user = typeof API !== 'undefined' ? API.getUser() : null;
-          if (user && user.rootTreeId && user.rootTreeId !== currentTreeId) {
-            window.location.replace("family-tree.html?tree=" + encodeURIComponent(user.rootTreeId));
+          if (user && user.rootTreeId === currentTreeId) {
+            if (typeof API.updateRootTreeId === 'function') {
+              API.updateRootTreeId(null);
+            }
+          }
+          const freshUser = typeof API !== 'undefined' ? API.getUser() : null;
+          if (freshUser && freshUser.rootTreeId && freshUser.rootTreeId !== currentTreeId) {
+            window.location.replace("family-tree.html?tree=" + encodeURIComponent(freshUser.rootTreeId));
           } else {
             window.location.replace("family-tree.html?tree=default");
           }

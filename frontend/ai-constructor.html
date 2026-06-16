@@ -306,8 +306,6 @@
 
   <!-- Фиксированная панель кнопок режима редактирования (как в person-edit.js) -->
   <div class="edit-panel" id="edit-panel">
-    <button class="edit-panel__btn edit-panel__btn--save" id="edit-save-btn">Сохранить</button>
-    <button class="edit-panel__btn edit-panel__btn--cancel" id="edit-cancel-btn">Отмена</button>
   </div>
 
   <!-- ГЛАВНЫЙ КОНТЕНТ СТРАНИЦЫ ПАМЯТИ -->
@@ -415,7 +413,6 @@
 
         <div class="action-buttons">
           <button id="onboarding-toggle-btn" class="btn-ai btn-ai-secondary btn-ai-instruction" title="Инструкция по использованию конструктора">❔ Инструкция</button>
-          <button id="drawer-toggle-btn" class="btn-ai btn-ai-secondary" title="Логи ИИ и точечная подгонка">📋 Списки</button>
           <button id="clear-btn" class="btn-ai btn-ai-secondary">Очистить</button>
           <button id="process-btn" class="btn-ai btn-ai-primary">Обработать через ИИ</button>
         </div>
@@ -434,10 +431,8 @@
           <div class="bio-block__text">
             <span class="bio-block-key">childhood</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'improve')">✨ Слог</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'warm')">❤️ Теплее</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'formal')">👔 Официально</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'continue')">✍️ Продолжить</button>
             </div>
             <div class="bio-block-text"></div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('childhood')">Удалить раздел</button>
@@ -463,10 +458,8 @@
           <div class="bio-block__text">
             <span class="bio-block-key">hobbies</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'improve')">✨ Слог</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'warm')">❤️ Теплее</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'formal')">👔 Официально</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('hobbies', 'continue')">✍️ Продолжить</button>
             </div>
             <div class="bio-block-text"></div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('hobbies')">Удалить раздел</button>
@@ -492,10 +485,8 @@
           <div class="bio-block__text">
             <span class="bio-block-key">career</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'improve')">✨ Слог</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'warm')">❤️ Теплее</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'formal')">👔 Официально</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'continue')">✍️ Продолжить</button>
             </div>
             <div class="bio-block-text"></div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('career')">Удалить раздел</button>
@@ -521,10 +512,8 @@
           <div class="bio-block__text">
             <span class="bio-block-key">oldage</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'improve')">✨ Слог</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'warm')">❤️ Теплее</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'formal')">👔 Официально</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('oldage', 'continue')">✍️ Продолжить</button>
             </div>
             <div class="bio-block-text"></div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('oldage')">Удалить раздел</button>
@@ -701,7 +690,6 @@
 
     // Новые элементы v2
     const refinementDrawer = document.getElementById('refinement-drawer');
-    const drawerToggleBtn = document.getElementById('drawer-toggle-btn');
     const drawerCloseBtn = document.getElementById('drawer-close-btn');
     const focusDimmer = document.getElementById('focus-dimmer');
     const ambientGlowAura = document.getElementById('ambient-glow-aura');
@@ -782,11 +770,6 @@
     }
 
     // === УПРАВЛЕНИЕ БОКОВОЙ ПАНЕЛЬЮ (DRAWER) ===
-    if (drawerToggleBtn && refinementDrawer) {
-      drawerToggleBtn.addEventListener('click', () => {
-        refinementDrawer.classList.toggle('is-open');
-      });
-    }
 
     if (drawerCloseBtn && refinementDrawer) {
       drawerCloseBtn.addEventListener('click', () => {
@@ -949,12 +932,7 @@
     // === ЛОГИКА ПЕРЕХОДА В РЕЖИМ РЕДАКТИРОВАНИЯ ===
     function enterEditingMode() {
       isEditingMode = true;
-      editPanel.innerHTML = `
-        <button class="edit-panel__btn edit-panel__btn--save" id="edit-save-btn">Сохранить</button>
-        <button class="edit-panel__btn edit-panel__btn--cancel" id="edit-cancel-btn">Отмена</button>
-      `;
-      document.getElementById('edit-save-btn').addEventListener('click', saveChangesAndExit);
-      document.getElementById('edit-cancel-btn').addEventListener('click', exitEditingMode);
+      editPanel.innerHTML = ``;
 
       aiControlPanel.style.display = 'block';
       isPanelMinimized = false;
@@ -2038,10 +2016,8 @@
           <div class="bio-block__text">
             <span class="bio-block-key" style="${isEditingMode ? 'opacity: 1;' : ''}">${key}</span>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'improve')">✨ Слог</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'warm')">❤️ Теплее</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'formal')">👔 Официально</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'continue')">✍️ Продолжить</button>
             </div>
             <div class="bio-block-text" ${isEditingMode ? 'contenteditable="true"' : ''}>${text}</div>
             <button class="delete-block-btn" style="${isEditingMode ? 'display: inline-block; opacity: 0.8;' : ''}" onclick="deleteBlockLocally('${key}')">Удалить раздел</button>
@@ -2353,6 +2329,9 @@
     // === ЛОГИКА ИНСТРУКЦИИ (ONBOARDING) ===
     function showOnboardingModal() {
       if (!onboardingModal) return;
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
       onboardingModal.classList.add('is-visible');
       gsap.fromTo(onboardingModal.querySelector('.onboarding-modal-window'), 
         { scale: 0.97, opacity: 0 }, 
@@ -2362,6 +2341,8 @@
 
     function closeOnboardingModal() {
       if (!onboardingModal) return;
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
       gsap.to(onboardingModal.querySelector('.onboarding-modal-window'), {
         scale: 0.97,
         opacity: 0,

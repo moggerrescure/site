@@ -177,6 +177,27 @@ const API = (() => {
         return null;
       }
     },
+    updateRootTreeId(treeId) {
+      try {
+        const u = localStorage.getItem('memory_user');
+        if (u) {
+          const user = JSON.parse(u);
+          if (user && user.rootTreeId !== treeId) {
+            if (treeId) {
+              user.rootTreeId = treeId;
+            } else {
+              delete user.rootTreeId;
+            }
+            localStorage.setItem('memory_user', JSON.stringify(user));
+            const storageEvt = new Event('storage');
+            storageEvt.key = 'memory_user';
+            window.dispatchEvent(storageEvt);
+          }
+        }
+      } catch (e) {
+        console.warn('[API] updateRootTreeId failed:', e.message);
+      }
+    },
     async login(email, password) {
       const r = await req('POST', '/api/auth/login', { email, password });
       setToken(r.token);

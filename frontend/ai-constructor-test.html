@@ -1504,10 +1504,8 @@
             <span class="bio-block-key">childhood</span>
             <div class="bio-block-text"></div>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'warm')">❤️ Сделать теплее (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('childhood', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
             </div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('childhood')">Удалить раздел</button>
           </div>
@@ -1532,10 +1530,8 @@
             <span class="bio-block-key">education</span>
             <div class="bio-block-text"></div>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'warm')">❤️ Сделать теплее (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('education', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
             </div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('education')">Удалить раздел</button>
           </div>
@@ -1560,10 +1556,8 @@
             <span class="bio-block-key">career</span>
             <div class="bio-block-text"></div>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'warm')">❤️ Сделать теплее (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('career', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
             </div>
             <button class="delete-block-btn" onclick="deleteBlockLocally('career')">Удалить раздел</button>
           </div>
@@ -1755,12 +1749,7 @@
     // === ЛОГИКА ПЕРЕХОДА В РЕЖИМ РЕДАКТИРОВАНИЯ ===
     function enterEditingMode() {
       isEditingMode = true;
-      editPanel.innerHTML = `
-        <button class="edit-panel__btn edit-panel__btn--save" id="edit-save-btn">Сохранить</button>
-        <button class="edit-panel__btn edit-panel__btn--cancel" id="edit-cancel-btn">Отмена</button>
-      `;
-      document.getElementById('edit-save-btn').addEventListener('click', saveChangesAndExit);
-      document.getElementById('edit-cancel-btn').addEventListener('click', exitEditingMode);
+      editPanel.innerHTML = ``;
 
       aiControlPanel.style.display = 'block';
       gsap.fromTo(aiControlPanel,
@@ -2579,10 +2568,8 @@
             <span class="bio-block-key" style="${isEditingMode ? 'opacity: 1;' : ''}">${key}</span>
             <div class="bio-block-text" ${isEditingMode ? 'contenteditable="true"' : ''}>${text}</div>
             <div class="ai-block-helper">
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'improve')">✨ Улучшить стиль (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'warm')">❤️ Сделать теплее (ИИ)</button>
               <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'formal')">👔 Официальный тон (ИИ)</button>
-              <button class="ai-helper-btn" onclick="callAIBlockAction('${key}', 'continue')">✍️ Продолжить рассказ (ИИ)</button>
             </div>
             <button class="delete-block-btn" style="${isEditingMode ? 'display: inline-block; opacity: 0.8;' : ''}" onclick="deleteBlockLocally('${key}')">Удалить раздел</button>
           </div>
@@ -2806,6 +2793,9 @@
     // === ЛОГИКА ИНСТРУКЦИИ (ONBOARDING) ===
     function showOnboardingModal() {
       if (!onboardingModal) return;
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
       onboardingModal.classList.add('is-visible');
       gsap.fromTo(onboardingModal.querySelector('.onboarding-modal-window'), 
         { scale: 0.97, opacity: 0 }, 
@@ -2815,6 +2805,8 @@
 
     function closeOnboardingModal() {
       if (!onboardingModal) return;
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
       gsap.to(onboardingModal.querySelector('.onboarding-modal-window'), {
         scale: 0.97,
         opacity: 0,

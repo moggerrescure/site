@@ -223,8 +223,14 @@
         targetId = user.rootTreeId;
       }
     }
-    document.querySelectorAll('a[href="family-tree.html"]').forEach(a => {
-      a.href = `family-tree.html?tree=${encodeURIComponent(targetId)}`;
+    document.querySelectorAll('a').forEach(a => {
+      const href = a.getAttribute('href');
+      if (href) {
+        const urlPath = href.split('?')[0];
+        if (urlPath === 'family-tree.html') {
+          a.href = `family-tree.html?tree=${encodeURIComponent(targetId)}`;
+        }
+      }
     });
   }
   if (document.readyState === 'loading') {

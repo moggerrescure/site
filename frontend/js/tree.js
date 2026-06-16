@@ -552,10 +552,15 @@ const currentTreeId = urlParams.get('tree') || 'default';
       const t = urlParams.get('tree');
       const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
 
+      const target = trees[0].id || trees[0].treeId;
+      if (target && typeof API.updateRootTreeId === 'function') {
+        API.updateRootTreeId(target);
+      }
+
       if (!t) {
-        const target = (user && user.rootTreeId) ? user.rootTreeId : (trees[0].id || trees[0].treeId);
-        if (target) {
-          window.location.replace('family-tree.html?tree=' + encodeURIComponent(target));
+        const redirectTarget = (user && user.rootTreeId) ? user.rootTreeId : target;
+        if (redirectTarget) {
+          window.location.replace('family-tree.html?tree=' + encodeURIComponent(redirectTarget));
           return;
         }
       }
