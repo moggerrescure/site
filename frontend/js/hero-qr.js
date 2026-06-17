@@ -31,6 +31,17 @@
     let startY = 0;
     let startTime = 0;
     let isDragging = false;
+    let targetTime = 0;
+    let rafId = null;
+
+    const updateCurrentTime = () => {
+      if (isDragging) {
+        v.currentTime += (targetTime - v.currentTime) * 0.25;
+        rafId = requestAnimationFrame(updateCurrentTime);
+      } else {
+        rafId = null;
+      }
+    };
 
     const onPointerMove = (e) => {
       if (!isDragging) {
@@ -41,6 +52,9 @@
             isDragging = true;
             v.pause();
             box.style.cursor = "grabbing";
+            if (!rafId) {
+              rafId = requestAnimationFrame(updateCurrentTime);
+            }
           } else {
             // Vertical movement: cancel drag and let page scroll naturally
             cleanup();
@@ -53,11 +67,8 @@
       const dur = v.duration || 12; // video length in seconds (12s = 360 frames at 30fps)
       const deltaX = e.clientX - startX;
       // box.clientWidth maps to full video duration
-      let newTime = startTime + (deltaX / box.clientWidth) * dur;
-
-      // Seamless wrap-around
-      newTime = ((newTime % dur) + dur) % dur;
-      v.currentTime = newTime;
+      const target = startTime + (deltaX / box.clientWidth) * dur;
+      targetTime = Math.max(0, Math.min(dur, target));
     };
 
     const onPointerUp = () => {
@@ -68,6 +79,10 @@
 
     const cleanup = () => {
       isDragging = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
@@ -77,6 +92,7 @@
       startX = e.clientX;
       startY = e.clientY;
       startTime = v.currentTime;
+      targetTime = startTime;
       isDragging = false;
 
       v.pause();
