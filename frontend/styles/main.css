@@ -3016,6 +3016,13 @@ select option:hover {
   transform: translateY(-4px);
 }
 
+.hero-qr-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .hero-canvas-loader {
   position: absolute;
   inset: 0;

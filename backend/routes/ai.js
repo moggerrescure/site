@@ -160,7 +160,7 @@ router.post('/generate-image', optionalAuth, aiGenerationLimiter, wrap(async (re
     if (!title && !text) {
       throw ApiError.badRequest('Нужен prompt либо title/text блока');
     }
-    prompt = `A warm vintage memorial illustration. Depicting: ${title}. Soft emotional oil painting, nostalgic lighting, one single person of Slavic (Eastern European) appearance, no Asian or non-Slavic facial features. Context: "${text}". Timeless, respectful, no text in image.`;
+    prompt = `A warm vintage memorial illustration. Depicting: ${title}. Soft emotional oil painting, nostalgic lighting, one single person of Slavic (Eastern European) appearance, no Asian or non-Slavic facial features. Context: "${text}". Timeless, respectful, no text in image. Absolutely only ONE person must be in the frame. Do NOT include any other people, background crowds, family members, or strangers under any circumstances.`;
   }
 
   if (containsProfanity(prompt)) {
@@ -171,6 +171,10 @@ router.post('/generate-image', optionalAuth, aiGenerationLimiter, wrap(async (re
   let referenceImage = typeof body.referenceImage === 'string' ? body.referenceImage : '';
   if (referenceImage && !/^data:image\/(png|jpe?g|webp);base64,/.test(referenceImage)) referenceImage = '';
   if (referenceImage.length > 1800000) referenceImage = ''; // ~1.3MB бинарных данных
+
+  if (!referenceImage) {
+    throw ApiError.badRequest('Сначала добавьте фото (аватарку) для страницы памяти!');
+  }
 
   let result;
   try {
