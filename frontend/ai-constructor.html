@@ -398,18 +398,9 @@
       </div>
 
       <div class="settings-row">
-        <div class="ai-switches">
-          <label class="ai-switch" id="sim-mode-label">
-            <input type="checkbox" id="sim-mode">
-            <span class="ai-switch__track"></span>
-            <span class="ai-switch__label">Оффлайн-симуляция ответов ИИ (тест без бэкенда)</span>
-          </label>
-          <label class="ai-switch">
-            <input type="checkbox" id="auto-photo-mode" checked>
-            <span class="ai-switch__track"></span>
-            <span class="ai-switch__label">Автоматически создавать иллюстрации для новых разделов</span>
-          </label>
-        </div>
+        <!-- Скрытые inputs для JS-совместимости -->
+        <input type="checkbox" id="sim-mode" style="display:none;">
+        <input type="checkbox" id="auto-photo-mode" checked style="display:none;">
 
         <div class="action-buttons">
           <button id="onboarding-toggle-btn" class="btn-ai btn-ai-secondary btn-ai-instruction" title="Инструкция по использованию конструктора">Инструкция</button>
@@ -499,6 +490,33 @@
             <div class="photo-actions-overlay">
               <button class="photo-action-btn" onclick="generateBlockImage('career')">Создать ИИ-фото</button>
               <button class="photo-action-btn" onclick="uploadBlockPhoto('career')">Загрузить своё</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Блок Семья -->
+      <section class="bio-block" data-key="family">
+        <div class="bio-block__drag-handle" title="Перетащить блок">❧</div>
+        <h4 class="bio-block__title">Семья и близкие</h4>
+        <div class="bio-block__row">
+          <div class="bio-block__text">
+            <span class="bio-block-key">family</span>
+            <div class="ai-block-helper">
+              <button class="ai-helper-btn" onclick="callAIBlockAction('family', 'warm')">❤️ Теплее</button>
+              <button class="ai-helper-btn" onclick="callAIBlockAction('family', 'formal')">👔 Официально</button>
+            </div>
+            <div class="bio-block-text"></div>
+            <button class="delete-block-btn" onclick="deleteBlockLocally('family')">Удалить раздел</button>
+          </div>
+          <div class="bio-block__photo">
+            <div class="bio-block__photo-img-wrap"></div>
+            <div class="bio-block__photo-placeholder">
+              <span class="bio-block__photo-icon">❧</span>
+            </div>
+            <div class="photo-actions-overlay">
+              <button class="photo-action-btn" onclick="generateBlockImage('family')">Создать ИИ-фото</button>
+              <button class="photo-action-btn" onclick="uploadBlockPhoto('family')">Загрузить своё</button>
             </div>
           </div>
         </div>
