@@ -124,7 +124,7 @@ function serializeForDetail(profile) {
     let customIdx = 1;
     const blocks = (profile.blocks || []).filter((b) => !b.isHidden);
     for (const b of blocks) {
-        const key = SECTION_BY_TYPE[b.type] || ('custom' + customIdx++);
+        const key = SECTION_BY_TYPE[b.type] || ('custom_' + customIdx++);
         sections[key] = {
             title: b.title || '',
             text:  b.body  || '',
