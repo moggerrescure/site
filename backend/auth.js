@@ -323,17 +323,23 @@ async function registerUser({ email, password, displayName, accept, ip }) { /* _
   });
   if (exists) throw ApiError.conflict("Email уже зарегистрирован");
 
-  const user = await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      passwordHash: hashPassword(password),
-      displayName: displayName || normalizedEmail.split("@")[0],
-      role: "USER",
-      acceptedTermsAt: new Date(),
-      acceptedTermsIp: ip || null,
-    },
-    select: { id: true, email: true, displayName: true, role: true, jwtVersion: true },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        passwordHash: hashPassword(password),
+        displayName: displayName || normalizedEmail.split("@")[0],
+        role: "USER",
+        acceptedTermsAt: new Date(),
+        acceptedTermsIp: ip || null,
+      },
+      select: { id: true, email: true, displayName: true, role: true, jwtVersion: true },
+    });
+  } catch (err) {
+    console.error("[registerUser] Error creating user in DB:", err);
+    throw err;
+  }
 
   const token = signJWT({ sub: user.id, role: user.role, email: user.email, jwtVersion: user.jwtVersion ?? 0 });
   return { user, token };
