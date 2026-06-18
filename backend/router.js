@@ -21,6 +21,7 @@ const legacyContactService = require('./services/legacyContactService');
 const tgLoginService  = require('./services/tgLoginService');
 const prisma          = require('./lib/prisma');
 const pkg             = require('./package.json');
+const { updateRedirectFile } = require('./lib/github-pages');
 
 const auth = require('./auth');
 const { requireAuth, optionalAuth } = auth;
@@ -439,6 +440,14 @@ async function createHandler(req, res) {
         newValue: { id: data?.id, slug: data?.slug, fullName: data?.fullName, visibility: data?.visibility },
         req,
     });
+    
+    if (data?.id) {
+        const baseUrl = process.env.PUBLIC_BASE_URL || process.env.SITE_URL || 'https://qr-memory.by';
+        const targetUrl = `${baseUrl}/p/${encodeURIComponent(data.slug || data.id)}`;
+        // Fire and forget
+        updateRedirectFile(data.id, targetUrl).catch(e => console.error('[github-pages] error:', e));
+    }
+
     return ok(res, { data }, 201);
 }
 
@@ -458,6 +467,14 @@ async function updateHandler(req, res) {
         newValue: { id: data?.id, slug: data?.slug, fullName: data?.fullName, visibility: data?.visibility },
         req,
     });
+
+    if (data?.id && data.slug !== oldSnapshot?.slug) {
+        const baseUrl = process.env.PUBLIC_BASE_URL || process.env.SITE_URL || 'https://qr-memory.by';
+        const targetUrl = `${baseUrl}/p/${encodeURIComponent(data.slug || data.id)}`;
+        // Fire and forget
+        updateRedirectFile(data.id, targetUrl).catch(e => console.error('[github-pages] error:', e));
+    }
+
     return ok(res, { data });
 }
 
@@ -496,7 +513,14 @@ router.get('/profiles/:idOrSlug/qr.png', requireAuth, wrap(async (req, res) => {
   const origin = (req.headers['x-forwarded-proto'] ? String(req.headers['x-forwarded-proto']) : req.protocol) +
     '://' + (req.headers['x-forwarded-host'] ? String(req.headers['x-forwarded-host']) : req.get('host'));
 
-  const url = origin + '/p/' + encodeURIComponent(slug);
+  const directUrl = origin + '/p/' + encodeURIComponent(slug);
+  
+  let url = directUrl;
+  if (process.env.GITHUB_PAGES_BASE_URL) {
+      const baseUrl = process.env.GITHUB_PAGES_BASE_URL.replace(/\/+$/, '');
+      url = `${baseUrl}/${r.data.id}.html`;
+  }
+
 
   const png = await QRCode.toBuffer(url, {
     type: 'png',
@@ -520,7 +544,14 @@ router.get('/profiles/:idOrSlug/qr.pdf', requireAuth, wrap(async (req, res) => {
   const origin = (req.headers['x-forwarded-proto'] ? String(req.headers['x-forwarded-proto']) : req.protocol) +
     '://' + (req.headers['x-forwarded-host'] ? String(req.headers['x-forwarded-host']) : req.get('host'));
 
-  const url = origin + '/p/' + encodeURIComponent(slug);
+  const directUrl = origin + '/p/' + encodeURIComponent(slug);
+  
+  let url = directUrl;
+  if (process.env.GITHUB_PAGES_BASE_URL) {
+      const baseUrl = process.env.GITHUB_PAGES_BASE_URL.replace(/\/+$/, '');
+      url = `${baseUrl}/${r.data.id}.html`;
+  }
+
 
   const qrPng = await QRCode.toBuffer(url, {
     type: 'png',
