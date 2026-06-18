@@ -14,7 +14,7 @@ services:
       - "3000:3000"     # прямой доступ к API минуя Caddy
     # Hot reload: Node 24 нативный --watch перезапускает процесс при изменении .js
     # migrate deploy остаётся, т.к. контейнер может стартовать после новых миграций.
-    command: sh -c "npx -y prisma@6.19.3 migrate deploy && node --watch index.js"
+    command: sh -c "npx prisma generate && npx -y prisma@6.19.3 migrate deploy && node --watch index.js"
     volumes:
       # Bind весь backend исходник с хоста → правки на MacBook сразу видны в контейнере.
       # Заменяет COPY-baked /app, поэтому никаких stale schema.prisma и т.п.
