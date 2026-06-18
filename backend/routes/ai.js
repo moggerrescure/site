@@ -160,7 +160,7 @@ router.post('/generate-image', optionalAuth, aiGenerationLimiter, wrap(async (re
     if (!title && !text) {
       throw ApiError.badRequest('Нужен prompt либо title/text блока');
     }
-    prompt = `A warm vintage memorial illustration. Depicting: ${title}. Soft emotional oil painting, nostalgic lighting, one single person of Slavic (Eastern European) appearance, no Asian or non-Slavic facial features. Context: "${text}". Timeless, respectful, no text in image. Absolutely only ONE person must be in the frame. Do NOT include any other people, background crowds, family members, or strangers under any circumstances.`;
+    prompt = `A warm vintage memorial illustration. Depicting: ${title}. Soft emotional oil painting, nostalgic lighting, one single person of Slavic (Eastern European, Belarusian/Russian) appearance. Context: "${text}". Timeless, respectful. Absolutely only ONE person must be in the frame. Do NOT include any other people, background crowds, family members, or strangers under any circumstances. CRITICAL SAFETY RULES: NO foreign text, inscriptions, signs, labels, or writing of any kind in the image. NO German, Nazi, Wehrmacht, SS, fascist, or any enemy military symbols, uniforms, flags, insignia, or equipment. NO swastikas, iron crosses, or any Third Reich imagery. NO foreign (non-Russian/non-Soviet) military uniforms or equipment. If depicting military context, use ONLY Soviet/Red Army uniforms and symbols (red star, hammer and sickle). NO text at all in the image — zero letters, zero words, zero inscriptions. The scene must be purely Soviet/Belarusian/Russian in cultural context.`;
   }
 
   if (containsProfanity(prompt)) {
