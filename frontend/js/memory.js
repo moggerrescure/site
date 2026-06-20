@@ -32,7 +32,18 @@
     STATE.diedTo   = p.get('diedYearTo')   || '';
     STATE.gender     = p.get('gender')     || '';
     STATE.visibility = p.get('visibility') || '';
-    STATE.mine     = p.has('mine') ? p.get('mine') === '1' : false;
+    if (p.has('mine')) {
+      STATE.mine = p.get('mine') === '1';
+      localStorage.setItem('memory_mine', STATE.mine ? '1' : '0');
+    } else {
+      const saved = localStorage.getItem('memory_mine');
+      if (saved !== null) {
+        STATE.mine = saved === '1';
+      } else {
+        const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        STATE.mine = isMobile;
+      }
+    }
     STATE.page     = Math.max(1, parseInt(p.get('page') || '1', 10));
   }
   function writeUrl () {
@@ -143,7 +154,12 @@
     dTo.addEventListener('input',   () => { STATE.diedTo   = dTo.value.trim();   schedule(); });
     genderEl.addEventListener('change', () => { STATE.gender = genderEl.value; STATE.page = 1; load(); });
     if (visEl) visEl.addEventListener('change', () => { STATE.visibility = visEl.value; STATE.page = 1; load(); });
-    if (mineEl) mineEl.addEventListener('change', () => { STATE.mine = mineEl.checked; STATE.page = 1; load(); });
+    if (mineEl) mineEl.addEventListener('change', () => {
+      STATE.mine = mineEl.checked;
+      localStorage.setItem('memory_mine', STATE.mine ? '1' : '0');
+      STATE.page = 1;
+      load();
+    });
     resetEl.addEventListener('click', () => {
       STATE.q = STATE.bornFrom = STATE.bornTo = STATE.diedFrom = STATE.diedTo = '';
       STATE.gender = STATE.visibility = '';
@@ -154,6 +170,7 @@
       genderEl.value = '';
       if (visEl) visEl.value = '';
       if (mineEl) mineEl.checked = false;
+      localStorage.setItem('memory_mine', '0');
       load();
     });
 
