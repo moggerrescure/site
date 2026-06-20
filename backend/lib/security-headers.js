@@ -18,7 +18,7 @@ module.exports = helmet({
     useDefaults: true,
     directives: {
       "default-src": ["'self'"],
-      "script-src":  ["'self'", "'unsafe-inline'", "https://telegram.org", "https://oauth.telegram.org"],
+      "script-src":  ["'self'", "'unsafe-inline'", "https://telegram.org", "https://oauth.telegram.org", "https://cdnjs.cloudflare.com"],
       "style-src":   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "font-src":    ["'self'", "data:", "https://fonts.gstatic.com"],
       "img-src":     ["'self'", "data:", "blob:", "https:"],
@@ -27,6 +27,7 @@ module.exports = helmet({
       "frame-src":   ["https://oauth.telegram.org"],
       "object-src":  ["'none'"],
       "base-uri":    ["'self'"],
+      "upgrade-insecure-requests": null,
     },
   },
   crossOriginEmbedderPolicy: false,

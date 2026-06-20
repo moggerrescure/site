@@ -13,8 +13,13 @@ const API = (() => {
   const TIMEOUT_DEFAULT = 15000;
   const TIMEOUT_UPLOAD = 60000;
 
-  function getToken() { return localStorage.getItem(TOKEN_KEY); }
-  function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
+  function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
+  function setToken(t) {
+    try {
+      if (t) localStorage.setItem(TOKEN_KEY, t);
+      else localStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  }
 
   function compressImage(file, maxW = 1200, maxH = 1200, quality = 0.82) {
     return new Promise((resolve) => {

@@ -6,7 +6,11 @@
    ═══════════════════════════════════════════════ */
 (function () {
     const params = new URLSearchParams(window.location.search);
-    const idOrSlug = params.get('id');
+    let idOrSlug = params.get('id');
+    if (!idOrSlug) {
+        const m = location.pathname.match(/\/p\/([^/?#]+)/i);
+        if (m) idOrSlug = decodeURIComponent(m[1]);
+    }
     if (!idOrSlug) return;
     if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
 

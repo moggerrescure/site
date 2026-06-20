@@ -12,6 +12,30 @@
 (function () {
   'use strict';
 
+  // Инициализация темы на страницах памяти и конструктора
+  (function initTheme() {
+    var path = window.location.pathname;
+    var isMemoryOrEditor = path.indexOf('/person.html') !== -1 || 
+                           path.indexOf('/ai-constructor.html') !== -1 ||
+                           path.indexOf('/p/') === 0;
+
+    if (isMemoryOrEditor) {
+      var savedTheme = 'dark';
+      try { savedTheme = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+      if (savedTheme === 'light') {
+        document.documentElement.classList.add('theme-light');
+        if (document.body) document.body.classList.add('theme-light');
+      } else {
+        document.documentElement.classList.remove('theme-light');
+        if (document.body) document.body.classList.remove('theme-light');
+      }
+    } else {
+      document.documentElement.classList.remove('theme-light');
+      if (document.body) document.body.classList.remove('theme-light');
+    }
+  })();
+
+
   // Залогинен ли пользователь (токен кладёт auth-ui.js; логин/логаут делают reload,
   // поэтому проверки на этапе загрузки достаточно).
   var loggedIn = false;
@@ -81,6 +105,67 @@
     }
   }
 
+  function injectThemeToggle() {
+    var path = window.location.pathname;
+    var isMemoryOrEditor = path.indexOf('/person.html') !== -1 || 
+                           path.indexOf('/ai-constructor.html') !== -1 ||
+                           path.indexOf('/p/') === 0;
+                           
+    if (!isMemoryOrEditor) return;
+    if (document.getElementById('theme-toggle')) return;
+
+    var btn = document.createElement('button');
+    btn.id = 'theme-toggle';
+    btn.className = 'theme-toggle-btn';
+    btn.setAttribute('title', 'Переключить тему');
+    btn.setAttribute('aria-label', 'Переключить тему');
+    btn.innerHTML = 
+      '<svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>' +
+      '</svg>' +
+      '<svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">' +
+        '<circle cx="12" cy="12" r="5"></circle>' +
+        '<line x1="12" y1="1" x2="12" y2="3"></line>' +
+        '<line x1="12" y1="21" x2="12" y2="23"></line>' +
+        '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>' +
+        '<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>' +
+        '<line x1="1" y1="12" x2="3" y2="12"></line>' +
+        '<line x1="21" y1="12" x2="23" y2="12"></line>' +
+        '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>' +
+        '<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>' +
+      '</svg>';
+    document.body.appendChild(btn);
+
+    var darkIcon = btn.querySelector('.theme-icon-dark');
+    var lightIcon = btn.querySelector('.theme-icon-light');
+
+    function applyTheme(theme) {
+      if (theme === 'light') {
+        document.documentElement.classList.add('theme-light');
+        document.body.classList.add('theme-light');
+        if (darkIcon) darkIcon.style.display = 'none';
+        if (lightIcon) lightIcon.style.display = 'block';
+      } else {
+        document.documentElement.classList.remove('theme-light');
+        document.body.classList.remove('theme-light');
+        if (darkIcon) darkIcon.style.display = 'block';
+        if (lightIcon) lightIcon.style.display = 'none';
+      }
+      window.dispatchEvent(new CustomEvent('themechanged', { detail: { theme: theme } }));
+    }
+
+    var savedTheme = 'dark';
+    try { savedTheme = localStorage.getItem('theme') || 'dark'; } catch (e) {}
+    applyTheme(savedTheme);
+
+    btn.addEventListener('click', function () {
+      var currentTheme = document.documentElement.classList.contains('theme-light') ? 'light' : 'dark';
+      var newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('theme', newTheme); } catch (e) {}
+      applyTheme(newTheme);
+    });
+  }
+
   function mountHeader() { if (fill('site-header', HEADER)) markActive(); }
   function mountFooter() { fill('site-footer', FOOTER); }
 
@@ -90,8 +175,11 @@
     document.addEventListener('DOMContentLoaded', function () {
       mountHeader();
       mountFooter();
+      injectThemeToggle();
     });
   } else {
     mountFooter();
+    injectThemeToggle();
   }
 })();
+

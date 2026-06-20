@@ -13,10 +13,13 @@
      where the user is logged in (meaning a client-side redirect will occur).
      We hold the overlay as black (faded out) during this phase to avoid page flash. */
   const urlParams = new URLSearchParams(window.location.search);
-  const isTreeRedirectCandidate = 
-    (window.location.pathname.endsWith('family-tree.html') || window.location.pathname.includes('/family-tree.html')) &&
-    !urlParams.has('tree') &&
-    (localStorage.getItem('memory_jwt') || localStorage.getItem('memory_user'));
+  let isTreeRedirectCandidate = false;
+  try {
+    isTreeRedirectCandidate = 
+      (window.location.pathname.endsWith('family-tree.html') || window.location.pathname.includes('/family-tree.html')) &&
+      !urlParams.has('tree') &&
+      (localStorage.getItem('memory_jwt') || localStorage.getItem('memory_user'));
+  } catch (e) {}
 
   /* Create the overlay element with visible class (starts black/opaque) */
   const overlay = document.createElement('div');

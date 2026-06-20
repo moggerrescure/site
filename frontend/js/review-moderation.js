@@ -156,8 +156,11 @@
         document.head.appendChild(style);
     }
 
-    /* ── Helpers ─────────────────────────────────────────── */
-    const personId = new URLSearchParams(window.location.search).get('id');
+    let personId = new URLSearchParams(window.location.search).get('id');
+    if (!personId) {
+        const m = location.pathname.match(/\/p\/([^/?#]+)/i);
+        if (m) personId = decodeURIComponent(m[1]);
+    }
     if (!personId) return;
 
     // Используем API из api.js — он сам подставляет JWT через fetch-interceptor.

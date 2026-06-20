@@ -207,7 +207,11 @@
 
   async function init() {
     const params = new URLSearchParams(window.location.search);
-    const slug = params.get('id');
+    let slug = params.get('id');
+    if (!slug) {
+      const m = location.pathname.match(/\/p\/([^/?#]+)/i);
+      if (m) slug = decodeURIComponent(m[1]);
+    }
     if (!slug) return;
     if (typeof API === 'undefined' || !API.isLoggedIn || !API.isLoggedIn()) return;
 

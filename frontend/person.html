@@ -2,6 +2,16 @@
 <html lang="ru">
 <head>
   <base href="/">
+  <script>
+    (function() {
+      try {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+          document.documentElement.classList.add('theme-light');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <meta name="google-site-verification" content="XZ1l0f_nu02uk7tS2ID2xVgUC91dXNQa16LdUJihGEM" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />

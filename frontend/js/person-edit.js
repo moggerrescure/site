@@ -5,7 +5,11 @@
 
 (function () {
   const params = new URLSearchParams(window.location.search);
-  const id = params.get('id');
+  let id = params.get('id');
+  if (!id) {
+    const m = location.pathname.match(/\/p\/([^/?#]+)/i);
+    if (m) id = decodeURIComponent(m[1]);
+  }
   const autoEdit = params.get('edit') === '1';
   const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
   const base = isLocalDev ? 'http://localhost:3000' : '';

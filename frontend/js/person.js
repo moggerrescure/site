@@ -1040,7 +1040,8 @@ async function loadProfileWithAccess() {
 
           /* 2. Оффлайн-фоллбэк: проверяем в localStorage (для демо) */
           if (!valid) {
-            const localCode = localStorage.getItem(`person_code_${id}`) || 'MEMORYOK';
+            let localCode = 'MEMORYOK';
+            try { localCode = localStorage.getItem(`person_code_${id}`) || 'MEMORYOK'; } catch (e) {}
             valid = (code === localCode);
           }
 

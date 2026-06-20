@@ -2429,7 +2429,7 @@ body.theme-light .ambient-glow-aura {
 /* Toggle Switch Styles */
 .theme-toggle-btn {
   position: fixed;
-  bottom: 24px;
+  bottom: 84px;
   right: 24px;
   width: 48px;
   height: 48px;
@@ -2529,3 +2529,18 @@ body.theme-light .onboarding-close-btn:hover {
   border-color: #ef4444 !important;
   color: #ffffff !important;
 }
+
+/* Position scroll-top button to the left of theme-toggle-btn to prevent overlaps */
+#scroll-top {
+  bottom: 85px !important;
+  right: 84px !important;
+  z-index: 10000;
+}
+
+@media (max-width: 560px) {
+  #scroll-top {
+    bottom: 88px !important;
+    right: 84px !important;
+  }
+}
+
