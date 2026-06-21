@@ -964,7 +964,8 @@
   <script>
     let isRecording = false;
     let recognition = null;
-    let finalTranscript = '';
+    let baseText = '';
+    let isProgrammaticInput = false;
     let isEditingMode = false;
 
     // База API: с Live Server (5500 и т.п.) ходим на бэкенд напрямую, в проде — same-origin
@@ -1159,7 +1160,12 @@
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        transcriptInput.value = (finalTranscript + currentSessionFinal + interimTranscript).trim().replace(/\s+/g, ' ');
+        const currentSessionText = (currentSessionFinal + interimTranscript).trim();
+
+        isProgrammaticInput = true;
+        transcriptInput.value = (baseText + (baseText ? ' ' : '') + currentSessionText).trim().replace(/\s+/g, ' ');
+        isProgrammaticInput = false;
+
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
       };
 
@@ -1173,7 +1179,7 @@
 
       recognition.onend = () => {
         if (isRecording) {
-          finalTranscript = transcriptInput.value ? transcriptInput.value + ' ' : '';
+          baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
           try { recognition.start(); } catch (e) {}
         }
       };
@@ -1186,7 +1192,7 @@
     function startRecording() {
       if (!recognition) return;
       isRecording = true;
-      finalTranscript = transcriptInput.value ? transcriptInput.value + ' ' : '';
+      baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
       try {
         recognition.start();
         micBtn.classList.add('is-recording');
@@ -1213,9 +1219,18 @@
       else startRecording();
     });
 
+    transcriptInput.addEventListener('input', () => {
+      if (!isProgrammaticInput && isRecording) {
+        baseText = transcriptInput.value.trim();
+        try {
+          recognition.stop();
+        } catch (e) {}
+      }
+    });
+
     clearBtn.addEventListener('click', () => {
       transcriptInput.value = '';
-      finalTranscript = '';
+      baseText = '';
       if (isRecording) stopRecording();
       refinementPanel.style.display = 'none';
       refinementList.innerHTML = '';
