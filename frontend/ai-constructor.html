@@ -695,7 +695,8 @@
   <script>
     let isRecording = false;
     let recognition = null;
-    let finalTranscript = '';
+    let baseText = '';
+    let isProgrammaticInput = false;
     let isEditingMode = true;
     let isPanelMinimized = false;
 
@@ -753,7 +754,15 @@
       }
     }
 
-    transcriptInput.addEventListener('input', updateProcessButtonState);
+    transcriptInput.addEventListener('input', () => {
+      updateProcessButtonState();
+      if (!isProgrammaticInput && isRecording) {
+        baseText = transcriptInput.value.trim();
+        try {
+          recognition.stop();
+        } catch (e) {}
+      }
+    });
 
     transcriptInput.addEventListener('focus', () => {
       isPanelMinimized = false;
@@ -1284,7 +1293,12 @@
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        transcriptInput.value = (finalTranscript + currentSessionFinal + interimTranscript).trim().replace(/\s+/g, ' ');
+        const currentSessionText = (currentSessionFinal + interimTranscript).trim();
+
+        isProgrammaticInput = true;
+        transcriptInput.value = (baseText + (baseText ? ' ' : '') + currentSessionText).trim().replace(/\s+/g, ' ');
+        isProgrammaticInput = false;
+
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
         updateProcessButtonState();
       };
@@ -1299,7 +1313,7 @@
 
       recognition.onend = () => {
         if (isRecording) {
-          finalTranscript = transcriptInput.value ? transcriptInput.value + ' ' : '';
+          baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
           try { recognition.start(); } catch (e) {}
         }
       };
@@ -1312,7 +1326,7 @@
     function startRecording() {
       if (!recognition) return;
       isRecording = true;
-      finalTranscript = transcriptInput.value ? transcriptInput.value + ' ' : '';
+      baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
       try {
         recognition.start();
         micBtn.classList.add('is-recording');
@@ -1345,7 +1359,7 @@
 
     clearBtn.addEventListener('click', () => {
       transcriptInput.value = '';
-      finalTranscript = '';
+      baseText = '';
       if (isRecording) stopRecording();
       refinementPanel.style.display = 'none';
       refinementList.innerHTML = '';
