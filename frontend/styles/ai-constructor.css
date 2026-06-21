@@ -1672,14 +1672,14 @@ body:has(#p-bio:focus) .bio-blocks {
     border-radius: 14px;
   }
   
-  /* Размещение панели действий прямо под ИИ-редактором (чтобы не перекрывать контент) */
+  /* Размещение панели действий под блоками биографии в самом низу (чтобы не перекрывать контент) */
   .edit-panel {
     position: relative !important;
     top: auto !important;
     bottom: auto !important;
     left: auto !important;
     right: auto !important;
-    margin: -15px auto 30px !important;
+    margin: 30px auto 40px !important;
     max-width: 100% !important;
     width: 100% !important;
     justify-content: center !important;
