@@ -27,17 +27,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
 
   <!-- Подключение оригинальных стилей сайта -->
-  <link rel="stylesheet" href="styles/main.css?v=14" />
-  <link rel="stylesheet" href="styles/responsive.css?v=14" />
-  <link rel="stylesheet" href="styles/content.css" />
-  <link rel="stylesheet" href="styles/person.css?v=15" />
-  <link rel="stylesheet" href="styles/blocks.css?v=14" />
-  <link rel="stylesheet" href="styles/gallery.css?v=14" />
+  <link rel="stylesheet" href="styles/main.css?v=ad8e7af44d" />
+  <link rel="stylesheet" href="styles/responsive.css?v=daf6273347" />
+  <link rel="stylesheet" href="styles/content.css?v=b28e37b4fc" />
+  <link rel="stylesheet" href="styles/person.css?v=ae190fba11" />
+  <link rel="stylesheet" href="styles/blocks.css?v=f56a05fc23" />
+  <link rel="stylesheet" href="styles/gallery.css?v=ecdc8db5b7" />
 
   <!-- GSAP Core для анимаций переходов -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-  <link rel="stylesheet" href="styles/ai-constructor.css?v=26" />
+  <link rel="stylesheet" href="styles/ai-constructor.css?v=afdcee1094" />
   <style>
     /* ── ПОП-АП С ИНСТРУКЦИЕЙ ДЛЯ ПОЖИЛЫХ (ONBOARDING) ── */
     .onboarding-modal-overlay {
@@ -314,7 +314,7 @@
 
   <!-- Навигационная панель с оригинального сайта -->
   <div id="site-header"></div>
-  <script src="js/layout.js?v=2"></script>
+  <script src="js/layout.js?v=8a952a554a"></script>
 
   <!-- Фиксированная панель кнопок режима редактирования (как в person-edit.js) -->
   <div class="edit-panel" id="edit-panel">
@@ -690,7 +690,7 @@
   <input type="file" id="photo-upload-input" accept="image/*" style="display: none;">
 
   <!-- API-клиент сайта (JWT, same-origin/dev база). -->
-  <script src="js/api.js"></script>
+  <script src="js/api.js?v=981dcafa04"></script>
 
   <!-- Скрипт логики конструктора -->
   <script>
@@ -962,7 +962,28 @@
     // === ЛОГИКА ПЕРЕХОДА В РЕЖИМ РЕДАКТИРОВАНИЯ ===
     function enterEditingMode() {
       isEditingMode = true;
-      editPanel.innerHTML = ``;
+      editPanel.innerHTML = `
+        <button class="edit-panel__btn edit-panel__btn--save" id="edit-save-btn">💾 Сохранить</button>
+        <button class="edit-panel__btn edit-panel__btn--cancel" id="edit-cancel-btn">✕ Отмена</button>
+      `;
+
+      const saveBtn = document.getElementById('edit-save-btn');
+      if (saveBtn) saveBtn.addEventListener('click', saveChangesAndExit);
+
+      const cancelBtn = document.getElementById('edit-cancel-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          if (savedProfileId) {
+            window.location.href = 'person.html?id=' + encodeURIComponent(savedProfileId);
+          } else {
+            if (document.referrer && (document.referrer.includes('admin.html') || document.referrer.includes('index.html'))) {
+              window.location.href = document.referrer;
+            } else {
+              window.location.href = 'admin.html';
+            }
+          }
+        });
+      }
 
       aiControlPanel.style.display = 'block';
       isPanelMinimized = false;
@@ -2403,17 +2424,93 @@
 
     /* ═══════════ СТАРТ: РЕДАКТОР ВКЛЮЧЁН СРАЗУ ═══════════ */
     console.log('[ai-constructor] v2 — автозапуск редактора');
-    function startEditorImmediately() {
-      // Это конструктор новой страницы — сразу включаем ИИ-режим,
-      // без отдельного клика по «Редактировать с ИИ».
-      try {
-        enterEditingMode();
-        console.log('[ai-constructor] редактор запущен сразу');
-        // Принудительно показываем инструкцию при загрузке
-        setTimeout(showOnboardingModal, 400);
-      } catch (e) {
-        console.error('[ai-constructor] автозапуск редактора не удался:', e);
+    async function startEditorImmediately() {
+      const params = new URLSearchParams(window.location.search);
+      const profileId = params.get('id');
+
+      if (profileId) {
+        console.log('[ai-constructor] Режим редактирования существующей страницы:', profileId);
+        savedProfileId = profileId;
+        
+        try {
+          showToast('Загрузка страницы...', 'var(--gold-dim)', 'var(--cream)');
+          
+          const res = await API.get(`/api/profiles/${encodeURIComponent(profileId)}`);
+          if (res && res.data) {
+            const profile = res.data;
+            
+            // Заполняем поля шапки
+            const nameEl = document.getElementById('p-name');
+            if (nameEl) nameEl.textContent = profile.name || '';
+            
+            const datesEl = document.getElementById('p-dates');
+            if (datesEl) {
+              if (profile.born || profile.died) {
+                datesEl.innerHTML = `${profile.born || 'ГГГГ'} <span>—</span> ${profile.died || 'ГГГГ'}`;
+              } else {
+                datesEl.innerHTML = `ГГГГ <span>—</span> ГГГГ`;
+              }
+            }
+            
+            const cityEl = document.getElementById('p-city');
+            if (cityEl) cityEl.textContent = profile.city || 'Город';
+            
+            const bioEl = document.getElementById('p-bio');
+            if (bioEl) bioEl.textContent = profile.bio ? `«${profile.bio}»` : '«Несколько тёплых слов о близком человеке — эпитафия появится здесь»';
+            
+            // Фото шапки
+            if (profile.photo) {
+              const avatarImg = document.getElementById('p-avatar');
+              const avatarPlaceholder = document.getElementById('p-avatar-placeholder');
+              if (avatarImg && avatarPlaceholder) {
+                avatarImg.src = API.resolveUrl(profile.photo);
+                avatarImg.style.display = 'block';
+                avatarPlaceholder.style.display = 'none';
+              }
+            }
+            
+            // Заполняем блоки контента
+            if (profile.sections && typeof profile.sections === 'object' && Object.keys(profile.sections).length > 0) {
+              blocksContainer.innerHTML = '';
+              Object.entries(profile.sections).forEach(([key, sec]) => {
+                createNewBlock(key, sec.title || key, sec.text || '');
+                if (sec.image) {
+                  const blockEl = document.querySelector(`[data-key="${key}"]`);
+                  if (blockEl) {
+                    const imgWrap = blockEl.querySelector('.bio-block__photo-img-wrap');
+                    const placeholder = blockEl.querySelector('.bio-block__photo-placeholder');
+                    if (imgWrap) {
+                      imgWrap.innerHTML = `<img src="${API.resolveUrl(sec.image)}" alt="${sec.title || ''}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;" />`;
+                      if (placeholder) placeholder.style.display = 'none';
+                    }
+                  }
+                }
+              });
+            }
+            
+            enterEditingMode();
+            showToast('Страница успешно загружена!');
+          } else {
+            throw new Error('Не удалось получить данные профиля');
+          }
+        } catch (err) {
+          console.error('[ai-constructor] Ошибка загрузки профиля:', err);
+          showToast('Не удалось загрузить страницу для редактирования: ' + (err.message || 'ошибка сети'), '#b91c1c', '#fff');
+          enterEditingMode();
+        }
+      } else {
+        // Это конструктор новой страницы — сразу включаем ИИ-режим,
+        // без отдельного клика по «Редактировать с ИИ».
+        try {
+          enterEditingMode();
+          console.log('[ai-constructor] редактор запущен сразу');
+          // Принудительно показываем инструкцию при загрузке
+          setTimeout(showOnboardingModal, 400);
+        } catch (e) {
+          console.error('[ai-constructor] автозапуск редактора не удался:', e);
+        }
       }
+
       if (window.API && !API.isLoggedIn()) {
         setTimeout(() => {
           showToast('Вы можете попробовать конструктор. Для сохранения страницы войдите в аккаунт.', 'var(--gold-dim)', 'var(--cream)');

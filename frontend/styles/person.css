@@ -2550,72 +2550,7 @@ body.theme-light .ambient-glow-aura {
   background: radial-gradient(circle, rgba(200, 168, 75, 0.12) 0%, rgba(226, 201, 126, 0.03) 50%, transparent 70%) !important;
 }
 
-/* Toggle Switch Styles */
-.theme-toggle-btn {
-  position: fixed;
-  bottom: 84px;
-  right: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(10, 9, 8, 0.85);
-  border: 1px solid rgba(200, 168, 75, 0.4);
-  color: var(--gold-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10000;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s, border-color 0.3s, color 0.3s;
-}
 
-.theme-toggle-btn:hover {
-  transform: scale(1.08) translateY(-2px);
-  border-color: var(--gold);
-  background: rgba(200, 168, 75, 0.1);
-  color: var(--white);
-  box-shadow: 0 12px 40px rgba(200, 168, 75, 0.25);
-}
-
-.theme-toggle-btn:active {
-  transform: scale(0.95);
-}
-
-.theme-toggle-btn svg {
-  width: 20px;
-  height: 20px;
-  transition: transform 0.5s ease-out;
-}
-
-body.theme-light .theme-toggle-btn {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(200, 168, 75, 0.4);
-  color: var(--gold-dim);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.8);
-}
-
-body.theme-light .theme-toggle-btn:hover {
-  background: rgba(200, 168, 75, 0.05);
-  color: #1a1a1a;
-  border-color: var(--gold);
-}
-
-/* Position scroll-top button to the left of theme-toggle-btn to prevent overlaps */
-#scroll-top {
-  bottom: 85px !important;
-  right: 84px !important;
-  z-index: 10000;
-}
-
-@media (max-width: 560px) {
-  #scroll-top {
-    bottom: 88px !important;
-    right: 84px !important;
-  }
-}
 
 
 

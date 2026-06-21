@@ -3613,7 +3613,7 @@
       try {
         const r = await fetch(`${BASE}/api/profiles`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name:'',dates:'',main_text:''})});
         const j = await r.json();
-        if (j.ok && j.data?.id) window.location.href = `person.html?id=${j.data.id}&edit=1`;
+        if (j.ok && j.data?.id) window.location.href = `ai-constructor.html?id=${j.data.id}`;
       } catch (_) { alert('Сервер недоступен'); }
     });
   }

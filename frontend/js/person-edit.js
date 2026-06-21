@@ -22,11 +22,11 @@
 
   function checkReadyAndInit() {
     if (document.querySelector('.person-header__name')) {
-      initEditPanel();
       if (autoEdit) {
-        // Добавляем небольшую задержку, чтобы убедиться, что все скрипты завершили работу (вкл. person-blocks)
-        setTimeout(() => enterEditMode(), 100);
+        window.location.replace(`ai-constructor.html?id=${id}`);
+        return;
       }
+      initEditPanel();
     } else {
       setTimeout(checkReadyAndInit, 100);
     }
@@ -49,11 +49,7 @@
   }
 
   function toggleEdit() {
-    if (!isEditing) {
-      window.location.href = `person.html?id=${id}&edit=1`;
-    } else {
-      exitEditMode();
-    }
+    window.location.href = `ai-constructor.html?id=${id}`;
   }
 
   function enterEditMode() {
