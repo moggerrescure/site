@@ -437,6 +437,44 @@
   });
 })();
 
+/* ── Сглаживание цикла для видео ИИ-помощника (aibio-mockup-video) ── */
+(function () {
+  const video = document.querySelector('.aibio-mockup-video');
+  if (!video) return;
+
+  const loopLimit = 3.92; // чуть раньше конца 4-секундного ролика
+  const resetTime = 0.05; // чуть позже абсолютного начала
+
+  const checkAndLoop = () => {
+    if (!video.seeking && video.currentTime >= loopLimit) {
+      video.currentTime = resetTime;
+    }
+  };
+
+  video.addEventListener('timeupdate', checkAndLoop);
+
+  let rafActive = false;
+  const tick = () => {
+    if (!rafActive) return;
+    checkAndLoop();
+    requestAnimationFrame(tick);
+  };
+
+  video.addEventListener('play', () => {
+    rafActive = true;
+    requestAnimationFrame(tick);
+  });
+
+  video.addEventListener('pause', () => {
+    rafActive = false;
+  });
+
+  if (!video.paused) {
+    rafActive = true;
+    requestAnimationFrame(tick);
+  }
+})();
+
 /* ═══════════════════════════════════════════════
    Image error fallback delegation (заменяет inline onerror)
    ═══════════════════════════════════════════════ */
