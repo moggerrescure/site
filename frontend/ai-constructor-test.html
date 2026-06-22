@@ -1187,17 +1187,25 @@
       recognition.lang = 'ru-RU';
       recognition.continuous = true;
       const isAndroid = /Android/i.test(navigator.userAgent);
-      recognition.interimResults = !isAndroid;
+      recognition.interimResults = true;
 
       recognition.onresult = (event) => {
-        let currentSessionText = '';
-        for (let i = 0; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
-          currentSessionText = mergeTranscripts(currentSessionText, transcript);
+        let localFinalText = '';
+        let interimText = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
+          if (!t) continue;
+          if (res.isFinal) {
+            localFinalText += (localFinalText ? ' ' : '') + t;
+          } else {
+            interimText += (interimText ? ' ' : '') + t;
+          }
         }
+        const sessionText = (localFinalText + ' ' + interimText).trim();
 
         isProgrammaticInput = true;
-        transcriptInput.value = mergeTranscripts(baseText, currentSessionText);
+        transcriptInput.value = mergeTranscripts(baseText, sessionText);
         isProgrammaticInput = false;
 
         transcriptInput.scrollTop = transcriptInput.scrollHeight;

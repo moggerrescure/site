@@ -1354,33 +1354,22 @@
       recognition.interimResults = true;
 
       recognition.onresult = (event) => {
-        // КАЖДОЕ событие пересобираем текст из ВСЕХ результатов и ПЕРЕЗАПИСЫВАЕМ
-        // (не дописываем). На Android resultIndex часто = 0 и результаты приходят
-        // повторно — перезапись полностью исключает задвоение.
-        // Финалы добавляем в finalText ПО ОДНОМУ разу. Дубль финала, пришедший
-        // в окне 2 c (быстрая речь / перекрытие на стыке перезапуска сессии
-        // Android), просто не выводим. interim показываем «вживую» поверх.
-        const norm = (s) => s.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()«»"'?]/g, '').trim();
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        let localFinalText = '';
+        let interimText = '';
+        for (let i = 0; i < event.results.length; i++) {
           const res = event.results[i];
           const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
           if (!t) continue;
           if (res.isFinal) {
-            const n = norm(t);
-            const now = Date.now();
-            recentFinals = recentFinals.filter((c) => now - c.t < 2000);
-            if (n && recentFinals.some((c) => c.n === n)) continue; // дубль в окне 2 c — пропуск
-            recentFinals.push({ n: n, t: now });
-            finalText = mergeTranscripts(finalText, t);
+            localFinalText += (localFinalText ? ' ' : '') + t;
           } else {
-            interim += (interim ? ' ' : '') + t;
+            interimText += (interimText ? ' ' : '') + t;
           }
         }
-        const sessionText = mergeTranscripts(finalText, interim);
+        const sessionText = (localFinalText + ' ' + interimText).trim();
 
         isProgrammaticInput = true;
-        transcriptInput.value = collapseDup(mergeTranscripts(baseText, sessionText));
+        transcriptInput.value = collapseDup((baseText + (baseText && sessionText ? ' ' : '') + sessionText).trim());
         isProgrammaticInput = false;
 
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
@@ -1397,7 +1386,9 @@
 
       recognition.onend = () => {
         if (isRecording) {
-          // finalText копится сам между сессиями — здесь только перезапуск.
+          // При авто-перезапуске сессии на Android сохраняем накопленный текст в baseText,
+          // так как новая сессия начнется с пустого event.results
+          baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
           try { recognition.start(); } catch (e) {}
         }
       };
