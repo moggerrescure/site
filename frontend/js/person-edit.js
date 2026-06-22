@@ -880,22 +880,23 @@
       recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       const isAndroid = /Android/i.test(navigator.userAgent);
-      recognition.interimResults = !isAndroid;
+      recognition.interimResults = true;
       recognition.continuous = true;
 
       recognition.onresult = (event) => {
-        // Идём только по новым результатам (от resultIndex), финалы добавляем
-        // ровно один раз. Это убирает задвоение текста на Android.
+        // КАЖДОЕ событие пересобираем текст из ВСЕХ результатов и ПЕРЕЗАПИСЫВАЕМ
+        // (не дописываем). На Android resultIndex часто = 0 и результаты приходят
+        // повторно — перезапись полностью исключает задвоение.
+        let finals = '';
         let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           const res = event.results[i];
-          if (res.isFinal) {
-            sessionFinalText = mergeTranscripts(sessionFinalText, res[0].transcript);
-          } else {
-            interim += res[0].transcript;
-          }
+          const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
+          if (!t) continue;
+          if (res.isFinal) finals += (finals ? ' ' : '') + t;
+          else interim += (interim ? ' ' : '') + t;
         }
-        const sessionText = (sessionFinalText + (interim ? ' ' + interim : '')).trim();
+        const sessionText = (finals + (interim ? ' ' + interim : '')).trim();
         const merged = mergeTranscripts(startTranscriptText, sessionText);
         transcriptEl.value = merged;
         try {
@@ -1285,7 +1286,7 @@
       recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       const isAndroid = /Android/i.test(navigator.userAgent);
-      recognition.interimResults = !isAndroid;
+      recognition.interimResults = true;
       recognition.continuous = true;
 
       recognition.onstart = () => {
@@ -1298,18 +1299,19 @@
       };
 
       recognition.onresult = (event) => {
-        // Только новые результаты (от resultIndex); финалы — ровно один раз.
-        // Фикс задвоения текста на Android.
+        // КАЖДОЕ событие пересобираем текст из ВСЕХ результатов и ПЕРЕЗАПИСЫВАЕМ
+        // (не дописываем). На Android resultIndex часто = 0 и результаты приходят
+        // повторно — перезапись полностью исключает задвоение.
+        let finals = '';
         let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        for (let i = 0; i < event.results.length; i++) {
           const res = event.results[i];
-          if (res.isFinal) {
-            sessionFinalText = mergeTranscripts(sessionFinalText, res[0].transcript);
-          } else {
-            interim += res[0].transcript;
-          }
+          const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
+          if (!t) continue;
+          if (res.isFinal) finals += (finals ? ' ' : '') + t;
+          else interim += (interim ? ' ' : '') + t;
         }
-        const sessionText = (sessionFinalText + (interim ? ' ' + interim : '')).trim();
+        const sessionText = (finals + (interim ? ' ' + interim : '')).trim();
         const merged = mergeTranscripts(startTranscriptText, sessionText);
         const box = voiceBody.querySelector('.ai-voice-transcript-box');
         if (box) {
