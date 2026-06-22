@@ -877,7 +877,8 @@
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
-      recognition.interimResults = true;
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      recognition.interimResults = !isAndroid;
       recognition.continuous = true;
 
       recognition.onresult = (event) => {
@@ -1275,7 +1276,8 @@
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
-      recognition.interimResults = true;
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      recognition.interimResults = !isAndroid;
       recognition.continuous = true;
 
       recognition.onstart = () => {

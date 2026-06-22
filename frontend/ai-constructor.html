@@ -1318,7 +1318,8 @@
       recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       recognition.continuous = true;
-      recognition.interimResults = true;
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      recognition.interimResults = !isAndroid;
 
       recognition.onresult = (event) => {
         let interimTranscript = '';
