@@ -696,7 +696,9 @@
     console.log("🚀 [ai-constructor.html] Script Loaded (Version 2.1 - Android continuous speech fixes)");
     let isRecording = false;
     let recognition = null;
-    let baseText = '';
+    let baseText = '';            // текст в поле на момент старта записи (или ручной правки)
+    let finalText = '';           // накопленные финалы текущей записи (между перезапусками сессии)
+    let recentFinals = [];        // [{n, t}] — недавно принятые финалы для дедупа в окне 2 c
     let isProgrammaticInput = false;
     let isEditingMode = true;
     let isPanelMinimized = false;
@@ -759,6 +761,8 @@
       updateProcessButtonState();
       if (!isProgrammaticInput && isRecording) {
         baseText = transcriptInput.value.trim();
+        finalText = '';
+        recentFinals = [];
         try {
           recognition.stop();
         } catch (e) {}
@@ -1353,19 +1357,27 @@
         // КАЖДОЕ событие пересобираем текст из ВСЕХ результатов и ПЕРЕЗАПИСЫВАЕМ
         // (не дописываем). На Android resultIndex часто = 0 и результаты приходят
         // повторно — перезапись полностью исключает задвоение.
-        let finals = '';
+        // Финалы добавляем в finalText ПО ОДНОМУ разу. Дубль финала, пришедший
+        // в окне 2 c (быстрая речь / перекрытие на стыке перезапуска сессии
+        // Android), просто не выводим. interim показываем «вживую» поверх.
+        const norm = (s) => s.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()«»"'?]/g, '').trim();
         let interim = '';
-        for (let i = 0; i < event.results.length; i++) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
           const res = event.results[i];
           const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
           if (!t) continue;
-          // mergeTranscripts склеивает с дедупликацией перекрытий: при быстрой речи
-          // Android отдаёт перекрывающиеся финальные результаты подряд — обычная
-          // склейка через пробел их задваивала, а merge срезает повтор.
-          if (res.isFinal) finals = mergeTranscripts(finals, t);
-          else interim = mergeTranscripts(interim, t);
+          if (res.isFinal) {
+            const n = norm(t);
+            const now = Date.now();
+            recentFinals = recentFinals.filter((c) => now - c.t < 2000);
+            if (n && recentFinals.some((c) => c.n === n)) continue; // дубль в окне 2 c — пропуск
+            recentFinals.push({ n: n, t: now });
+            finalText = mergeTranscripts(finalText, t);
+          } else {
+            interim += (interim ? ' ' : '') + t;
+          }
         }
-        const sessionText = mergeTranscripts(finals, interim);
+        const sessionText = mergeTranscripts(finalText, interim);
 
         isProgrammaticInput = true;
         transcriptInput.value = collapseDup(mergeTranscripts(baseText, sessionText));
@@ -1385,8 +1397,7 @@
 
       recognition.onend = () => {
         if (isRecording) {
-          // Коммитим текст сессии в baseText, срезая возможный дубль на стыке.
-          baseText = collapseDup(transcriptInput.value ? transcriptInput.value.trim() : '');
+          // finalText копится сам между сессиями — здесь только перезапуск.
           try { recognition.start(); } catch (e) {}
         }
       };
@@ -1400,6 +1411,8 @@
       if (!recognition) return;
       isRecording = true;
       baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
+      finalText = '';
+      recentFinals = [];
       try {
         recognition.start();
         micBtn.classList.add('is-recording');
