@@ -49,7 +49,7 @@
   var HEADER =
     '<nav class="nav"><div class="nav__inner">' +
       '<a href="/" class="nav__logo" aria-label="QR-Память — на главную">' +
-        '<img src="assets-v2/logo-tree-cut.webp" alt="" width="360" height="369" />' +
+        '<img src="assets-v2/logo-tree-cut.webp" alt="" width="140" height="144" />' +
         '<span class="nav__logo-script">QR-Память</span>' +
       '</a>' +
       '<ul class="nav__links">' +

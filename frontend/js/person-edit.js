@@ -872,6 +872,7 @@
     let recognition = null;
     let isRecording = false;
     let startTranscriptText = '';
+    let sessionFinalText = '';
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -883,12 +884,19 @@
       recognition.continuous = true;
 
       recognition.onresult = (event) => {
-        let currentSessionText = '';
-        for (let i = 0; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          currentSessionText = mergeTranscripts(currentSessionText, transcript);
+        // Идём только по новым результатам (от resultIndex), финалы добавляем
+        // ровно один раз. Это убирает задвоение текста на Android.
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) {
+            sessionFinalText = mergeTranscripts(sessionFinalText, res[0].transcript);
+          } else {
+            interim += res[0].transcript;
+          }
         }
-        const merged = mergeTranscripts(startTranscriptText, currentSessionText);
+        const sessionText = (sessionFinalText + (interim ? ' ' + interim : '')).trim();
+        const merged = mergeTranscripts(startTranscriptText, sessionText);
         transcriptEl.value = merged;
         try {
           localStorage.setItem(storageKey, merged);
@@ -903,6 +911,7 @@
       recognition.onend = () => {
         if (isRecording) {
           startTranscriptText = transcriptEl.value ? transcriptEl.value.trim() : '';
+          sessionFinalText = '';
           try { recognition.start(); } catch (e) {}
         }
       };
@@ -914,6 +923,7 @@
         return;
       }
       startTranscriptText = transcriptEl.value.trim();
+      sessionFinalText = '';
       try {
         recognition.start();
         isRecording = true;
@@ -1263,6 +1273,7 @@
     let isRecording = false;
     let finalTranscript = '';
     let startTranscriptText = '';
+    let sessionFinalText = '';
     let voiceMessages = [];
     let lastProposedText = '';
     let timerInterval = null;
@@ -1279,6 +1290,7 @@
 
       recognition.onstart = () => {
         isRecording = true;
+        sessionFinalText = '';
         recordStartTime = Date.now();
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(updateProgress, 100);
@@ -1286,12 +1298,19 @@
       };
 
       recognition.onresult = (event) => {
-        let currentSessionText = '';
-        for (let i = 0; i < event.results.length; ++i) {
-          const transcript = event.results[i][0].transcript;
-          currentSessionText = mergeTranscripts(currentSessionText, transcript);
+        // Только новые результаты (от resultIndex); финалы — ровно один раз.
+        // Фикс задвоения текста на Android.
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const res = event.results[i];
+          if (res.isFinal) {
+            sessionFinalText = mergeTranscripts(sessionFinalText, res[0].transcript);
+          } else {
+            interim += res[0].transcript;
+          }
         }
-        const merged = mergeTranscripts(startTranscriptText, currentSessionText);
+        const sessionText = (sessionFinalText + (interim ? ' ' + interim : '')).trim();
+        const merged = mergeTranscripts(startTranscriptText, sessionText);
         const box = voiceBody.querySelector('.ai-voice-transcript-box');
         if (box) {
           box.textContent = merged;
@@ -1317,6 +1336,7 @@
         if (isRecording) {
           const box = voiceBody.querySelector('.ai-voice-transcript-box');
           startTranscriptText = box ? box.textContent.trim() : '';
+          sessionFinalText = '';
           try {
             recognition.start();
           } catch (e) {
