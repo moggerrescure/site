@@ -1322,16 +1322,11 @@
       recognition.interimResults = !isAndroid;
 
       recognition.onresult = (event) => {
-        let interimTranscript = '';
-        let currentSessionFinal = '';
+        let currentSessionText = '';
         for (let i = 0; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            currentSessionFinal += event.results[i][0].transcript + ' ';
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
+          const transcript = event.results[i][0].transcript;
+          currentSessionText = mergeTranscripts(currentSessionText, transcript);
         }
-        const currentSessionText = (currentSessionFinal + interimTranscript).trim();
 
         isProgrammaticInput = true;
         transcriptInput.value = mergeTranscripts(baseText, currentSessionText);

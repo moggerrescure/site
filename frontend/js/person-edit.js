@@ -882,16 +882,12 @@
       recognition.continuous = true;
 
       recognition.onresult = (event) => {
-        let localFinalTranscript = '';
-        let interim = '';
+        let currentSessionText = '';
         for (let i = 0; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            localFinalTranscript += event.results[i][0].transcript + ' ';
-          } else {
-            interim += event.results[i][0].transcript;
-          }
+          const transcript = event.results[i][0].transcript;
+          currentSessionText = mergeTranscripts(currentSessionText, transcript);
         }
-        const merged = mergeTranscripts(startTranscriptText, localFinalTranscript + interim);
+        const merged = mergeTranscripts(startTranscriptText, currentSessionText);
         transcriptEl.value = merged;
         try {
           localStorage.setItem(storageKey, merged);
@@ -1289,16 +1285,12 @@
       };
 
       recognition.onresult = (event) => {
-        let localFinalTranscript = '';
-        let interimTranscript = '';
+        let currentSessionText = '';
         for (let i = 0; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            localFinalTranscript += event.results[i][0].transcript + ' ';
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
+          const transcript = event.results[i][0].transcript;
+          currentSessionText = mergeTranscripts(currentSessionText, transcript);
         }
-        const merged = mergeTranscripts(startTranscriptText, localFinalTranscript + interimTranscript);
+        const merged = mergeTranscripts(startTranscriptText, currentSessionText);
         const box = voiceBody.querySelector('.ai-voice-transcript-box');
         if (box) {
           box.textContent = merged;
