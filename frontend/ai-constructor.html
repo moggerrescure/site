@@ -763,9 +763,6 @@
         baseText = transcriptInput.value.trim();
         finalText = '';
         recentFinals = [];
-        try {
-          recognition.stop();
-        } catch (e) {}
       }
     });
 
@@ -1344,59 +1341,12 @@
       return words.join(' ');
     }
 
-    // === Инициализация Web Speech API ===
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // === Инициализация Whisper (для всех устройств) ===
     let mediaRecorder = null;
     let audioChunks = [];
     let audioStream = null;
 
-    if (SpeechRecognition && !isAndroid) {
-      recognition = new SpeechRecognition();
-      recognition.lang = 'ru-RU';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event) => {
-        let localFinalText = '';
-        let interimText = '';
-        for (let i = 0; i < event.results.length; i++) {
-          const res = event.results[i];
-          const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
-          if (!t) continue;
-          if (res.isFinal) {
-            localFinalText += (localFinalText ? ' ' : '') + t;
-          } else {
-            interimText += (interimText ? ' ' : '') + t;
-          }
-        }
-        const sessionText = (localFinalText + ' ' + interimText).trim();
-
-        isProgrammaticInput = true;
-        transcriptInput.value = collapseDup(mergeTranscripts(baseText, sessionText));
-        isProgrammaticInput = false;
-
-        transcriptInput.scrollTop = transcriptInput.scrollHeight;
-        updateProcessButtonState();
-      };
-
-      recognition.onerror = (e) => {
-        console.error('Speech recognition error:', e.error);
-        if (e.error === 'not-allowed') {
-          showToast('Доступ к микрофону заблокирован!', '#ef4444', '#fff');
-        }
-        stopRecording();
-      };
-
-      recognition.onend = () => {
-        if (isRecording) {
-          baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
-          try { recognition.start(); } catch (e) {}
-        }
-      };
-    } else if (isAndroid) {
-      console.log("🤖 Android detected: Using backend Whisper API for transcription");
-    } else {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       statusLabel.textContent = 'Голосовой ввод не поддерживается вашим браузером';
       micBtn.disabled = true;
       micBtn.style.opacity = '0.4';
@@ -1404,117 +1354,90 @@
 
     async function startRecording() {
       baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
-      
-      if (isAndroid) {
-        isRecording = true;
-        audioChunks = [];
-        try {
-          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          
-          let options = {};
-          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-            options = { mimeType: 'audio/webm;codecs=opus' };
-          } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-            options = { mimeType: 'audio/ogg;codecs=opus' };
-          } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-            options = { mimeType: 'audio/webm' };
+      isRecording = true;
+      audioChunks = [];
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        let options = {};
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          options = { mimeType: 'audio/webm;codecs=opus' };
+        } else if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          options = { mimeType: 'audio/ogg;codecs=opus' };
+        } else if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm')) {
+          options = { mimeType: 'audio/webm' };
+        } else if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/mp4')) {
+          options = { mimeType: 'audio/mp4' };
+        }
+
+        mediaRecorder = new MediaRecorder(audioStream, options);
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunks.push(e.data);
           }
+        };
 
-          mediaRecorder = new MediaRecorder(audioStream, options);
+        mediaRecorder.onstop = async () => {
+          statusLabel.textContent = 'Распознаю ваш голос через Whisper...';
+          statusLabel.classList.remove('recording');
           
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              audioChunks.push(e.data);
-            }
-          };
-
-          mediaRecorder.onstop = async () => {
-            statusLabel.textContent = 'Распознаю ваш голос через Whisper...';
-            statusLabel.classList.remove('recording');
-            
-            const mimeType = mediaRecorder.mimeType || 'audio/webm';
-            const audioBlob = new Blob(audioChunks, { type: mimeType });
-            
-            let ext = 'webm';
-            if (mimeType.includes('ogg')) ext = 'ogg';
-            else if (mimeType.includes('mp4')) ext = 'mp4';
-            
-            const formData = new FormData();
-            formData.append('file', audioBlob, `audio.${ext}`);
-
-            try {
-              const res = await API.upload('/api/ai/transcribe', formData);
-              if (res.ok && res.text) {
-                const text = res.text.trim();
-                transcriptInput.value = collapseDup(mergeTranscripts(baseText, text));
-                statusLabel.textContent = 'Голос успешно распознан!';
-              } else {
-                statusLabel.textContent = 'Не удалось распознать речь (пустой ответ).';
-              }
-            } catch (err) {
-              console.error(err);
-              statusLabel.textContent = 'Ошибка распознавания речи: ' + err.message;
-            } finally {
-              updateProcessButtonState();
-              if (ambientGlowAura) ambientGlowAura.classList.remove('is-active');
-              updateDimmer();
-            }
-          };
-
-          mediaRecorder.start();
+          const mimeType = mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
           
-          micBtn.classList.add('is-recording');
-          dictationControls.classList.add('is-recording');
-          statusLabel.textContent = 'Запись голоса (Whisper)... Рассказывайте историю';
-          statusLabel.classList.add('recording');
-          if (ambientGlowAura) ambientGlowAura.classList.add('is-active');
-          updateDimmer();
-        } catch (e) {
-          console.error('[MediaRecorder] Error:', e);
-          isRecording = false;
-          statusLabel.textContent = 'Ошибка доступа к микрофону: ' + e.message;
-        }
-      } else {
-        if (!recognition) return;
-        isRecording = true;
-        finalText = '';
-        recentFinals = [];
-        try {
-          recognition.start();
-          micBtn.classList.add('is-recording');
-          dictationControls.classList.add('is-recording');
-          statusLabel.textContent = 'Слушаю вас... Рассказывайте историю';
-          statusLabel.classList.add('recording');
-          if (ambientGlowAura) ambientGlowAura.classList.add('is-active');
-          updateDimmer();
-        } catch (e) {
-          console.error(e);
-        }
+          let ext = 'webm';
+          if (mimeType.includes('ogg')) ext = 'ogg';
+          else if (mimeType.includes('mp4')) ext = 'mp4';
+          else if (mimeType.includes('aac')) ext = 'aac';
+          
+          const formData = new FormData();
+          formData.append('file', audioBlob, `audio.${ext}`);
+
+          try {
+            const res = await API.upload('/api/ai/transcribe', formData);
+            if (res.ok && res.text) {
+              const text = res.text.trim();
+              transcriptInput.value = collapseDup(mergeTranscripts(baseText, text));
+              statusLabel.textContent = 'Голос успешно распознан!';
+            } else {
+              statusLabel.textContent = 'Не удалось распознать речь (пустой ответ).';
+            }
+          } catch (err) {
+            console.error(err);
+            statusLabel.textContent = 'Ошибка распознавания речи: ' + err.message;
+          } finally {
+            updateProcessButtonState();
+            if (ambientGlowAura) ambientGlowAura.classList.remove('is-active');
+            updateDimmer();
+          }
+        };
+
+        mediaRecorder.start();
+        
+        micBtn.classList.add('is-recording');
+        dictationControls.classList.add('is-recording');
+        statusLabel.textContent = 'Запись голоса (Whisper)... Рассказывайте историю';
+        statusLabel.classList.add('recording');
+        if (ambientGlowAura) ambientGlowAura.classList.add('is-active');
+        updateDimmer();
+      } catch (e) {
+        console.error('[MediaRecorder] Error:', e);
+        isRecording = false;
+        statusLabel.textContent = 'Ошибка доступа к микрофону: ' + e.message;
       }
     }
 
     function stopRecording() {
       isRecording = false;
       
-      if (isAndroid) {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop();
-        }
-        if (audioStream) {
-          audioStream.getTracks().forEach(track => track.stop());
-        }
-        micBtn.classList.remove('is-recording');
-        dictationControls.classList.remove('is-recording');
-      } else {
-        if (!recognition) return;
-        try { recognition.stop(); } catch (e) {}
-        micBtn.classList.remove('is-recording');
-        dictationControls.classList.remove('is-recording');
-        statusLabel.textContent = 'Запись остановлена. Вы можете отредактировать текст';
-        statusLabel.classList.remove('recording');
-        if (ambientGlowAura) ambientGlowAura.classList.remove('is-active');
-        updateDimmer();
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
       }
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+      micBtn.classList.remove('is-recording');
+      dictationControls.classList.remove('is-recording');
     }
 
     micBtn.addEventListener('click', () => {

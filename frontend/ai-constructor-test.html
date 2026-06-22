@@ -1101,166 +1101,103 @@
       showToast('Изменения сохранены!', '#10b981', '#000');
       
       isEditingMode = false;
-      editPanel.innerHTML = `<button class="edit-panel__btn" id="edit-toggle-btn">Редактировать с ИИ</button>`;
-      document.getElementById('edit-toggle-btn').addEventListener('click', enterEditingMode);
-
-      gsap.to(aiControlPanel, {
-        height: 0,
-        opacity: 0,
-        y: -20,
-        duration: 0.4,
-        ease: 'power3.in',
-        onComplete: () => {
-          aiControlPanel.style.display = 'none';
-          refinementPanel.style.display = 'none';
-          aiLogBox.style.display = 'none';
-        }
-      });
-
-      const addBlockBtnWrap = document.getElementById('add-block-btn-wrap');
-      if (addBlockBtnWrap) {
-        gsap.to(addBlockBtnWrap, {
-          opacity: 0, y: 10, duration: 0.2, onComplete: () => {
-            addBlockBtnWrap.style.display = 'none';
-          }
-        });
-      }
-
-      const blocks = document.querySelectorAll('.bio-block');
-      blocks.forEach(block => {
-        block.classList.remove('is-editing-mode');
-        gsap.to(block, { borderColor: 'rgba(200,168,75,0.1)', duration: 0.4 });
-        const keyLabel = block.querySelector('.bio-block-key');
-        if (keyLabel) gsap.to(keyLabel, { opacity: 0, duration: 0.3 });
-
-        // Выключаем инлайн-редактирование
-        const titleEl = block.querySelector('.bio-block__title');
-        const textEl = block.querySelector('.bio-block-text');
-        if (titleEl) titleEl.removeAttribute('contenteditable');
-        if (textEl) textEl.removeAttribute('contenteditable');
-      });
-    }
-
-    editToggleBtn.addEventListener('click', enterEditingMode);
-
-    function mergeTranscripts(baseStr, addition) {
-      baseStr = (baseStr || '').trim();
-      addition = (addition || '').trim();
-      if (!baseStr) return addition;
-      if (!addition) return baseStr;
-
-      const baseWords = baseStr.split(/\s+/);
-      const additionWords = addition.split(/\s+/);
-
-      // Find the maximum overlapping suffix of baseStr and prefix of addition
-      let maxOverlap = 0;
-      const maxPossibleOverlap = Math.min(baseWords.length, additionWords.length);
-
-      for (let len = maxPossibleOverlap; len > 0; len--) {
-        let match = true;
-        for (let i = 0; i < len; i++) {
-          const baseWord = baseWords[baseWords.length - len + i].toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
-          const additionWord = additionWords[i].toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
-          if (baseWord !== additionWord) {
-            match = false;
-            break;
-          }
-        }
-        if (match) {
-          maxOverlap = len;
-          break;
-        }
-      }
-
-      if (maxOverlap > 0) {
-        const uniqueAddition = additionWords.slice(maxOverlap).join(' ');
-        return (baseStr + (uniqueAddition ? ' ' : '') + uniqueAddition).trim();
-      }
-
-      return (baseStr + ' ' + addition).trim();
-    }
-
-    // Жёсткий пост-фильтр против задвоения: убирает группу из ≥2 слов, которая
-    // идёт дважды подряд (типичная картина дубля распознавания при быстрой речи
-    // на Android). Работает независимо от mergeTranscripts — как страховка.
-    function collapseDup(text) {
-      let words = (text || '').split(/\s+/).filter(Boolean);
-      const norm = (w) => w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()«»"'?]/g, "");
-      let changed = true;
-      while (changed) {
-        changed = false;
-        const maxL = Math.min(Math.floor(words.length / 2), 30);
-        for (let L = maxL; L >= 2 && !changed; L--) {
-          for (let i = 0; i + 2 * L <= words.length; i++) {
-            let same = true;
-            for (let j = 0; j < L; j++) {
-              if (norm(words[i + j]) !== norm(words[i + L + j])) { same = false; break; }
-            }
-            if (same) {
-              words.splice(i + L, L); // удаляем повторную копию группы слов
-              changed = true;
-              break;
-            }
-          }
-        }
-      }
-      return words.join(' ');
-    }
-
-    // === Инициализация Web Speech API ===
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
+      editPanel.innerHTML = `<button     // === Инициализация Whisper (для всех устройств) ===
     let mediaRecorder = null;
     let audioChunks = [];
     let audioStream = null;
 
-    if (SpeechRecognition && !isAndroid) {
-      recognition = new SpeechRecognition();
-      recognition.lang = 'ru-RU';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onresult = (event) => {
-        let localFinalText = '';
-        let interimText = '';
-        for (let i = 0; i < event.results.length; i++) {
-          const res = event.results[i];
-          const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
-          if (!t) continue;
-          if (res.isFinal) {
-            localFinalText += (localFinalText ? ' ' : '') + t;
-          } else {
-            interimText += (interimText ? ' ' : '') + t;
-          }
-        }
-        const sessionText = (localFinalText + ' ' + interimText).trim();
-
-        isProgrammaticInput = true;
-        transcriptInput.value = collapseDup(mergeTranscripts(baseText, sessionText));
-        isProgrammaticInput = false;
-
-        transcriptInput.scrollTop = transcriptInput.scrollHeight;
-      };
-
-      recognition.onerror = (e) => {
-        console.error('Speech recognition error:', e.error);
-        if (e.error === 'not-allowed') {
-          showToast('Доступ к микрофону заблокирован!', '#ef4444', '#fff');
-        }
-        stopRecording();
-      };
-
-      recognition.onend = () => {
-        if (isRecording) {
-          baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
-          try { recognition.start(); } catch (e) {}
-        }
-      };
-    } else if (isAndroid) {
-      console.log("🤖 Android detected: Using backend Whisper API for transcription");
-    } else {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       statusLabel.textContent = 'Голосовой ввод не поддерживается вашим браузером';
+      micBtn.disabled = true;
+      micBtn.style.opacity = '0.4';
+    }
+
+    async function startRecording() {
+      baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
+      isRecording = true;
+      audioChunks = [];
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        let options = {};
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          options = { mimeType: 'audio/webm;codecs=opus' };
+        } else if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          options = { mimeType: 'audio/ogg;codecs=opus' };
+        } else if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm')) {
+          options = { mimeType: 'audio/webm' };
+        } else if (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/mp4')) {
+          options = { mimeType: 'audio/mp4' };
+        }
+
+        mediaRecorder = new MediaRecorder(audioStream, options);
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          statusLabel.textContent = 'Распознаю ваш голос через Whisper...';
+          statusLabel.classList.remove('recording');
+          
+          const mimeType = mediaRecorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          
+          let ext = 'webm';
+          if (mimeType.includes('ogg')) ext = 'ogg';
+          else if (mimeType.includes('mp4')) ext = 'mp4';
+          else if (mimeType.includes('aac')) ext = 'aac';
+          
+          const formData = new FormData();
+          formData.append('file', audioBlob, `audio.${ext}`);
+
+          try {
+            const response = await fetch(`${API_BASE}/api/ai/transcribe`, {
+              method: 'POST',
+              body: formData
+            });
+            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+            const res = await response.json();
+            if (res.ok && res.text) {
+              const text = res.text.trim();
+              transcriptInput.value = collapseDup(mergeTranscripts(baseText, text));
+              statusLabel.textContent = 'Голос успешно распознан!';
+            } else {
+              statusLabel.textContent = 'Не удалось распознать речь (пустой ответ).';
+            }
+          } catch (err) {
+            console.error(err);
+            statusLabel.textContent = 'Ошибка распознавания речи: ' + err.message;
+          }
+        };
+
+        mediaRecorder.start();
+        
+        micBtn.classList.add('is-recording');
+        dictationControls.classList.add('is-recording');
+        statusLabel.textContent = 'Запись голоса (Whisper)... Рассказывайте историю';
+        statusLabel.classList.add('recording');
+      } catch (e) {
+        console.error('[MediaRecorder] Error:', e);
+        isRecording = false;
+        statusLabel.textContent = 'Ошибка доступа к микрофону: ' + e.message;
+      }
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+      micBtn.classList.remove('is-recording');
+      dictationControls.classList.remove('is-recording');
+    }�раузером';
       micBtn.disabled = true;
       micBtn.style.opacity = '0.4';
     }
@@ -1381,9 +1318,6 @@
     transcriptInput.addEventListener('input', () => {
       if (!isProgrammaticInput && isRecording) {
         baseText = transcriptInput.value.trim();
-        try {
-          if (recognition) recognition.stop();
-        } catch (e) {}
       }
     });
 
