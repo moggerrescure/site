@@ -1313,6 +1313,33 @@
       return (baseStr + ' ' + addition).trim();
     }
 
+    // Жёсткий пост-фильтр против задвоения: убирает группу из ≥2 слов, которая
+    // идёт дважды подряд (типичная картина дубля распознавания при быстрой речи
+    // на Android). Работает независимо от mergeTranscripts — как страховка.
+    function collapseDup(text) {
+      let words = (text || '').split(/\s+/).filter(Boolean);
+      const norm = (w) => w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()«»"'?]/g, "");
+      let changed = true;
+      while (changed) {
+        changed = false;
+        const maxL = Math.min(Math.floor(words.length / 2), 30);
+        for (let L = maxL; L >= 2 && !changed; L--) {
+          for (let i = 0; i + 2 * L <= words.length; i++) {
+            let same = true;
+            for (let j = 0; j < L; j++) {
+              if (norm(words[i + j]) !== norm(words[i + L + j])) { same = false; break; }
+            }
+            if (same) {
+              words.splice(i + L, L); // удаляем повторную копию группы слов
+              changed = true;
+              break;
+            }
+          }
+        }
+      }
+      return words.join(' ');
+    }
+
     // === Инициализация Web Speech API ===
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -1341,7 +1368,7 @@
         const sessionText = mergeTranscripts(finals, interim);
 
         isProgrammaticInput = true;
-        transcriptInput.value = mergeTranscripts(baseText, sessionText);
+        transcriptInput.value = collapseDup(mergeTranscripts(baseText, sessionText));
         isProgrammaticInput = false;
 
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
@@ -1358,7 +1385,8 @@
 
       recognition.onend = () => {
         if (isRecording) {
-          baseText = transcriptInput.value ? transcriptInput.value.trim() : '';
+          // Коммитим текст сессии в baseText, срезая возможный дубль на стыке.
+          baseText = collapseDup(transcriptInput.value ? transcriptInput.value.trim() : '');
           try { recognition.start(); } catch (e) {}
         }
       };
