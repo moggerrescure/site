@@ -903,7 +903,10 @@
       };
 
       recognition.onend = () => {
-        stopRecording();
+        if (isRecording) {
+          startTranscriptText = transcriptEl.value ? transcriptEl.value.trim() : '';
+          try { recognition.start(); } catch (e) {}
+        }
       };
     }
 
@@ -1261,6 +1264,7 @@
     let recognition = null;
     let isRecording = false;
     let finalTranscript = '';
+    let startTranscriptText = '';
     let voiceMessages = [];
     let lastProposedText = '';
     let timerInterval = null;
@@ -1287,21 +1291,22 @@
         let interimTranscript = '';
         for (let i = 0; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            localFinalTranscript += event.results[i][0].transcript;
+            localFinalTranscript += event.results[i][0].transcript + ' ';
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        finalTranscript = localFinalTranscript;
+        const merged = mergeTranscripts(startTranscriptText, localFinalTranscript + interimTranscript);
         const box = voiceBody.querySelector('.ai-voice-transcript-box');
         if (box) {
-          box.textContent = finalTranscript + interimTranscript;
+          box.textContent = merged;
           box.scrollTop = box.scrollHeight;
         }
       };
 
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
+        isRecording = false;
         const statusTextEl = voiceBody.querySelector('.ai-voice-status-text');
         if (statusTextEl) {
           if (event.error === 'not-allowed') {
@@ -1314,12 +1319,22 @@
       };
 
       recognition.onend = () => {
-        isRecording = false;
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          timerInterval = null;
+        if (isRecording) {
+          const box = voiceBody.querySelector('.ai-voice-transcript-box');
+          startTranscriptText = box ? box.textContent.trim() : '';
+          try {
+            recognition.start();
+          } catch (e) {
+            console.error('Failed to restart recognition', e);
+          }
+        } else {
+          isRecording = false;
+          if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+          }
+          updateRecordingUI(false);
         }
-        updateRecordingUI(false);
       };
     }
 
@@ -1346,6 +1361,7 @@
     // --- PHASE 1: Recording UI ---
     function showPhase1Recording() {
       finalTranscript = '';
+      startTranscriptText = '';
       
       voiceBody.innerHTML = `
         <div class="ai-voice-container">
@@ -1402,6 +1418,7 @@
           recognition.stop();
         } else {
           finalTranscript = '';
+          startTranscriptText = '';
           const box = voiceBody.querySelector('#ai-voice-live-transcript');
           if (box) box.textContent = '';
           try {
