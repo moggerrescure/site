@@ -14,6 +14,43 @@
   const isLocalDev = window.location.port && window.location.port !== '80' && window.location.port !== '443' && window.location.port !== '5500';
   const base = isLocalDev ? 'http://localhost:3000' : '';
 
+  function mergeTranscripts(baseStr, addition) {
+    baseStr = (baseStr || '').trim();
+    addition = (addition || '').trim();
+    if (!baseStr) return addition;
+    if (!addition) return baseStr;
+
+    const baseWords = baseStr.split(/\s+/);
+    const additionWords = addition.split(/\s+/);
+
+    // Find the maximum overlapping suffix of baseStr and prefix of addition
+    let maxOverlap = 0;
+    const maxPossibleOverlap = Math.min(baseWords.length, additionWords.length);
+
+    for (let len = maxPossibleOverlap; len > 0; len--) {
+      let match = true;
+      for (let i = 0; i < len; i++) {
+        const baseWord = baseWords[baseWords.length - len + i].toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+        const additionWord = additionWords[i].toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+        if (baseWord !== additionWord) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        maxOverlap = len;
+        break;
+      }
+    }
+
+    if (maxOverlap > 0) {
+      const uniqueAddition = additionWords.slice(maxOverlap).join(' ');
+      return (baseStr + (uniqueAddition ? ' ' : '') + uniqueAddition).trim();
+    }
+
+    return (baseStr + ' ' + addition).trim();
+  }
+
   // Edit-режим работает для любого id/slug — бэк сам резолвит через OR:[{id},{slug}]
   if (!id) return;
 
@@ -833,7 +870,7 @@
 
     let recognition = null;
     let isRecording = false;
-    let finalTranscript = '';
+    let startTranscriptText = '';
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -844,15 +881,20 @@
       recognition.continuous = true;
 
       recognition.onresult = (event) => {
+        let localFinalTranscript = '';
         let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
+            localFinalTranscript += event.results[i][0].transcript + ' ';
           } else {
             interim += event.results[i][0].transcript;
           }
         }
-        transcriptEl.value = (finalTranscript + interim).trim();
+        const merged = mergeTranscripts(startTranscriptText, localFinalTranscript + interim);
+        transcriptEl.value = merged;
+        try {
+          localStorage.setItem(storageKey, merged);
+        } catch (e) {}
       };
 
       recognition.onerror = (e) => {
@@ -870,7 +912,7 @@
         alert('Голосовой ввод поддерживается только в Chrome, Edge или Safari.');
         return;
       }
-      finalTranscript = transcriptEl.value.trim() + ' ';
+      startTranscriptText = transcriptEl.value.trim();
       try {
         recognition.start();
         isRecording = true;
@@ -913,7 +955,7 @@
 
     clearBtn.addEventListener('click', () => {
       transcriptEl.value = '';
-      finalTranscript = '';
+      startTranscriptText = '';
       processBtn.disabled = true;
       resultBox.style.display = 'none';
       statusText.textContent = 'Нажмите микрофон и расскажите историю жизни';
@@ -1241,14 +1283,16 @@
       };
 
       recognition.onresult = (event) => {
+        let localFinalTranscript = '';
         let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        for (let i = 0; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
+            localFinalTranscript += event.results[i][0].transcript;
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
         }
+        finalTranscript = localFinalTranscript;
         const box = voiceBody.querySelector('.ai-voice-transcript-box');
         if (box) {
           box.textContent = finalTranscript + interimTranscript;

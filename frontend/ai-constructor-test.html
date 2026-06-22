@@ -1142,6 +1142,43 @@
 
     editToggleBtn.addEventListener('click', enterEditingMode);
 
+    function mergeTranscripts(baseStr, addition) {
+      baseStr = (baseStr || '').trim();
+      addition = (addition || '').trim();
+      if (!baseStr) return addition;
+      if (!addition) return baseStr;
+
+      const baseWords = baseStr.split(/\s+/);
+      const additionWords = addition.split(/\s+/);
+
+      // Find the maximum overlapping suffix of baseStr and prefix of addition
+      let maxOverlap = 0;
+      const maxPossibleOverlap = Math.min(baseWords.length, additionWords.length);
+
+      for (let len = maxPossibleOverlap; len > 0; len--) {
+        let match = true;
+        for (let i = 0; i < len; i++) {
+          const baseWord = baseWords[baseWords.length - len + i].toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+          const additionWord = additionWords[i].toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+          if (baseWord !== additionWord) {
+            match = false;
+            break;
+          }
+        }
+        if (match) {
+          maxOverlap = len;
+          break;
+        }
+      }
+
+      if (maxOverlap > 0) {
+        const uniqueAddition = additionWords.slice(maxOverlap).join(' ');
+        return (baseStr + (uniqueAddition ? ' ' : '') + uniqueAddition).trim();
+      }
+
+      return (baseStr + ' ' + addition).trim();
+    }
+
     // === Инициализация Web Speech API ===
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -1163,7 +1200,7 @@
         const currentSessionText = (currentSessionFinal + interimTranscript).trim();
 
         isProgrammaticInput = true;
-        transcriptInput.value = (baseText + (baseText ? ' ' : '') + currentSessionText).trim().replace(/\s+/g, ' ');
+        transcriptInput.value = mergeTranscripts(baseText, currentSessionText);
         isProgrammaticInput = false;
 
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
