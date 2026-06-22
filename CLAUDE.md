@@ -33,3 +33,13 @@
 
 ## Если просят «почистить» или «удалить лишнее»
 Перечисленное выше из удаления исключать. При сомнении — спросить владельца.
+
+## 🎨 Дизайн и Эстетика (Taste Skills)
+
+При работе с фронтендом и стилями ОБЯЗАТЕЛЬНО ознакомься и следуй инструкциям из установленных скиллов в папке `.agents/skills/`:
+- [design-taste-frontend](file:///.agents/skills/design-taste-frontend/SKILL.md) — правила качественной верстки и UI (anti-slop).
+- [high-end-visual-design](file:///.agents/skills/high-end-visual-design/SKILL.md) — премиальные шрифты, сетки, отступы и тени.
+- [minimalist-ui](file:///.agents/skills/minimalist-ui/SKILL.md) — правила чистого минималистичного интерфейса.
+- [stitch-design-taste](file:///.agents/skills/stitch-design-taste/DESIGN.md) — дизайн-система и микро-анимации.
+- [gpt-taste](file:///.agents/skills/gpt-taste/SKILL.md) — продвинутые анимации и GSAP.
+
