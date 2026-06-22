@@ -10,6 +10,8 @@ const { chatCompletion, imageGeneration } = require('../lib/aiClient');
 const { buildSystemPrompt } = require('../lib/aiPrompt');
 const { containsProfanity, cleanProfanity } = require('../lib/profanity');
 const aiService = require('../services/aiService');
+const multer = require('multer');
+const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } }); // 25 MB max limit for audio file
 
 const MAX_MESSAGES = 24;
 const MAX_LEN = 4000;
@@ -238,6 +240,59 @@ router.post('/reconstruct-page', optionalAuth, aiGenerationLimiter, wrap(async (
   });
 
   return res.json({ ok: true, commands });
+}));
+
+/**
+ * POST /api/ai/transcribe
+ * Multipart form: { file: File }
+ * resp: { ok, text }
+ */
+router.post('/transcribe', optionalAuth, upload.single('file'), wrap(async (req, res) => {
+  if (!req.file) {
+    throw ApiError.badRequest('Аудиофайл не получен');
+  }
+
+  const whisperApiKey = process.env.WHISPER_API_KEY;
+  if (!whisperApiKey) {
+    console.error('[Whisper] Transcribe failed: WHISPER_API_KEY is not defined in the environment');
+    throw ApiError.internal('Сервис транскрипции не настроен на сервере (не задан WHISPER_API_KEY)');
+  }
+  
+  const fd = new FormData();
+  const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' });
+  fd.append('file', blob, req.file.originalname || 'audio.webm');
+  fd.append('model', 'openai/whisper-large-v3-turbo');
+  fd.append('language', 'ru');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + whisperApiKey,
+      },
+      body: fd,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('[Whisper] API error:', response.status, errText);
+      throw new Error(`OpenRouter Whisper error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    const text = typeof data.text === 'string' ? data.text.trim() : '';
+    
+    return res.json({ ok: true, text });
+  } catch (err) {
+    console.error('[Whisper] Failed to transcribe:', err.message);
+    throw ApiError.internal('Не удалось распознать аудиофайл через Whisper. Попробуйте ещё раз.');
+  } finally {
+    clearTimeout(timer);
+  }
 }));
 
 module.exports = router;
