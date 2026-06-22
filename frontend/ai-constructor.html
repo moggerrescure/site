@@ -1332,10 +1332,13 @@
           const res = event.results[i];
           const t = (res[0] && res[0].transcript) ? res[0].transcript.trim() : '';
           if (!t) continue;
-          if (res.isFinal) finals += (finals ? ' ' : '') + t;
-          else interim += (interim ? ' ' : '') + t;
+          // mergeTranscripts склеивает с дедупликацией перекрытий: при быстрой речи
+          // Android отдаёт перекрывающиеся финальные результаты подряд — обычная
+          // склейка через пробел их задваивала, а merge срезает повтор.
+          if (res.isFinal) finals = mergeTranscripts(finals, t);
+          else interim = mergeTranscripts(interim, t);
         }
-        const sessionText = (finals + (interim ? ' ' + interim : '')).trim();
+        const sessionText = mergeTranscripts(finals, interim);
 
         isProgrammaticInput = true;
         transcriptInput.value = mergeTranscripts(baseText, sessionText);
