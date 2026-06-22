@@ -1369,7 +1369,7 @@
         const sessionText = (localFinalText + ' ' + interimText).trim();
 
         isProgrammaticInput = true;
-        transcriptInput.value = collapseDup((baseText + (baseText && sessionText ? ' ' : '') + sessionText).trim());
+        transcriptInput.value = collapseDup(mergeTranscripts(baseText, sessionText));
         isProgrammaticInput = false;
 
         transcriptInput.scrollTop = transcriptInput.scrollHeight;
