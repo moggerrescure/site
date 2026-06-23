@@ -29,7 +29,23 @@ jobs:
           command_timeout: 40m
           script: |
             set -euo pipefail
+            if [ ! -d ~/site ]; then
+              echo "❌ Error: ~/site directory does not exist on the server!"
+              exit 1
+            fi
             cd ~/site
+            
+            if [ ! -f .env ]; then
+              echo "⚠️ Warning: .env file does not exist on the server. Initializing from .env.example..."
+              if [ -f .env.example ]; then
+                cp .env.example .env
+              else
+                echo "AI_BASE_URL=" > .env
+                echo "AI_API_KEY=" >> .env
+                echo "AI_MODEL=" >> .env
+              fi
+            fi
+            
             echo "🔧 Updating AI credentials in .env on the server..."
             sed -i 's|^AI_BASE_URL=.*|AI_BASE_URL=https://api.bluesminds.com/v1|' .env
             TEXT_PART="uxfZjStbF7VOxu0Jpoe8ShdXSHuwoiYqPqzvjgJxiHbbIGIE"
@@ -50,6 +66,7 @@ jobs:
               cp ~/site/deploy.log /var/lib/docker/volumes/*uploads/_data/deploy_err.log || true
               exit 1
             fi
+
 
 
 
