@@ -295,67 +295,73 @@
     });
   });
 
-  /* ── VIDEO HOVER / INTERSECTION PLAY ── */
-  const isDesktop = window.matchMedia('(hover: hover)').matches;
+  /* ── VIDEO: автоплей только когда ролик в зоне видимости ──
+     Видимые видео играем (с повторной попыткой), вне экрана — пауза.
+     Это снимает гонку одновременного автоплея (Safari/iOS, мобильный Chrome,
+     энергосбережение), из-за которой раньше «не стартовали» нижние блоки
+     (древо, летопись). Работает на всех устройствах; при отказе автоплея
+     остаётся постер — мягкая деградация. */
+  const featureVideos = Array.prototype.slice.call(
+    document.querySelectorAll('.feature-image.bg, .aibio-mockup-video')
+  );
 
-  const videoIo = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (!isDesktop) {
-        if (e.isIntersecting) {
-          e.target.dataset.isIntersecting = 'true';
-          e.target.play().catch(() => {});
-        } else {
-          e.target.dataset.isIntersecting = 'false';
-          e.target.pause();
+  featureVideos.forEach(function (v) {
+    v.muted = true;
+    v.loop = true;
+    v.setAttribute('muted', '');
+    v.setAttribute('loop', '');
+    v.setAttribute('playsinline', '');
+    v.setAttribute('webkit-playsinline', '');
+    v.dataset.inview = '0';
+  });
+
+  function fvPlay(v, attempt) {
+    attempt = attempt || 0;
+    if (v.dataset.inview !== '1') return; // уехало из вида — не навязываем play
+    let p;
+    try { p = v.play(); } catch (e) { p = null; }
+    if (p && typeof p.catch === 'function') {
+      p.catch(function () {
+        if (attempt < 3) {
+          setTimeout(function () { fvPlay(v, attempt + 1); }, 350 * (attempt + 1));
         }
-      }
-    });
-  }, { threshold: 0.25 });
-
-  document.querySelectorAll('video.bg').forEach(video => {
-    const hasLoop = video.hasAttribute('loop');
-    if (!hasLoop) {
-      video.loop = false;
-      video.removeAttribute('loop');
-    } else {
-      video.loop = true;
-    }
-
-    if (isDesktop) {
-      if (!hasLoop) {
-        video.removeAttribute('autoplay');
-        video.pause();
-      }
-
-      // Триггер — весь блок (текст + превью), а не только само видео.
-      const hoverTarget = video.closest('.showcase__item') || video;
-      hoverTarget.addEventListener('mouseenter', () => {
-        if (video.ended) video.currentTime = 0; // доиграл → запуск с начала
-        if (video.paused) video.play().catch(() => {});
-        // если уже играет — ничего не делаем (без рывков при движении курсора)
+        // иначе тихо остаёмся на постере
       });
-      // Намеренно НЕ ставим на паузу при mouseleave: ролик доигрывает
-      // до конца и замирает на последнем кадре; повторное наведение
-      // на блок запускает его заново (в рамках сессии — сколько угодно раз).
-    } else {
-      videoIo.observe(video);
-
-      const unlock = () => {
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            if (video.dataset.isIntersecting !== 'true') {
-              video.pause();
-            }
-          }).catch(() => {});
-        }
-        document.removeEventListener('touchstart', unlock);
-        document.removeEventListener('click', unlock);
-      };
-      document.addEventListener('touchstart', unlock, { passive: true });
-      document.addEventListener('click', unlock, { passive: true });
     }
-   });
+  }
+
+  if ('IntersectionObserver' in window) {
+    const fvIo = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        const v = e.target;
+        if (e.isIntersecting) {
+          v.dataset.inview = '1';
+          fvPlay(v);
+        } else {
+          v.dataset.inview = '0';
+          try { v.pause(); } catch (err) {}
+        }
+      });
+    }, { threshold: 0.25, rootMargin: '200px 0px' });
+    featureVideos.forEach(function (v) { fvIo.observe(v); });
+  } else {
+    featureVideos.forEach(function (v) { v.dataset.inview = '1'; fvPlay(v); });
+  }
+
+  // iOS/Safari: одноразовая разблокировка по первому касанию/клику
+  const fvUnlock = function () {
+    featureVideos.forEach(function (v) { if (v.dataset.inview === '1') fvPlay(v); });
+    document.removeEventListener('touchstart', fvUnlock);
+    document.removeEventListener('click', fvUnlock);
+  };
+  document.addEventListener('touchstart', fvUnlock, { passive: true });
+  document.addEventListener('click', fvUnlock, { passive: true });
+
+  // вернулись на вкладку из фона — реактивируем видимые
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) return;
+    featureVideos.forEach(function (v) { if (v.dataset.inview === '1') fvPlay(v); });
+  });
 })();
 
 /* ═══════════════════════════════════════════════

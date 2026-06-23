@@ -252,26 +252,40 @@ router.post('/transcribe', optionalAuth, upload.single('file'), wrap(async (req,
     throw ApiError.badRequest('Аудиофайл не получен');
   }
 
-  const whisperApiKey = process.env.WHISPER_API_KEY;
-  if (!whisperApiKey) {
-    console.error('[Whisper] Transcribe failed: WHISPER_API_KEY is not defined in the environment');
-    throw ApiError.internal('Сервис транскрипции не настроен на сервере (не задан WHISPER_API_KEY)');
+  // Провайдер выбирается по доступному ключу:
+  //  • OPENAI_API_KEY  → OpenAI напрямую (модель OPENAI_STT_MODEL, по умолч. whisper-1)
+  //  • WHISPER_API_KEY → OpenRouter (фолбэк, whisper-large-v3-turbo)
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const openrouterKey = process.env.WHISPER_API_KEY;
+
+  let sttUrl, sttKey, sttModel;
+  if (openaiKey) {
+    sttUrl = 'https://api.openai.com/v1/audio/transcriptions';
+    sttKey = openaiKey;
+    sttModel = process.env.OPENAI_STT_MODEL || 'whisper-1';
+  } else if (openrouterKey) {
+    sttUrl = 'https://openrouter.ai/api/v1/audio/transcriptions';
+    sttKey = openrouterKey;
+    sttModel = process.env.WHISPER_MODEL || 'openai/whisper-large-v3-turbo';
+  } else {
+    console.error('[Whisper] Transcribe failed: ни OPENAI_API_KEY, ни WHISPER_API_KEY не заданы');
+    throw ApiError.internal('Сервис транскрипции не настроен на сервере (задайте OPENAI_API_KEY)');
   }
-  
+
   const fd = new FormData();
   const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' });
   fd.append('file', blob, req.file.originalname || 'audio.webm');
-  fd.append('model', 'openai/whisper-large-v3-turbo');
+  fd.append('model', sttModel);
   fd.append('language', 'ru');
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
+    const response = await fetch(sttUrl, {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer ' + whisperApiKey,
+        Authorization: 'Bearer ' + sttKey,
       },
       body: fd,
       signal: controller.signal,
@@ -280,7 +294,7 @@ router.post('/transcribe', optionalAuth, upload.single('file'), wrap(async (req,
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
       console.error('[Whisper] API error:', response.status, errText);
-      throw new Error(`OpenRouter Whisper error ${response.status}: ${errText}`);
+      throw new Error(`STT upstream ${response.status}: ${errText}`);
     }
 
     const data = await response.json();

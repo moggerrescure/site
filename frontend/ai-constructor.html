@@ -1395,9 +1395,11 @@
 
           try {
             const res = await API.upload('/api/ai/transcribe', formData);
-            if (res.ok && res.text) {
-              const text = res.text.trim();
-              transcriptInput.value = collapseDup(mergeTranscripts(baseText, text));
+            const text = ((res && (res.text || (res.data && res.data.text))) || '').trim();
+            if (text) {
+              // Whisper отдаёт чистый текст за один проход — просто дописываем к
+              // тому, что уже было в поле. Эвристики от задвоения больше не нужны.
+              transcriptInput.value = baseText ? (baseText + ' ' + text) : text;
               statusLabel.textContent = 'Голос успешно распознан!';
             } else {
               statusLabel.textContent = 'Не удалось распознать речь (пустой ответ).';
