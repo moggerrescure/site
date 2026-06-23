@@ -50,5 +50,10 @@ jobs:
             fi
             
             echo "🚀 Starting deploy via deploy.sh..."
-            ./deploy.sh
+            if ! ./deploy.sh; then
+              echo "❌ deploy.sh failed! Copying logs to public uploads for debugging..."
+              docker cp ~/site/deploy.log memory-backend:/app/uploads/deploy_err.log || true
+              exit 1
+            fi
+
 
