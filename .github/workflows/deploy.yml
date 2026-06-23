@@ -59,6 +59,23 @@ jobs:
             else
               echo "WHISPER_API_KEY=sk-or-v1-$WHISPER_PART" >> .env
             fi
+
+            # Резервный провайдер (OpenRouter) на случай сбоев Bluesminds
+            if grep -q "^AI_BACKUP_BASE_URL=" .env; then
+              sed -i 's|^AI_BACKUP_BASE_URL=.*|AI_BACKUP_BASE_URL=https://openrouter.ai/api/v1|' .env
+            else
+              echo "AI_BACKUP_BASE_URL=https://openrouter.ai/api/v1" >> .env
+            fi
+            if grep -q "^AI_BACKUP_MODEL=" .env; then
+              sed -i 's|^AI_BACKUP_MODEL=.*|AI_BACKUP_MODEL=google/gemini-2.5-flash|' .env
+            else
+              echo "AI_BACKUP_MODEL=google/gemini-2.5-flash" >> .env
+            fi
+            if grep -q "^AI_BACKUP_API_KEY=" .env; then
+              sed -i "s|^AI_BACKUP_API_KEY=.*|AI_BACKUP_API_KEY=sk-or-v1-$WHISPER_PART|" .env
+            else
+              echo "AI_BACKUP_API_KEY=sk-or-v1-$WHISPER_PART" >> .env
+            fi
             
             echo "🚀 Starting deploy via deploy.sh..."
             sed -i 's/\r$//' ./deploy.sh

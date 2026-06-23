@@ -63,6 +63,50 @@ async function chatCompletion(messages, opts = {}) {
 
     const data = await res.json();
     return data?.choices?.[0]?.message?.content || '';
+  } catch (err) {
+    const backupUrl = process.env.AI_BACKUP_BASE_URL || 'https://openrouter.ai/api/v1';
+    const backupKey = process.env.AI_BACKUP_API_KEY || process.env.AI_IMAGE_API_KEY || process.env.WHISPER_API_KEY;
+    const backupModel = process.env.AI_BACKUP_MODEL || 'google/gemini-2.5-flash';
+
+    if (backupKey && backupKey !== AI_API_KEY) {
+      console.warn('[aiClient] Main text completion failed, trying backup OpenRouter...', err.message);
+      const backupController = new AbortController();
+      const backupTimer = setTimeout(() => backupController.abort(), AI_TIMEOUT_MS);
+
+      try {
+        const cleanBackupUrl = backupUrl.replace(/\/+$/, '');
+        const res = await fetch(`${cleanBackupUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + backupKey,
+          },
+          body: JSON.stringify({
+            model: backupModel,
+            messages,
+            temperature,
+            max_tokens: maxTokens,
+            ...(json ? { response_format: { type: 'json_object' } } : {}),
+          }),
+          signal: backupController.signal,
+        });
+
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          throw new Error(`AI backup upstream ${res.status}: ${body.slice(0, 300)}`);
+        }
+
+        const data = await res.json();
+        return data?.choices?.[0]?.message?.content || '';
+      } catch (backupErr) {
+        console.error('[aiClient] Backup text completion also failed:', backupErr.message);
+        throw err;
+      } finally {
+        clearTimeout(backupTimer);
+      }
+    } else {
+      throw err;
+    }
   } finally {
     clearTimeout(timer);
   }
