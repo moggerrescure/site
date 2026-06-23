@@ -272,24 +272,59 @@ router.post('/transcribe', optionalAuth, upload.single('file'), wrap(async (req,
     throw ApiError.internal('Сервис транскрипции не настроен на сервере (задайте OPENAI_API_KEY)');
   }
 
-  const fd = new FormData();
-  const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' });
-  fd.append('file', blob, req.file.originalname || 'audio.webm');
-  fd.append('model', sttModel);
-  fd.append('language', 'ru');
-
+  let response;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
 
   try {
-    const response = await fetch(sttUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + sttKey,
-      },
-      body: fd,
-      signal: controller.signal,
-    });
+    if (openaiKey) {
+      const fd = new FormData();
+      const blob = new Blob([req.file.buffer], { type: req.file.mimetype || 'audio/webm' });
+      fd.append('file', blob, req.file.originalname || 'audio.webm');
+      fd.append('model', sttModel);
+      fd.append('language', 'ru');
+
+      response = await fetch(sttUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + sttKey,
+        },
+        body: fd,
+        signal: controller.signal,
+      });
+    } else {
+      // OpenRouter expects JSON body with base64 encoded audio
+      const base64Audio = req.file.buffer.toString('base64');
+      let ext = 'webm';
+      if (req.file.mimetype) {
+        if (req.file.mimetype.includes('ogg')) ext = 'ogg';
+        else if (req.file.mimetype.includes('mp4')) ext = 'mp4';
+        else if (req.file.mimetype.includes('mpeg')) ext = 'mp3';
+        else if (req.file.mimetype.includes('wav')) ext = 'wav';
+        else if (req.file.mimetype.includes('webm')) ext = 'webm';
+      } else if (req.file.originalname) {
+        const parts = req.file.originalname.split('.');
+        if (parts.length > 1) ext = parts.pop();
+      }
+
+      const payload = {
+        model: sttModel,
+        input_audio: {
+          data: base64Audio,
+          format: ext
+        }
+      };
+
+      response = await fetch(sttUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + sttKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    }
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
