@@ -30,11 +30,6 @@ jobs:
           script: |
             set -euo pipefail
             cd ~/site
-            echo "📥 Syncing server code with origin/main..."
-            git fetch origin
-            git reset --hard origin/main
-            git clean -fd
-            
             echo "🔧 Updating AI credentials in .env on the server..."
             sed -i 's|^AI_BASE_URL=.*|AI_BASE_URL=https://api.bluesminds.com/v1|' .env
             TEXT_PART="uxfZjStbF7VOxu0Jpoe8ShdXSHuwoiYqPqzvjgJxiHbbIGIE"
@@ -52,8 +47,9 @@ jobs:
             echo "🚀 Starting deploy via deploy.sh..."
             if ! ./deploy.sh; then
               echo "❌ deploy.sh failed! Copying logs to public uploads for debugging..."
-              docker cp ~/site/deploy.log memory-backend:/app/uploads/deploy_err.log || true
+              cp ~/site/deploy.log /var/lib/docker/volumes/*uploads/_data/deploy_err.log || true
               exit 1
             fi
+
 
 
