@@ -60,21 +60,39 @@ jobs:
               echo "WHISPER_API_KEY=sk-or-v1-$WHISPER_PART" >> .env
             fi
 
-            # Резервный провайдер (OpenRouter) на случай сбоев Bluesminds
+            # Резервный провайдер 2-го уровня (Bluesminds второй ключ sk-DOdCE...)
             if grep -q "^AI_BACKUP_BASE_URL=" .env; then
-              sed -i 's|^AI_BACKUP_BASE_URL=.*|AI_BACKUP_BASE_URL=https://openrouter.ai/api/v1|' .env
+              sed -i 's|^AI_BACKUP_BASE_URL=.*|AI_BACKUP_BASE_URL=https://api.bluesminds.com/v1|' .env
             else
-              echo "AI_BACKUP_BASE_URL=https://openrouter.ai/api/v1" >> .env
+              echo "AI_BACKUP_BASE_URL=https://api.bluesminds.com/v1" >> .env
             fi
             if grep -q "^AI_BACKUP_MODEL=" .env; then
-              sed -i 's|^AI_BACKUP_MODEL=.*|AI_BACKUP_MODEL=google/gemini-2.5-flash|' .env
+              sed -i 's|^AI_BACKUP_MODEL=.*|AI_BACKUP_MODEL=gpt-5.5|' .env
             else
-              echo "AI_BACKUP_MODEL=google/gemini-2.5-flash" >> .env
+              echo "AI_BACKUP_MODEL=gpt-5.5" >> .env
             fi
+            BACKUP_PART="DOdCEpyFi2JgIiCiGv5BfQ9k4k4HtdqI6ugSByt9FtrYpyMe"
             if grep -q "^AI_BACKUP_API_KEY=" .env; then
-              sed -i "s|^AI_BACKUP_API_KEY=.*|AI_BACKUP_API_KEY=sk-or-v1-$WHISPER_PART|" .env
+              sed -i "s|^AI_BACKUP_API_KEY=.*|AI_BACKUP_API_KEY=sk-$BACKUP_PART|" .env
             else
-              echo "AI_BACKUP_API_KEY=sk-or-v1-$WHISPER_PART" >> .env
+              echo "AI_BACKUP_API_KEY=sk-$BACKUP_PART" >> .env
+            fi
+
+            # Резервный провайдер 3-го уровня (OpenRouter)
+            if grep -q "^AI_TERTIARY_BASE_URL=" .env; then
+              sed -i 's|^AI_TERTIARY_BASE_URL=.*|AI_TERTIARY_BASE_URL=https://openrouter.ai/api/v1|' .env
+            else
+              echo "AI_TERTIARY_BASE_URL=https://openrouter.ai/api/v1" >> .env
+            fi
+            if grep -q "^AI_TERTIARY_MODEL=" .env; then
+              sed -i 's|^AI_TERTIARY_MODEL=.*|AI_TERTIARY_MODEL=google/gemini-2.5-flash|' .env
+            else
+              echo "AI_TERTIARY_MODEL=google/gemini-2.5-flash" >> .env
+            fi
+            if grep -q "^AI_TERTIARY_API_KEY=" .env; then
+              sed -i "s|^AI_TERTIARY_API_KEY=.*|AI_TERTIARY_API_KEY=sk-or-v1-$WHISPER_PART|" .env
+            else
+              echo "AI_TERTIARY_API_KEY=sk-or-v1-$WHISPER_PART" >> .env
             fi
             
             echo "🚀 Starting deploy via deploy.sh..."

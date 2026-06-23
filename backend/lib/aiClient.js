@@ -27,89 +27,88 @@ const PIXAZO_BASE_URL = (process.env.PIXAZO_BASE_URL || 'https://gateway.pixazo.
 async function chatCompletion(messages, opts = {}) {
   const { temperature = 0.75, maxTokens = 900, json = true } = opts;
 
-  if (!AI_API_KEY) {
-    const e = new Error('AI_API_KEY is not set');
+  const configs = [];
+
+  // 1. Primary config (Bluesminds main key 1 with gpt-5.5)
+  if (AI_API_KEY) {
+    configs.push({
+      name: 'Primary (Bluesminds)',
+      baseUrl: AI_BASE_URL,
+      apiKey: AI_API_KEY,
+      model: AI_MODEL,
+    });
+  }
+
+  // 2. Secondary backup (Bluesminds key 2 with gpt-5.5/gemini-3.1)
+  const backupKey = process.env.AI_BACKUP_API_KEY;
+  if (backupKey && backupKey !== AI_API_KEY) {
+    configs.push({
+      name: 'Secondary Backup',
+      baseUrl: process.env.AI_BACKUP_BASE_URL || AI_BASE_URL,
+      apiKey: backupKey,
+      model: process.env.AI_BACKUP_MODEL || AI_MODEL,
+    });
+  }
+
+  // 3. Tertiary backup (OpenRouter gemini-2.5-flash fallback)
+  const tertiaryKey = process.env.AI_TERTIARY_API_KEY || process.env.WHISPER_API_KEY;
+  if (tertiaryKey && tertiaryKey !== AI_API_KEY && tertiaryKey !== backupKey) {
+    configs.push({
+      name: 'Tertiary (OpenRouter)',
+      baseUrl: process.env.AI_TERTIARY_BASE_URL || 'https://openrouter.ai/api/v1',
+      apiKey: tertiaryKey,
+      model: process.env.AI_TERTIARY_MODEL || 'google/gemini-2.5-flash',
+    });
+  }
+
+  if (configs.length === 0) {
+    const e = new Error('No AI API keys configured');
     e.code = 'AI_NOT_CONFIGURED';
     throw e;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  let lastErr = null;
 
-  try {
-    const res = await fetch(`${AI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + AI_API_KEY,
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        ...(json ? { response_format: { type: 'json_object' } } : {}),
-      }),
-      signal: controller.signal,
-    });
+  for (const config of configs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      const e = new Error(`AI upstream ${res.status}: ${body.slice(0, 300)}`);
-      e.code = 'AI_UPSTREAM';
-      e.status = res.status;
-      throw e;
-    }
+    try {
+      const cleanUrl = config.baseUrl.replace(/\/+$/, '');
+      const res = await fetch(`${cleanUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + config.apiKey,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+          ...(json ? { response_format: { type: 'json_object' } } : {}),
+        }),
+        signal: controller.signal,
+      });
 
-    const data = await res.json();
-    return data?.choices?.[0]?.message?.content || '';
-  } catch (err) {
-    const backupUrl = process.env.AI_BACKUP_BASE_URL || 'https://openrouter.ai/api/v1';
-    const backupKey = process.env.AI_BACKUP_API_KEY || process.env.AI_IMAGE_API_KEY || process.env.WHISPER_API_KEY;
-    const backupModel = process.env.AI_BACKUP_MODEL || 'google/gemini-2.5-flash';
-
-    if (backupKey && backupKey !== AI_API_KEY) {
-      console.warn('[aiClient] Main text completion failed, trying backup OpenRouter...', err.message);
-      const backupController = new AbortController();
-      const backupTimer = setTimeout(() => backupController.abort(), AI_TIMEOUT_MS);
-
-      try {
-        const cleanBackupUrl = backupUrl.replace(/\/+$/, '');
-        const res = await fetch(`${cleanBackupUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + backupKey,
-          },
-          body: JSON.stringify({
-            model: backupModel,
-            messages,
-            temperature,
-            max_tokens: maxTokens,
-            ...(json ? { response_format: { type: 'json_object' } } : {}),
-          }),
-          signal: backupController.signal,
-        });
-
-        if (!res.ok) {
-          const body = await res.text().catch(() => '');
-          throw new Error(`AI backup upstream ${res.status}: ${body.slice(0, 300)}`);
-        }
-
-        const data = await res.json();
-        return data?.choices?.[0]?.message?.content || '';
-      } catch (backupErr) {
-        console.error('[aiClient] Backup text completion also failed:', backupErr.message);
-        throw err;
-      } finally {
-        clearTimeout(backupTimer);
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`AI upstream ${res.status}: ${body.slice(0, 300)}`);
       }
-    } else {
-      throw err;
+
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content || '';
+      clearTimeout(timer);
+      return content;
+    } catch (err) {
+      console.warn(`[aiClient] ${config.name} completion failed:`, err.message);
+      lastErr = err;
+    } finally {
+      clearTimeout(timer);
     }
-  } finally {
-    clearTimeout(timer);
   }
+
+  throw lastErr || new Error('All text completion configurations failed');
 }
 
 /**
