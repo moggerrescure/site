@@ -61,11 +61,13 @@ jobs:
             fi
             
             echo "🚀 Starting deploy via deploy.sh..."
+            sed -i 's/\r$//' ./deploy.sh
             if ! ./deploy.sh; then
               echo "❌ deploy.sh failed! Copying logs to public uploads for debugging..."
               cp ~/site/deploy.log /var/lib/docker/volumes/*uploads/_data/deploy_err.log || true
               exit 1
             fi
+
 
 
 
